@@ -142,7 +142,7 @@ if archivo_tareas and archivo_recursos and archivo_dependencias:
     # --- Recursos diarios ---
     recursos_tareas_df = dependencias_df.merge(
         tareas_df[['IDRUBRO','RUBRO','FECHAINICIO','FECHAFIN','DURACION']],
-        left_on='CAN',
+        left_on='CANTIDAD',
         right_on='RUBRO',
         how='left'
     )
@@ -200,3 +200,4 @@ if archivo_tareas and archivo_recursos and archivo_dependencias:
     
 else:
     st.warning("Por favor, sube los tres archivos Excel (Tareas, Recursos y Dependencias) para continuar.")
+
