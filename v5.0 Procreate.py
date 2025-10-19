@@ -61,7 +61,7 @@ if tareas_file and dependencias_file and recursos_file:
     # --- LIMPIEZA BÁSICA
     # --------------------------
     tareas_df['RUBRO'] = tareas_df['RUBRO'].astype(str).str.strip()
-    dependencias_df['CAN'] = dependencias_df['CAN'].astype(str).str.strip()
+    dependencias_df['CANTIDAD'] = dependencias_df['CANTIDAD'].astype(str).str.strip()
     recursos_df['RECURSO'] = recursos_df['RECURSO'].astype(str).str.strip()
 
     # Convertir fechas a datetime
@@ -75,7 +75,7 @@ if tareas_file and dependencias_file and recursos_file:
     try:
         recursos_tareas_df = dependencias_df.merge(
             tareas_df[['IDRUBRO','RUBRO','FECHAINICIO','FECHAFIN','DURACION']],
-            left_on='CAN',
+            left_on='CANTIDAD',
             right_on='RUBRO',
             how='left'
         )
@@ -237,6 +237,7 @@ if tareas_file and dependencias_file and recursos_file:
 
 else:
     st.info("⬆️ Por favor, sube los tres archivos: Tareas, Dependencias y Recursos.")
+
 
 
 
