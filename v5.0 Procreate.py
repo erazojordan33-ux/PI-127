@@ -178,6 +178,22 @@ if archivo_tareas and archivo_recursos and archivo_dependencias:
         on='RECURSO',
         how='left'
     )
+
+    # --- Asegurarnos de que las columnas sean numéricas ---
+    resource_demand_with_details_df['Demanda_Diaria_Total'] = pd.to_numeric(
+        resource_demand_with_details_df['Demanda_Diaria_Total'], errors='coerce'
+    ).fillna(0)
+    
+    resource_demand_with_details_df['TARIFA'] = pd.to_numeric(
+        resource_demand_with_details_df['TARIFA'], errors='coerce'
+    ).fillna(0)
+    
+    # --- Calcular Costo Diario ---
+    resource_demand_with_details_df['Costo_Diario'] = (
+        resource_demand_with_details_df['Demanda_Diaria_Total'] * resource_demand_with_details_df['TARIFA']
+    )
+
+    
     resource_demand_with_details_df['Costo_Diario'] = resource_demand_with_details_df['Cantidad_Diaria']*resource_demand_with_details_df['TARIFA']
     resource_demand_with_details_df['Periodo_Mensual'] = resource_demand_with_details_df['Fecha'].dt.to_period('M')
     monthly_costs_df = resource_demand_with_details_df.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
@@ -203,5 +219,6 @@ if archivo_tareas and archivo_recursos and archivo_dependencias:
     
 else:
     st.warning("Por favor, sube los tres archivos Excel (Tareas, Recursos y Dependencias) para continuar.")
+
 
 
