@@ -139,14 +139,17 @@ if archivo_tareas and archivo_recursos and archivo_dependencias:
     fig_gantt.update_layout(title="📅 Diagrama de Gantt - Ruta Crítica")
     st.plotly_chart(fig_gantt, use_container_width=True)
     
-    # --- Recursos diarios ---
+    # Convertir ambas a string
+    dependencias_df['CANTIDAD'] = dependencias_df['CANTIDAD'].astype(str).str.strip()
+    tareas_df['RUBRO'] = tareas_df['RUBRO'].astype(str).str.strip()
+    
     recursos_tareas_df = dependencias_df.merge(
         tareas_df[['IDRUBRO','RUBRO','FECHAINICIO','FECHAFIN','DURACION']],
         left_on='CANTIDAD',
         right_on='RUBRO',
         how='left'
     )
-    
+
     daily_resource_usage_list = []
     for _, row in recursos_tareas_df.iterrows():
         task_id = row['IDRUBRO']
@@ -200,4 +203,5 @@ if archivo_tareas and archivo_recursos and archivo_dependencias:
     
 else:
     st.warning("Por favor, sube los tres archivos Excel (Tareas, Recursos y Dependencias) para continuar.")
+
 
