@@ -1151,7 +1151,7 @@ if archivo_excel:
             st.warning(f"All required columns {list(required_columns_and_types.keys())} are present.")
 
             type_issues = []
-            for col, expected_type in required_columns_and_types.items():c
+            for col, expected_type in required_columns_and_types.items():
                 if expected_type == 'object':
                     if pd.api.types.is_numeric_dtype(resource_demand_with_details_df[col]):
                         type_issues.append(f"Column '{col}' is numeric but expected object (string).")
@@ -1248,6 +1248,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
