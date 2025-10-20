@@ -40,10 +40,23 @@ if archivo_excel:
     dependencias_grid = AgGrid(dependencias_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
     dependencias_df = dependencias_grid['data']
 
-    # --- Asegurar tipos ---
+
+    # --- Validar y convertir columnas de fecha ---
+    tareas_df['FECHAINICIO'] = tareas_df['FECHAINICIO'].astype(str).str.strip()
+    tareas_df['FECHAFIN'] = tareas_df['FECHAFIN'].astype(str).str.strip()
+    
     tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], errors='coerce', dayfirst=True)
     tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], errors='coerce', dayfirst=True)
-    tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days.fillna(0).astype(int)
+    
+    # --- Duración ---
+    # Si ambas fechas existen, duración = (fin-inicio).days +1, mínimo 1
+    tareas_df['DURACION'] = tareas_df.apply(
+        lambda row: max((row['FECHAFIN'] - row['FECHAINICIO']).days + 1, 1) 
+        if pd.notna(row['FECHAINICIO']) and pd.notna(row['FECHAFIN']) else 0,
+        axis=1
+    )
+
+    
     recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
 
     st.success("Datos cargados y convertidos correctamente ✅")
@@ -187,6 +200,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
