@@ -258,7 +258,7 @@ if archivo_excel:
                             potential_es_v = ef[u] + timedelta(days=desfase_v)
                         elif tipo_v == 'CF': 
                              potential_es_v = (es[u] + timedelta(days=desfase_v)) - timedelta(days=duration_v)
-                            elif tipo_v == 'FF': 
+                        elif tipo_v == 'FF': 
                              potential_es_v = (ef[u] + timedelta(days=desfase_v)) - timedelta(days=duration_v)
                         else:
                              st.warning(f"⚠️ Tipo de relación '{tipo_v}' no reconocido para calcular ES de tarea {v} basada en {u}. Usando lógica FC por defecto.")
@@ -1020,4 +1020,5 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
