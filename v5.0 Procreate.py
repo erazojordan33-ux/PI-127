@@ -1,15 +1,18 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import timedelta
-from collections import defaultdict, deque
+import plotly.express as px
 import re
+from datetime import timedelta, datetime
+from collections import defaultdict
+
+# --- IMPORTAR st_aggrid PARA TABLAS EDITABLES ---
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 st.set_page_config(page_title="Gestión de Proyectos - Cronograma Valorado", layout="wide")
 st.title("📊 Gestión de Proyectos - Cronograma Valorado y Recursos")
 
-# --- Subir archivos ---
+# --- SUBIR ARCHIVO EXCEL ---
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
 
 if archivo_excel:
@@ -20,45 +23,33 @@ if archivo_excel:
     except ValueError:
         st.error("El archivo no contiene todas las hojas requeridas: Tareas, Recursos y Dependencias")
         st.stop()
-
-    # --- Configuración de columnas ---
-    tareas_df.columns = tareas_df.columns.str.strip()
-    tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], dayfirst=True)
-    tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], dayfirst=True)
-    tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days.fillna(0).astype(int)
-
-    # --- Mostrar tablas editables ---
-    st.subheader("📝 Tabla de Tareas Editable")
+    
+    # --- TABLAS EDITABLES ---
+    st.subheader("📋 Tabla de Tareas")
     gb_tareas = GridOptionsBuilder.from_dataframe(tareas_df)
     gb_tareas.configure_default_column(editable=True)
-    gb_tareas.configure_column("IDRUBRO", editable=False)
-    grid_options_tareas = gb_tareas.build()
-    tareas_resp = AgGrid(tareas_df, gridOptions=grid_options_tareas,
-                         update_mode=GridUpdateMode.MODEL_CHANGED,
-                         height=300, fit_columns_on_grid_load=True)
-    tareas_df = tareas_resp['data']
+    grid_tareas = AgGrid(tareas_df, gridOptions=gb_tareas.build(), update_mode=GridUpdateMode.VALUE_CHANGED)
+    tareas_df = grid_tareas['data']
 
-    st.subheader("🛠 Tabla de Recursos Editable")
+    st.subheader("📋 Tabla de Recursos")
     gb_recursos = GridOptionsBuilder.from_dataframe(recursos_df)
     gb_recursos.configure_default_column(editable=True)
-    grid_options_recursos = gb_recursos.build()
-    recursos_resp = AgGrid(recursos_df, gridOptions=grid_options_recursos,
-                           update_mode=GridUpdateMode.MODEL_CHANGED,
-                           height=200, fit_columns_on_grid_load=True)
-    recursos_df = recursos_resp['data']
+    grid_recursos = AgGrid(recursos_df, gridOptions=gb_recursos.build(), update_mode=GridUpdateMode.VALUE_CHANGED)
+    recursos_df = grid_recursos['data']
 
-    st.subheader("📌 Tabla de Dependencias Editable")
-    gb_dep = GridOptionsBuilder.from_dataframe(dependencias_df)
-    gb_dep.configure_default_column(editable=True)
-    grid_options_dep = gb_dep.build()
-    dep_resp = AgGrid(dependencias_df, gridOptions=grid_options_dep,
-                      update_mode=GridUpdateMode.MODEL_CHANGED,
-                      height=200, fit_columns_on_grid_load=True)
-    dependencias_df = dep_resp['data']
+    st.subheader("📋 Tabla de Dependencias")
+    gb_dependencias = GridOptionsBuilder.from_dataframe(dependencias_df)
+    gb_dependencias.configure_default_column(editable=True)
+    grid_dependencias = AgGrid(dependencias_df, gridOptions=gb_dependencias.build(), update_mode=GridUpdateMode.VALUE_CHANGED)
+    dependencias_df = grid_dependencias['data']
 
-    st.success("✅ Tablas cargadas y editables")
+    # --- Configurar fechas ---
+    tareas_df.columns = tareas_df.columns.str.strip()
+    tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], errors='coerce', dayfirst=True)
+    tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], errors='coerce', dayfirst=True)
+    tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days.fillna(0).astype(int)
 
-    # --- Calcular ruta crítica ---
+    # --- RUTA CRÍTICA ---
     es, ef, ls, lf, tf, ff = {}, {}, {}, {}, {}, {}
     duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
 
@@ -68,8 +59,8 @@ if archivo_excel:
 
     for _, row in tareas_df.iterrows():
         tarea_id = row['IDRUBRO']
-        predecesoras_str = str(row.get('PREDECESORAS','')).strip()
-        if predecesoras_str not in ['nan','']:
+        predecesoras_str = str(row.get('PREDECESORAS', '')).strip()
+        if predecesoras_str not in ['nan', '']:
             pre_list = predecesoras_str.split(',')
             for pre_entry in pre_list:
                 pre_entry = pre_entry.strip()
@@ -82,7 +73,8 @@ if archivo_excel:
                         dependencias[pre_id].append(tarea_id)
                         predecesoras_map[tarea_id].append((pre_id, tipo_relacion, desfase))
 
-    # --- Forward Pass ---
+    # --- Forward Pass (ES, EF) seguro contra NaT ---
+    from collections import deque
     in_degree = {tid: len(predecesoras_map.get(tid, [])) for tid in all_task_ids}
     queue = deque([tid for tid in all_task_ids if in_degree[tid]==0])
     processed_forward = set(queue)
@@ -91,52 +83,49 @@ if archivo_excel:
         task_row = tareas_df[tareas_df['IDRUBRO']==tid]
         if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
             es[tid] = task_row.iloc[0]['FECHAINICIO']
-
-            if pd.notna(es.get(tid)):
-                ef[tid] = es[tid] + timedelta(days=duracion_dict.get(tid,0))
-            else:
-                ef[tid] = pd.NaT  # o puedes usar una fecha por defecto
-
-            
             ef[tid] = es[tid] + timedelta(days=duracion_dict.get(tid,0))
+        else:
+            es[tid] = pd.NaT
+            ef[tid] = pd.NaT
 
     while queue:
         u = queue.popleft()
         for v in dependencias.get(u, []):
             for pre_id_v, tipo_v, desfase_v in predecesoras_map.get(v, []):
-                if pre_id_v==u:
+                if pre_id_v==u and pd.notna(ef.get(u)):
                     potential_es_v = ef[u] + timedelta(days=desfase_v) if tipo_v=='FC' else es[u] + timedelta(days=desfase_v)
-                    if v not in es or potential_es_v>es[v]:
-                        es[v]=potential_es_v
-                        ef[v]=es[v]+timedelta(days=duracion_dict.get(v,0))
+                    if v not in es or (pd.notna(potential_es_v) and potential_es_v>es.get(v, pd.Timestamp.min)):
+                        es[v] = potential_es_v
+                        ef[v] = es[v] + timedelta(days=duracion_dict.get(v,0))
             in_degree[v]-=1
             if in_degree[v]==0 and v not in processed_forward:
                 queue.append(v)
                 processed_forward.add(v)
 
-    # --- Backward Pass ---
+    # --- Backward Pass (LS, LF) ---
     end_tasks_ids = [tid for tid in all_task_ids if tid not in dependencias]
-    project_finish_date = max(ef.values())
+    project_finish_date = max([d for d in ef.values() if pd.notna(d)], default=pd.Timestamp.today())
+
     for tid in end_tasks_ids:
         lf[tid] = project_finish_date
-        ls[tid] = lf[tid]-timedelta(days=duracion_dict.get(tid,0))
+        ls[tid] = lf[tid] - timedelta(days=duracion_dict.get(tid,0))
 
     queue_backward = deque(end_tasks_ids)
     processed_backward = set(end_tasks_ids)
-
     while queue_backward:
         v = queue_backward.popleft()
-        for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []):
-            potential_lf_u = ls[v] - timedelta(days=desfase_uv) if tipo_relacion_uv=='FC' else lf[v]-timedelta(days=desfase_uv)
-            if u not in lf or potential_lf_u<lf.get(u, pd.Timestamp.max):
-                lf[u]=potential_lf_u
-                ls[u]=lf[u]-timedelta(days=duracion_dict.get(u,0))
-            queue_backward.append(u)
-            processed_backward.add(u)
+        for u, tipo_rel, desfase in predecesoras_map.get(v, []):
+            if pd.notna(ls.get(v)):
+                potential_lf_u = ls[v] - timedelta(days=desfase) if tipo_rel=='FC' else lf[v]-timedelta(days=desfase)
+                if u not in lf or (pd.notna(potential_lf_u) and potential_lf_u<lf.get(u, pd.Timestamp.max)):
+                    lf[u] = potential_lf_u
+                    ls[u] = lf[u] - timedelta(days=duracion_dict.get(u,0))
+                queue_backward.append(u)
+                processed_backward.add(u)
 
-    # --- Holguras ---
+    # --- Calcular holguras ---
     for tid in all_task_ids:
-        if tid in ef and tid in lf:
+        if tid in ef and tid in lf and pd.notna(ef[tid]) and pd.notna(lf[tid]):
             tf[tid] = lf[tid]-ef[tid]
             ff[tid] = timedelta(days=0)
         else:
@@ -150,30 +139,34 @@ if archivo_excel:
     tareas_df['HOLGURA_TOTAL'] = tareas_df['IDRUBRO'].map(lambda x: tf[x].days if pd.notna(tf[x]) else pd.NA)
     tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: x==0)
 
-    st.subheader("📋 Tareas con Fechas y Ruta Crítica Calculadas")
+    st.subheader("📋 Tareas con Fechas y Ruta Crítica")
     st.dataframe(tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','DURACION',
                             'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
-                            'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','HOLGURA_TOTAL','RUTA_CRITICA']])
+                            'FECHA_INICIO_TARDE','FECHA_FIN_TARDE',
+                            'HOLGURA_TOTAL','RUTA_CRITICA']])
 
     # --- Diagrama de Gantt ---
     fig_gantt = go.Figure()
     for _, row in tareas_df.iterrows():
         color = 'red' if row['RUTA_CRITICA'] else 'lightblue'
-        fig_gantt.add_trace(go.Scatter(
-            x=[row['FECHA_INICIO_TEMPRANA'], row['FECHA_FIN_TEMPRANA']],
-            y=[row['RUBRO'], row['RUBRO']],
-            mode='lines',
-            line=dict(color=color, width=12),
-            hovertext=f"Rubro: {row['RUBRO']}<br>Duración: {row['DURACION']} días",
-            showlegend=False
-        ))
+        if pd.notna(row['FECHA_INICIO_TEMPRANA']) and pd.notna(row['FECHA_FIN_TEMPRANA']):
+            fig_gantt.add_trace(go.Scatter(
+                x=[row['FECHA_INICIO_TEMPRANA'], row['FECHA_FIN_TEMPRANA']],
+                y=[row['RUBRO'], row['RUBRO']],
+                mode='lines',
+                line=dict(color=color, width=12),
+                hovertext=f"Rubro: {row['RUBRO']}<br>Duración: {row['DURACION']} días",
+                showlegend=False
+            ))
     fig_gantt.update_layout(title="📅 Diagrama de Gantt - Ruta Crítica")
     st.plotly_chart(fig_gantt, use_container_width=True)
 
     # --- Recursos diarios ---
     recursos_tareas_df = dependencias_df.merge(
         tareas_df[['IDRUBRO','RUBRO','FECHAINICIO','FECHAFIN','DURACION']],
-        left_on='CAN', right_on='RUBRO', how='left'
+        left_on='CAN',
+        right_on='RUBRO',
+        how='left'
     )
 
     daily_resource_usage_list = []
@@ -181,22 +174,25 @@ if archivo_excel:
         task_id = row['IDRUBRO']
         start_date = row['FECHAINICIO']
         end_date = row['FECHAFIN']
-        total_quantity = row['CANTIDAD']
-        duration_days = row['DURACION']
-        if duration_days>0:
+        total_quantity = row.get('CANTIDAD', 0)
+        duration_days = row.get('DURACION', 0)
+        if pd.notna(start_date) and pd.notna(end_date) and duration_days>0:
             daily_quantity = total_quantity/(duration_days+1)
             date_range = pd.date_range(start=start_date,end=end_date)
         else:
             daily_quantity = total_quantity
-            date_range = [start_date]
+            date_range = [start_date] if pd.notna(start_date) else []
         temp_df = pd.DataFrame({
             'Fecha': date_range,
             'IDRUBRO': task_id,
-            'RECURSO': row['RECURSO'],
+            'RECURSO': row.get('RECURSO', ''),
             'Cantidad_Diaria': daily_quantity
         })
         daily_resource_usage_list.append(temp_df)
-    all_daily_resource_usage_df = pd.concat(daily_resource_usage_list, ignore_index=True)
+    if daily_resource_usage_list:
+        all_daily_resource_usage_df = pd.concat(daily_resource_usage_list, ignore_index=True)
+    else:
+        all_daily_resource_usage_df = pd.DataFrame()
 
     # --- Costos ---
     resource_demand_with_details_df = all_daily_resource_usage_df.merge(
@@ -229,6 +225,7 @@ if archivo_excel:
 
 else:
     st.warning("Por favor, sube los tres archivos Excel (Tareas, Recursos y Dependencias) para continuar.")
+
 
 
 
