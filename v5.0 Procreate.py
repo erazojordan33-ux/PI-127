@@ -1133,8 +1133,6 @@ if archivo_excel:
     #__________________________________________________________________________________________________
 
     if 'resource_demand_with_details_df' in locals() or 'resource_demand_with_details_df' in globals():
-        st.warning("DataFrame 'resource_demand_with_details_df' found.")
-
         required_columns_and_types = {
             'Fecha': 'datetime64[ns]',
             'RECURSO': 'object', # String type
@@ -1148,8 +1146,6 @@ if archivo_excel:
         missing_columns = [col for col in required_columns_and_types if col not in resource_demand_with_details_df.columns]
     
         if not missing_columns:
-            st.warning(f"All required columns {list(required_columns_and_types.keys())} are present.")
-
             type_issues = []
             for col, expected_type in required_columns_and_types.items():
                 if expected_type == 'object':
@@ -1161,14 +1157,7 @@ if archivo_excel:
                      else:
                         type_issues.append(f"Column '{col}' has type {resource_demand_with_details_df[col].dtype} but expected {expected_type}.")
     
-            if not type_issues:
-                st.warning("Data types for required columns are as expected.")
-                st.warning("\nFirst few rows of resource_demand_with_details_df:")
-            else:
-                st.warning("❌ Error: Data type issues in resource_demand_with_details_df:")
-                for issue in type_issues:
-                    st.warning(issue)
-    
+
         else:
             st.warning(f"❌ Error: Missing required columns in resource_demand_with_details_df: {missing_columns}")
     else:
@@ -1215,7 +1204,6 @@ if archivo_excel:
     ))
 
     fig.update_layout(
-        title='Cronograma Valorado - Costos Mensuales y Acumulados', # Chart title
         yaxis=dict(
             title='Costo Mensual', # Primary y-axis title
             side='left',
@@ -1248,6 +1236,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
