@@ -44,23 +44,37 @@ if archivo_excel:
     dependencias_df = dependencias_grid['data']
 
     # --- Validación y normalización ---
-    # Tareas: FECHAINICIO, FECHAFIN como datetime
-    for col in ['FECHAINICIO','FECHAFIN']:
-        tareas_df[col] = pd.to_datetime(tareas_df[col], errors='coerce', dayfirst=True)
-    tareas_df['DURACION'] = tareas_df.apply(
-        lambda row: max((row['FECHAFIN'] - row['FECHAINICIO']).days + 1, 1)
-        if pd.notna(row['FECHAINICIO']) and pd.notna(row['FECHAFIN']) else None,
-        axis=1
-    )
-    if tareas_df['DURACION'].isnull().any():
-        st.error("Algunas tareas tienen fechas inválidas. Corrige FECHAINICIO y FECHAFIN.")
+    # --- Validar y normalizar columnas ---
+    
+    # FECHAS
+    for col in ['FECHAINICIO', 'FECHAFIN']:
+        # Convertir todo a string primero (AgGrid puede devolver datetime o str)
+        tareas_df[col] = tareas_df[col].astype(str)
+        # Convertir a datetime
+        tareas_df[col] = pd.to_datetime(tareas_df[col], dayfirst=True, errors='coerce')
+    
+    # Validar que no haya NaT
+    if tareas_df[['FECHAINICIO','FECHAFIN']].isnull().any().any():
+        st.error("Algunas fechas no son válidas. Revisa las columnas FECHAINICIO y FECHAFIN")
         st.stop()
+    
+    # DURACION
+    tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days + 1
+    # Controlar valores inválidos o negativos
+    if (tareas_df['DURACION'] <= 0).any():
+        st.error("Hay tareas con duración <= 0. Revisa FECHAINICIO y FECHAFIN")
+        st.stop()
+    
+    # PREDECESORAS
+    # Si está vacía, poner string vacío
+    tareas_df['PREDECESORAS'] = tareas_df['PREDECESORAS'].fillna('').astype(str)
+    
+    # NUMÉRICOS
+    if 'TARIFA' in recursos_df.columns:
+        recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
+    
+    st.success("✅ Columnas validadas correctamente: fechas, duración, numéricos y predecesoras.")
 
-    # Recursos: TARIFA como número
-    recursos_df['TARIFA'] = pd.to_numeric(recursos_df.get('TARIFA',0), errors='coerce')
-    if recursos_df['TARIFA'].isnull().any():
-        st.error("Algunas tarifas de recursos no son numéricas. Corrige la columna TARIFA.")
-        st.stop()
 
     # --- Calculo ruta crítica (igual que antes) ---
     es, ef, ls, lf, tf = {}, {}, {}, {}, {}
@@ -157,6 +171,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
