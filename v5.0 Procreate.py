@@ -1182,9 +1182,9 @@ if archivo_excel:
     monthly_costs_df['Costo_Acumulado'] = monthly_costs_df['Costo_Diario'].cumsum()
      
     def format_currency(value):
-    if pd.notna(value):
-        return f"S/ {value:,.2f}"  # Separador de miles y 2 decimales
-    return "S/ 0.00"  # Si es NaN o None
+        if pd.notna(value):
+            return f"S/ {value:,.2f}"  # Separador de miles y 2 decimales
+        return "S/ 0.00"  # Si es NaN o None
     
     monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
     monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
@@ -1248,6 +1248,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
