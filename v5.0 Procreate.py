@@ -45,18 +45,29 @@ if archivo_excel:
     dependencias_df = dependencias_grid['data']
 
 
-    # Convertir todo a string primero
-    tareas_df['FECHAINICIO'] = tareas_df['FECHAINICIO'].astype(str).str.strip()
-    tareas_df['FECHAFIN'] = tareas_df['FECHAFIN'].astype(str).str.strip()
-    
-    # Ahora convertir a datetime forzando formato
-    tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], dayfirst=True, errors='coerce', infer_datetime_format=True)
-    tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], dayfirst=True, errors='coerce', infer_datetime_format=True)
+    # -----------------------
+    # Validación y conversión segura de FECHAS
+    # -----------------------
+    for col in ['FECHAINICIO', 'FECHAFIN']:
+        # Convertir todo a string y quitar espacios
+        tareas_df[col] = tareas_df[col].astype(str).str.strip()
+        
+        # Reemplazar 'nan', 'NaT' u otros textos vacíos por None
+        tareas_df[col] = tareas_df[col].replace(['nan','NaT','None',''], pd.NaT)
+        
+        # Convertir a datetime con inferencia
+        tareas_df[col] = pd.to_datetime(tareas_df[col], dayfirst=True, errors='coerce', infer_datetime_format=True)
     
     # Validar
-    if tareas_df['FECHAINICIO'].isna().any() or tareas_df['FECHAFIN'].isna().any():
-        filas_invalidas = tareas_df[tareas_df['FECHAINICIO'].isna() | tareas_df['FECHAFIN'].isna()]
+    filas_invalidas = tareas_df[tareas_df['FECHAINICIO'].isna() | tareas_df['FECHAFIN'].isna()]
+    if not filas_invalidas.empty:
         st.error(f"Algunas fechas no son válidas en las filas: {filas_invalidas.index.tolist()}")
+        st.stop()
+    
+    # Calcular DURACION
+    tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days + 1
+    if (tareas_df['DURACION'] <= 0).any():
+        st.error("Hay tareas con duración <= 0. Revisa FECHAINICIO y FECHAFIN")
         st.stop()
 
     
@@ -167,6 +178,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
