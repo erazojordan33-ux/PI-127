@@ -518,7 +518,6 @@ if archivo_excel:
     
     
     fig.update_layout(
-        title='📅 Diagrama de Gantt - Ruta Crítica Resaltada', # Título actualizado
         xaxis=dict(
             title='Fechas',
             # tickformat=date_tick_format, # Eliminar formato explícito para usar default
@@ -560,6 +559,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
