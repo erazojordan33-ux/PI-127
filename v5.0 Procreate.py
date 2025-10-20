@@ -989,6 +989,11 @@ if archivo_excel:
         hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>'
     ))
 
+
+    fig.update_yaxes(range=[0, max(monthly_costs_df['Costo_Diario'])*1.1], secondary_y=False)
+    fig.update_yaxes(range=[0, max(monthly_costs_df['Costo_Acumulado'])*1.1], secondary_y=True)
+
+    
     fig.update_layout(
         yaxis=dict(
             title='Costo Mensual',
@@ -1022,6 +1027,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
