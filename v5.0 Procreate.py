@@ -32,6 +32,35 @@ if archivo_excel:
     tareas_df = tareas_grid['data']
 
 
+    # --- Mini-bloque: Inspección y limpieza de FECHAINICIO y FECHAFIN ---
+    st.subheader("🔍 Inspección de fechas")
+    
+    # Mostrar tipos de cada columna
+    st.write("Tipos de columnas en la tabla de tareas:")
+    st.write(tareas_df.dtypes)
+    
+    # Mostrar los primeros 20 valores con su tipo real
+    for col in ['FECHAINICIO','FECHAFIN']:
+        st.write(f"Columna: {col}")
+        for i, val in tareas_df[col].head(20).items():
+            st.write(f"Fila {i}: Valor = {val} | Tipo real = {type(val)}")
+    
+    # Limpiar caracteres problemáticos (por ejemplo 'T' de ISO)
+    for col in ['FECHAINICIO','FECHAFIN']:
+        tareas_df[col] = tareas_df[col].apply(lambda x: str(x).replace('T',' ') if pd.notna(x) else x)
+    
+    # Intentar convertir a datetime nuevamente
+    for col in ['FECHAINICIO','FECHAFIN']:
+        tareas_df[col] = pd.to_datetime(tareas_df[col], dayfirst=True, errors='coerce')
+    
+    # Mostrar filas con valores que siguen siendo inválidos
+    invalid_rows = tareas_df[tareas_df[['FECHAINICIO','FECHAFIN']].isnull().any(axis=1)].index.tolist()
+    if invalid_rows:
+        st.warning(f"⚠️ Algunas fechas aún no son válidas en las filas: {invalid_rows}")
+    else:
+        st.success("Todas las fechas son válidas ✅")
+
+
     st.subheader("📋 Tabla Recursos")
     gb = GridOptionsBuilder.from_dataframe(recursos_df)
     gb.configure_default_column(editable=True)
@@ -178,6 +207,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
