@@ -47,15 +47,19 @@ if archivo_excel:
         for i, val in tareas_df[col].items():
             st.write(f"Fila {i}: Valor = {val} | Tipo real = {type(val)}")
 
-    # --- Transformar fechas ISO a DD/MM/YYYY solo para mostrar ---
-    tareas_mostrar_df = tareas_df.copy()  # copiar para no alterar datos originales
+    # Transformar directamente en las columnas FECHAINICIO y FECHAFIN
     for col in ['FECHAINICIO','FECHAFIN']:
-        tareas_mostrar_df[col] = tareas_mostrar_df[col].apply(lambda x: f"{x.day:02d}/{x.month:02d}/{x.year}" if pd.notna(x) else "")
+        # Convertir de string ISO a datetime
+        tareas_df[col] = pd.to_datetime(tareas_df[col], errors='coerce')
+        # Formatear como DD/MM/YYYY
+        tareas_df[col] = tareas_df[col].dt.strftime('%d/%m/%Y')
     
-    # --- Mostrar la tabla actualizada ---
-    st.subheader("📋 Tabla Tareas con Fechas en formato DD/MM/YYYY")
-    st.dataframe(tareas_mostrar_df)
-
+    # Mostrar los datos transformados
+    st.subheader("🔹 Fechas transformadas a DD/MM/YYYY")
+    for col in ['FECHAINICIO','FECHAFIN']:
+        st.write(f"Columna: {col}")
+        for i, val in tareas_df[col].items():
+            st.write(f"Fila {i}: Valor = {val}")
 
     # Transformar cualquier fecha devuelta por AgGrid a datetime
     for col in ['FECHAINICIO','FECHAFIN']:
@@ -192,4 +196,5 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
