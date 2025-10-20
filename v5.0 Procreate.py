@@ -31,6 +31,7 @@ if archivo_excel:
     tareas_grid = AgGrid(tareas_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
     tareas_df = tareas_grid['data']
 
+
     st.subheader("📋 Tabla Recursos")
     gb = GridOptionsBuilder.from_dataframe(recursos_df)
     gb.configure_default_column(editable=True)
@@ -44,43 +45,31 @@ if archivo_excel:
     dependencias_df = dependencias_grid['data']
 
 
-    st.write("### Tipos de columnas tras AgGrid")
-    st.write(tareas_df.dtypes)
+    # --- Convertir FECHAINICIO y FECHAFIN a datetime de manera segura ---
+    tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], errors='coerce', dayfirst=True)
+    tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], errors='coerce', dayfirst=True)
     
-    st.write("### Primeras filas de FECHAINICIO y FECHAFIN")
-    st.write(tareas_df[['FECHAINICIO','FECHAFIN']].head())
-    # --- Validación y normalización ---
-    # --- Validar y normalizar columnas ---
-    
-    # FECHAS
-    for col in ['FECHAINICIO', 'FECHAFIN']:
-        # Convertir todo a string primero (AgGrid puede devolver datetime o str)
-        tareas_df[col] = tareas_df[col].astype(str)
-        # Convertir a datetime
-        tareas_df[col] = pd.to_datetime(tareas_df[col], dayfirst=True, errors='coerce')
-    
-    # Validar que no haya NaT
-    if tareas_df[['FECHAINICIO','FECHAFIN']].isnull().any().any():
-        st.error("Algunas fechas no son válidas. Revisa las columnas FECHAINICIO y FECHAFIN")
+    # --- Validar si hay conversiones fallidas ---
+    if tareas_df['FECHAINICIO'].isna().any() or tareas_df['FECHAFIN'].isna().any():
+        st.error("Algunas fechas no se pudieron convertir. Revisa la tabla de Tareas.")
         st.stop()
     
-    # DURACION
+    # --- Calcular DURACION ---
     tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days + 1
-    # Controlar valores inválidos o negativos
+    
+    # --- Validar duración ---
     if (tareas_df['DURACION'] <= 0).any():
         st.error("Hay tareas con duración <= 0. Revisa FECHAINICIO y FECHAFIN")
         st.stop()
     
-    # PREDECESORAS
-    # Si está vacía, poner string vacío
+    # --- Predecesoras ---
     tareas_df['PREDECESORAS'] = tareas_df['PREDECESORAS'].fillna('').astype(str)
     
-    # NUMÉRICOS
+    # --- Tarifas ---
     if 'TARIFA' in recursos_df.columns:
         recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
 
 
-    
         
     st.success("✅ Columnas validadas correctamente: fechas, duración, numéricos y predecesoras.")
 
@@ -180,6 +169,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
