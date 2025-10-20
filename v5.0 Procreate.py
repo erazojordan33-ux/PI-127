@@ -573,8 +573,8 @@ if archivo_excel:
     # --- Crear figura ---
     fig = go.Figure()
     
-    fecha_inicio_col = 'FECHAINICIO' in tareas_df.columns 
-    fecha_fin_col = 'FECHAFIN' in tareas_df.columns 
+    fecha_inicio_col = 'FECHAINICIO'
+    fecha_fin_col = 'FECHAFIN'
     
     if fecha_inicio_col not in tareas_df.columns or fecha_fin_col not in tareas_df.columns:
          st.warning("❌ Error: No se encontraron columnas de fechas de inicio/fin necesarias para dibujar el Gantt.")
@@ -582,12 +582,9 @@ if archivo_excel:
 
     inicio_rubro_calc = tareas_df.set_index('IDRUBRO')[fecha_inicio_col].to_dict()
     fin_rubro_calc = tareas_df.set_index('IDRUBRO')[fecha_fin_col].to_dict()
-    # También necesitamos saber si una tarea es crítica para colorear las flechas
+
     is_critical_dict = tareas_df.set_index('IDRUBRO')['RUTA_CRITICA'].to_dict()
     
-    
-    # Reconstruir el grafo de dependencias (predecesoras a sucesores)
-    # Necesitamos esto para dibujar las flechas correctamente
     dependencias = defaultdict(list)
     # We also need the dependency details for each pre->suc link (type and lag)
     predecesoras_map_details = defaultdict(list) # suc_id -> [(pre_id1, type1, lag1), (pre_id2, type2, lag2), ...]
@@ -1136,6 +1133,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
