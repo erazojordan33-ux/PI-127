@@ -43,6 +43,12 @@ if archivo_excel:
     dependencias_grid = AgGrid(dependencias_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
     dependencias_df = dependencias_grid['data']
 
+
+    st.write("### Tipos de columnas tras AgGrid")
+    st.write(tareas_df.dtypes)
+    
+    st.write("### Primeras filas de FECHAINICIO y FECHAFIN")
+    st.write(tareas_df[['FECHAINICIO','FECHAFIN']].head())
     # --- Validación y normalización ---
     # --- Validar y normalizar columnas ---
     
@@ -73,18 +79,7 @@ if archivo_excel:
     if 'TARIFA' in recursos_df.columns:
         recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
 
-    st.write("### Tipos de columnas tras AgGrid")
-    st.write(tareas_df.dtypes)
-    
-    st.write("### Primeras filas de FECHAINICIO y FECHAFIN")
-    st.write(tareas_df[['FECHAINICIO','FECHAFIN']].head())
-    
-    # Ver si hay valores que pandas no reconoce como fechas
-    for col in ['FECHAINICIO','FECHAFIN']:
-        invalid = tareas_df[col].apply(lambda x: not isinstance(x, pd.Timestamp))
-        if invalid.any():
-            st.warning(f"Hay valores en {col} que no son Timestamps")
-            st.write(tareas_df[invalid])
+
     
         
     st.success("✅ Columnas validadas correctamente: fechas, duración, numéricos y predecesoras.")
@@ -185,6 +180,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
