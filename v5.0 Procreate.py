@@ -62,6 +62,106 @@ if archivo_excel:
     if 'TARIFA' in recursos_df.columns:
         recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
 
+    #funcion de clacular fechas
+    import pandas as pd
+    from datetime import timedelta
+    import re
+    from collections import defaultdict, deque
+    
+    def calcular_fechas(df):
+        df = df.copy()
+        df.columns = df.columns.str.strip()  # Limpiar espacios
+    
+        # Diccionarios de inicio, fin y duración
+        inicio_rubro = df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
+        fin_rubro = df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
+        duracion_rubro = (df.set_index('IDRUBRO')['FECHAFIN'] - df.set_index('IDRUBRO')['FECHAINICIO']).dt.days.to_dict()
+    
+        # Construir grafo de dependencias y contar predecesores
+        dependencias = defaultdict(list)
+        pre_count = defaultdict(int)
+        for _, row in df.iterrows():
+            tarea_id = row['IDRUBRO']
+            predecesoras_str = str(row['PREDECESORAS']).strip()
+            if predecesoras_str not in ['nan','']:
+                pre_list = predecesoras_str.split(',')
+                for pre in pre_list:
+                    pre = pre.strip()
+                    match = re.match(r'(\d+)', pre)
+                    if match:
+                        pre_id = int(match.group(1))
+                        dependencias[pre_id].append(tarea_id)
+                        pre_count[tarea_id] += 1
+    
+        # Inicializar cola con tareas sin predecesores
+        queue = deque([tid for tid in df['IDRUBRO'] if pre_count[tid] == 0])
+    
+        # Diccionarios para fechas calculadas
+        inicio_calc = inicio_rubro.copy()
+        fin_calc = fin_rubro.copy()
+    
+        # Procesar tareas en orden topológico
+        while queue:
+            tarea_id = queue.popleft()
+            row = df[df['IDRUBRO']==tarea_id].iloc[0]
+            duracion = duracion_rubro[tarea_id]
+            predecesoras_str = str(row['PREDECESORAS']).strip()
+    
+            nueva_inicio = inicio_calc[tarea_id]
+            nueva_fin = fin_calc[tarea_id]
+    
+            if predecesoras_str not in ['nan','']:
+                pre_list = predecesoras_str.split(',')
+                for pre in pre_list:
+                    pre = pre.strip()
+                    match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre)
+                    if match:
+                        pre_id = int(match.group(1))
+                        tipo = match.group(2).upper() if match.group(2) else 'FC'
+                        desfase = int(match.group(3)) if match.group(3) else 0
+    
+                        if pre_id in inicio_calc and pre_id in fin_calc:
+                            inicio_pre = inicio_calc[pre_id]
+                            fin_pre = fin_calc[pre_id]
+    
+                            # --- Ajuste según tipo de dependencia ---
+                            if tipo == 'CC':
+                                nueva_inicio = inicio_pre + timedelta(days=desfase)
+                                nueva_fin = nueva_inicio + timedelta(days=duracion)
+                            elif tipo == 'FC':
+                                nueva_inicio = fin_pre + timedelta(days=desfase)
+                                nueva_fin = nueva_inicio + timedelta(days=duracion)
+                            elif tipo == 'CF':
+                                nueva_fin = inicio_pre + timedelta(days=desfase)
+                                nueva_inicio = nueva_fin - timedelta(days=duracion)
+                            elif tipo == 'FF':
+                                nueva_fin = fin_pre + timedelta(days=desfase)
+                                nueva_inicio = nueva_fin - timedelta(days=duracion)
+                            else:
+                                print(f"⚠️ Tipo de relación '{tipo}' no reconocido en '{pre}' para tarea {tarea_id}")
+    
+                            print(f"Tarea {tarea_id} - Predecesor {pre_id} ({tipo}{desfase:+}): "
+                                  f"Inicio pre {inicio_pre}, Fin pre {fin_pre} -> "
+                                  f"Inicio calculado {nueva_inicio}, Fin calculado {nueva_fin}")
+    
+            # Actualizar fechas calculadas
+            inicio_calc[tarea_id] = nueva_inicio
+            fin_calc[tarea_id] = nueva_fin
+    
+            # Agregar hijos a la cola
+            for hijo in dependencias[tarea_id]:
+                pre_count[hijo] -= 1
+                if pre_count[hijo] == 0:
+                    queue.append(hijo)
+    
+        # Actualizar DataFrame
+        df['FECHAINICIO'] = df['IDRUBRO'].map(inicio_calc)
+        df['FECHAFIN'] = df['IDRUBRO'].map(fin_calc)
+    
+        return df
+
+    tareas_df = calcular_fechas(tareas_df)
+
     # --- Calculo ruta crítica ---
     es, ef, ls, lf, tf = {}, {}, {}, {}, {}
     duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
@@ -83,7 +183,6 @@ if archivo_excel:
                         dependencias[pre_id].append(tid)
                         predecesoras_map[tid].append((pre_id,'FC',0))  # tipo FC, desfase 0
 
-    # --- Forward Pass ---
     # --- Forward Pass ---
     in_degree = {tid: len(predecesoras_map.get(tid,[])) for tid in all_task_ids}
     queue = deque([tid for tid in all_task_ids if in_degree[tid]==0])
@@ -777,6 +876,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
