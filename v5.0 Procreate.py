@@ -54,23 +54,10 @@ if archivo_excel:
         # Formatear como DD/MM/YYYY
         tareas_df[col] = tareas_df[col].dt.strftime('%d/%m/%Y')
     
-    # Mostrar los datos transformados
-    st.subheader("🔹 Fechas transformadas a DD/MM/YYYY")
-    for col in ['FECHAINICIO','FECHAFIN']:
-        st.write(f"Columna: {col}")
-        for i, val in tareas_df[col].items():
-            st.write(f"Fila {i}: Valor = {val}")
-
     # Transformar las columnas de texto DD/MM/YYYY a datetime
     for col in ['FECHAINICIO','FECHAFIN']:
         tareas_df[col] = pd.to_datetime(tareas_df[col], dayfirst=True, errors='coerce')
-    
-    # Mostrar los primeros valores transformados a datetime para verificar
-    st.subheader("🔹 Fechas convertidas a datetime")
-    for col in ['FECHAINICIO','FECHAFIN']:
-        st.write(f"Columna: {col}")
-        for i, val in tareas_df[col].head(20).items():
-            st.write(f"Fila {i}: Valor = {val} | Tipo real = {type(val)}")
+
 
     # --- Calcular duración ---
     tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days
@@ -183,6 +170,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
