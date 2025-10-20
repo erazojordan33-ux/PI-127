@@ -159,9 +159,7 @@ if archivo_excel:
 
     # --- Mostrar tabla ---
     st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
-    st.dataframe(tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
-                            'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
-                            'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']])
+    st.dataframe(tareas_df[])
 
     # --- Diagrama de Gantt ---
     import pandas as pd
@@ -559,6 +557,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
