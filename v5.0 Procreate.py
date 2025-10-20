@@ -963,7 +963,7 @@ if archivo_excel:
 
     monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
     monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
-
+    
     from plotly.subplots import make_subplots
     import plotly.graph_objects as go
     
@@ -996,8 +996,19 @@ if archivo_excel:
     )
     
     # Configuración de ejes
-    fig.update_yaxes(title_text="Costo Mensual", secondary_y=False, range=[0, monthly_costs_df['Costo_Diario'].max()*1.1])
-    fig.update_yaxes(title_text="Costo Acumulado", secondary_y=True, range=[0, monthly_costs_df['Costo_Acumulado'].max()*1.1])
+    fig.update_yaxes(
+        title_text="Costo Mensual",
+        secondary_y=False,
+        showgrid=False,  # ❌ Sin grilla horizontal para la barra
+        range=[0, monthly_costs_df['Costo_Diario'].max()*1.1]
+    )
+    fig.update_yaxes(
+        title_text="Costo Acumulado",
+        secondary_y=True,
+        showgrid=True,   # ✅ Solo el acumulador tiene grilla
+        gridcolor='lightgrey',
+        range=[0, monthly_costs_df['Costo_Acumulado'].max()*1.1]
+    )
     fig.update_xaxes(title_text="Período Mensual", tickangle=-45)
     
     # Layout
@@ -1018,6 +1029,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
