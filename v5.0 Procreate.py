@@ -171,9 +171,6 @@ if archivo_excel:
     from datetime import timedelta, datetime
     st.subheader("📊 Diagrama de Gantt - Ruta Crítica")
     
-    
-    # --- Limpiar y convertir COSTO_TOTAL a float ---
-    # Usar la columna correcta que contiene los costos numéricos
     cost_column_name = None
     if 'COSTO_TOTAL_RUBRO' in tareas_df.columns:
         cost_column_name = 'COSTO_TOTAL_RUBRO'
@@ -211,11 +208,8 @@ if archivo_excel:
     
     if fecha_inicio_col not in tareas_df.columns or fecha_fin_col not in tareas_df.columns:
          st.warning("❌ Error: No se encontraron columnas de fechas de inicio/fin necesarias para dibujar el Gantt.")
-         # Considerar detener la ejecución o usar fechas dummy si es posible.
-         # Por ahora, continuaremos pero el gráfico puede estar incorrecto.
-         pass # Continue with potentially incorrect dates
-    
-    
+
+
     inicio_rubro_calc = tareas_df.set_index('IDRUBRO')[fecha_inicio_col].to_dict()
     fin_rubro_calc = tareas_df.set_index('IDRUBRO')[fecha_fin_col].to_dict()
     # También necesitamos saber si una tarea es crítica para colorear las flechas
@@ -297,18 +291,14 @@ if archivo_excel:
              continue
     
     
-        # Formatear costo para el hover (usando el nombre de columna de costo numérico identificado)
-        costo_formateado = "N/A"
-        if cost_column_name in row and pd.notna(row[cost_column_name]):
-            try:
-                # Intentar formatear el número con el locale configurado
-                costo_formateado = f"S/. {locale.format_string('%.2f', row[cost_column_name], grouping=True)}"
-            except Exception as e:
-                # Si falla el formateo con locale, usar formato simple
-                costo_formateado = f"S/. {row[cost_column_name]:,.2f}"
-                st.warning(f"⚠️ Advertencia: Error al formatear costo con locale para tarea {row['IDRUBRO']}: {e}. Usando formato simple.")
-        else:
-             costo_formateado = "S/. 0.00" # Mostrar 0 si el costo es NaN/None
+        # --- Formatear costo para el hover (sin locale, formato estándar S/. con separador de miles y 2 decimales) ---
+        try:
+            valor_costo = float(row.get(cost_column_name, 0))
+            costo_formateado = f"S/. {valor_costo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            # Esto convierte: 12345.67 → S/. 12.345,67
+        except Exception:
+            costo_formateado = "S/. 0,00"
+
     
         # Crear texto para hover
         hover_text = (
@@ -570,6 +560,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
