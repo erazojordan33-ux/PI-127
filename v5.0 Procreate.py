@@ -573,8 +573,8 @@ if archivo_excel:
     # --- Crear figura ---
     fig = go.Figure()
     
-    fecha_inicio_col = 'FECHA_INICIO_TEMPRANA' if 'FECHA_INICIO_TEMPRANA' in tareas_df.columns else 'FECHAINICIO'
-    fecha_fin_col = 'FECHA_FIN_TEMPRANA' if 'FECHA_FIN_TEMPRANA' in tareas_df.columns else 'FECHAFIN'
+    fecha_inicio_col = 'FECHAINICIO' in tareas_df.columns 
+    fecha_fin_col = 'FECHAFIN' in tareas_df.columns 
     
     if fecha_inicio_col not in tareas_df.columns or fecha_fin_col not in tareas_df.columns:
          st.warning("❌ Error: No se encontraron columnas de fechas de inicio/fin necesarias para dibujar el Gantt.")
@@ -664,10 +664,10 @@ if archivo_excel:
         # --- Formatear costo para el hover (sin locale, formato estándar S/. con separador de miles y 2 decimales) ---
         try:
             valor_costo = float(row.get(cost_column_name, 0))
-            costo_formateado = f"S/. {valor_costo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            costo_formateado = f"S/ {valor_costo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             # Esto convierte: 12345.67 → S/. 12.345,67
         except Exception:
-            costo_formateado = "S/. 0,00"
+            costo_formateado = "S/ 0,00"
 
     
         # Crear texto para hover
@@ -1027,6 +1027,7 @@ if archivo_excel:
     import re
     from datetime import timedelta, datetime
     from collections import defaultdict
+    st.subheader("📊 Distribución de Recursos")
 
     if 'RUBRO' not in recursos_tareas_df.columns:
 
@@ -1099,7 +1100,6 @@ if archivo_excel:
                 yanchor="top"
             ),
         ],
-        title='Línea de Tiempo de Uso de Recursos', # Updated title
         yaxis=dict(
             autorange="reversed",
             title="Recurso",
@@ -1136,6 +1136,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
