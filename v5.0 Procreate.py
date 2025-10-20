@@ -72,31 +72,6 @@ if archivo_excel:
         for i, val in tareas_df[col].head(20).items():
             st.write(f"Fila {i}: Valor = {val} | Tipo real = {type(val)}")
 
-
-    # Transformar cualquier fecha devuelta por AgGrid a datetime
-    for col in ['FECHAINICIO','FECHAFIN']:
-        def parse_fecha(x):
-            if pd.isna(x):
-                return pd.NaT
-            if isinstance(x, pd.Timestamp):
-                return x
-            if isinstance(x, str):
-                x = x.strip().replace('T',' ')
-                try:
-                    return pd.to_datetime(x, dayfirst=True, errors='raise')
-                except:
-                    return pd.NaT
-            return pd.NaT
-        tareas_df[col] = tareas_df[col].apply(parse_fecha)
-
-    # Mostrar filas inválidas
-    invalid_rows = tareas_df[tareas_df[['FECHAINICIO','FECHAFIN']].isna().any(axis=1)].index.tolist()
-    if invalid_rows:
-        st.error(f"⚠️ Filas con fechas no válidas: {invalid_rows}")
-        st.stop()
-    else:
-        st.success("✅ Todas las fechas están correctamente interpretadas como datetime")
-
     # --- Calcular duración ---
     tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days
     tareas_df.loc[tareas_df['DURACION'] < 0, 'DURACION'] = 0  # prevenir negativos
@@ -208,6 +183,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
