@@ -45,22 +45,20 @@ if archivo_excel:
     dependencias_df = dependencias_grid['data']
 
 
-    # --- Convertir FECHAINICIO y FECHAFIN a datetime de manera segura ---
-    tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], errors='coerce', dayfirst=True)
-    tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], errors='coerce', dayfirst=True)
+    # Convertir todo a string primero
+    tareas_df['FECHAINICIO'] = tareas_df['FECHAINICIO'].astype(str).str.strip()
+    tareas_df['FECHAFIN'] = tareas_df['FECHAFIN'].astype(str).str.strip()
     
-    # --- Validar si hay conversiones fallidas ---
+    # Ahora convertir a datetime forzando formato
+    tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], dayfirst=True, errors='coerce', infer_datetime_format=True)
+    tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], dayfirst=True, errors='coerce', infer_datetime_format=True)
+    
+    # Validar
     if tareas_df['FECHAINICIO'].isna().any() or tareas_df['FECHAFIN'].isna().any():
-        st.error("Algunas fechas no se pudieron convertir. Revisa la tabla de Tareas.")
+        filas_invalidas = tareas_df[tareas_df['FECHAINICIO'].isna() | tareas_df['FECHAFIN'].isna()]
+        st.error(f"Algunas fechas no son válidas en las filas: {filas_invalidas.index.tolist()}")
         st.stop()
-    
-    # --- Calcular DURACION ---
-    tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days + 1
-    
-    # --- Validar duración ---
-    if (tareas_df['DURACION'] <= 0).any():
-        st.error("Hay tareas con duración <= 0. Revisa FECHAINICIO y FECHAFIN")
-        st.stop()
+
     
     # --- Predecesoras ---
     tareas_df['PREDECESORAS'] = tareas_df['PREDECESORAS'].fillna('').astype(str)
@@ -169,6 +167,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
