@@ -84,26 +84,37 @@ if archivo_excel:
                         predecesoras_map[tid].append((pre_id,'FC',0))  # tipo FC, desfase 0
 
     # --- Forward Pass ---
+    # --- Forward Pass ---
     in_degree = {tid: len(predecesoras_map.get(tid,[])) for tid in all_task_ids}
     queue = deque([tid for tid in all_task_ids if in_degree[tid]==0])
     processed = set(queue)
     
     for tid in queue:
+        # Tomar fecha inicial de la tabla
         start_value = tareas_df.loc[tareas_df['IDRUBRO']==tid,'FECHAINICIO'].values[0]
-        if pd.isna(start_value):
-            st.warning(f"Tarea {tid} no tiene FECHAINICIO definido. Se usará hoy como inicio temporal.")
-            start_value = pd.Timestamp.today()
+    
+        # Controlador: si no es Timestamp, convertir
+        if not isinstance(start_value, pd.Timestamp):
+            try:
+                start_value = pd.to_datetime(start_value, dayfirst=True)
+            except:
+                st.warning(f"Tarea {tid} tiene FECHAINICIO inválido. Se usará hoy como inicio temporal.")
+                start_value = pd.Timestamp.today()
+    
         es[tid] = start_value
         ef[tid] = es[tid] + timedelta(days=duracion_dict.get(tid,0))
-
+    
     while queue:
         u = queue.popleft()
-        if u not in ef or pd.isna(ef[u]):  # seguridad
+        # Seguridad: asegurarse que ef[u] sea Timestamp
+        if u not in ef or not isinstance(ef[u], pd.Timestamp):
+            st.warning(f"ef[{u}] no es una fecha válida, se salta esta tarea.")
             continue
-            
+    
         for v in dependencias.get(u,[]):
             for pre_id, tipo, desfase in predecesoras_map.get(v, []):
                 if pre_id==u:
+                    # Seguridad: ef[u] es Timestamp
                     potential_es = ef[u] + timedelta(days=desfase)
                     if v not in es or potential_es>es[v]:
                         es[v]=potential_es
@@ -112,6 +123,7 @@ if archivo_excel:
             if in_degree[v]==0 and v not in processed:
                 queue.append(v)
                 processed.add(v)
+
 
     # --- Backward Pass ---
     end_tasks = [tid for tid in all_task_ids if tid not in dependencias]
@@ -168,6 +180,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
