@@ -617,6 +617,13 @@ if archivo_excel:
         # Append the temporary DataFrame to the list
         daily_resource_usage_list.append(temp_df)
 
+    # Concatenate all temporary DataFrames into one
+    if daily_resource_usage_list:
+        all_daily_resource_usage_df = pd.concat(daily_resource_usage_list, ignore_index=True)
+    else:
+        st.warning("\nNo se generaron datos de uso diario de recursos.")
+        all_daily_resource_usage_df = pd.DataFrame() # Create an empty DataFrame
+
     # Group by Date, Resource, and Unit to sum up daily quantities
     daily_resource_demand_df = all_daily_resource_usage_df.groupby(
         ['Fecha', 'RECURSO', 'UNIDAD'],
@@ -767,6 +774,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
