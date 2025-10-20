@@ -32,8 +32,17 @@ if archivo_excel:
     # Calcular duración de cada tarea
     tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days.fillna(0).astype(int)
     
-    
     st.success("Datos de las hojas Tareas, Recursos y Dependencias cargados correctamente ✅")
+
+    # --- Mostrar tablas originales ---
+    st.subheader("📝 Tabla de Tareas")
+    st.dataframe(tareas_df)  # Muestra todas las columnas de Tareas
+    
+    st.subheader("🛠️ Tabla de Recursos")
+    st.dataframe(recursos_df)  # Muestra todas las columnas de Recursos
+    
+    st.subheader("🔗 Tabla de Dependencias / Asignaciones")
+    st.dataframe(dependencias_df)  # Muestra todas las columnas de Dependencia
 
     # --- Calcular ruta crítica ---
     es, ef, ls, lf, tf, ff = {}, {}, {}, {}, {}, {}
@@ -205,6 +214,7 @@ if archivo_excel:
     
 else:
     st.warning("Por favor, sube los tres archivos Excel (Tareas, Recursos y Dependencias) para continuar.")
+
 
 
 
