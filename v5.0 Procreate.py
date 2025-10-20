@@ -46,7 +46,6 @@ if archivo_excel:
     tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], errors='coerce', dayfirst=True)
     tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days.fillna(0).astype(int)
     recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
-    recursos_df['CANTIDAD'] = pd.to_numeric(recursos_df['CANTIDAD'], errors='coerce').fillna(0)
 
     st.success("Datos cargados y convertidos correctamente ✅")
 
@@ -181,6 +180,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
