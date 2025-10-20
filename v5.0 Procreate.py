@@ -772,14 +772,12 @@ if archivo_excel:
         hovermode='closest'
     )
 
-    st.fig_resource_timeline(fig, use_container_width=True)
-
-
-
+    st.plotly_chart(fig_resource_timeline, use_container_width=True)
 
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
