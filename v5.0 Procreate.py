@@ -3,10 +3,9 @@ import pandas as pd
 import plotly.graph_objects as go
 import re
 from datetime import timedelta
-from collections import defaultdict
+from collections import defaultdict, deque
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
-# --- Configuración de la página ---
 st.set_page_config(page_title="Gestión de Proyectos - Cronograma Valorado", layout="wide")
 st.title("📊 Gestión de Proyectos - Cronograma Valorado y Recursos")
 
@@ -14,8 +13,6 @@ st.title("📊 Gestión de Proyectos - Cronograma Valorado y Recursos")
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
 
 if archivo_excel:
-
-    # --- Leer hojas y validar existencia ---
     try:
         tareas_df = pd.read_excel(archivo_excel, sheet_name='Tareas')
         recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
@@ -24,61 +21,75 @@ if archivo_excel:
         st.error("El archivo debe contener las hojas: Tareas, Recursos y Dependencias")
         st.stop()
 
-    # --- Mostrar tablas editables con AgGrid ---
+    # --- Mostrar tablas editables ---
     st.subheader("📋 Tabla Tareas")
-    gb_t = GridOptionsBuilder.from_dataframe(tareas_df)
-    gb_t.configure_default_column(editable=True)
-    tareas_grid = AgGrid(tareas_df, gridOptions=gb_t.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
+    gb = GridOptionsBuilder.from_dataframe(tareas_df)
+    gb.configure_default_column(editable=True)
+    tareas_grid = AgGrid(tareas_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
     tareas_df = tareas_grid['data']
 
     st.subheader("📋 Tabla Recursos")
-    gb_r = GridOptionsBuilder.from_dataframe(recursos_df)
-    gb_r.configure_default_column(editable=True)
-    recursos_grid = AgGrid(recursos_df, gridOptions=gb_r.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
+    gb = GridOptionsBuilder.from_dataframe(recursos_df)
+    gb.configure_default_column(editable=True)
+    recursos_grid = AgGrid(recursos_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
     recursos_df = recursos_grid['data']
 
     st.subheader("📋 Tabla Dependencias")
-    gb_d = GridOptionsBuilder.from_dataframe(dependencias_df)
-    gb_d.configure_default_column(editable=True)
-    dependencias_grid = AgGrid(dependencias_df, gridOptions=gb_d.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
+    gb = GridOptionsBuilder.from_dataframe(dependencias_df)
+    gb.configure_default_column(editable=True)
+    dependencias_grid = AgGrid(dependencias_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
     dependencias_df = dependencias_grid['data']
 
-    # --- VALIDACIÓN DE FECHAS ---
-    for col in ['FECHAINICIO', 'FECHAFIN']:
-        # Limpiar espacios y reemplazar 'T' si viene de ISO
-        tareas_df[col] = tareas_df[col].astype(str).str.strip().str.replace('T',' ')
-        # Convertir a datetime
-        tareas_df[col] = pd.to_datetime(tareas_df[col], dayfirst=True, errors='coerce')
+    # --- BLOQUE DE CONTROL DE FECHAS AGGRID ---
+    st.subheader("🔍 Controlador de Fechas Tareas")
+    for col in ['FECHAINICIO','FECHAFIN']:
+        st.write(f"Columna: {col}")
+        for i, val in tareas_df[col].items():
+            st.write(f"Fila {i}: Valor = {val} | Tipo real = {type(val)}")
 
-    # Mostrar filas con fechas inválidas
-    invalid_rows = tareas_df[tareas_df[['FECHAINICIO','FECHAFIN']].isnull().any(axis=1)].index.tolist()
+    # Transformar cualquier fecha devuelta por AgGrid a datetime
+    for col in ['FECHAINICIO','FECHAFIN']:
+        def parse_fecha(x):
+            if pd.isna(x):
+                return pd.NaT
+            if isinstance(x, pd.Timestamp):
+                return x
+            if isinstance(x, str):
+                x = x.strip().replace('T',' ')
+                try:
+                    return pd.to_datetime(x, dayfirst=True, errors='raise')
+                except:
+                    return pd.NaT
+            return pd.NaT
+        tareas_df[col] = tareas_df[col].apply(parse_fecha)
+
+    # Mostrar filas inválidas
+    invalid_rows = tareas_df[tareas_df[['FECHAINICIO','FECHAFIN']].isna().any(axis=1)].index.tolist()
     if invalid_rows:
-        st.warning(f"⚠️ Algunas fechas no son válidas en las filas: {invalid_rows}")
+        st.error(f"⚠️ Filas con fechas no válidas: {invalid_rows}")
+        st.stop()
     else:
-        st.success("✅ Todas las fechas son válidas")
+        st.success("✅ Todas las fechas están correctamente interpretadas como datetime")
 
-    # --- DURACIÓN ---
+    # --- Calcular duración ---
     tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days
-    tareas_df['DURACION'] = tareas_df['DURACION'].fillna(0).astype(int)
+    tareas_df.loc[tareas_df['DURACION'] < 0, 'DURACION'] = 0  # prevenir negativos
 
-    # --- PREDECESORAS ---
+    # --- Predecesoras ---
     tareas_df['PREDECESORAS'] = tareas_df['PREDECESORAS'].fillna('').astype(str)
 
-    # --- NUMÉRICOS EN RECURSOS ---
+    # --- Tarifas ---
     if 'TARIFA' in recursos_df.columns:
         recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
-    if 'CANTIDAD' in dependencias_df.columns:
-        dependencias_df['CANTIDAD'] = pd.to_numeric(dependencias_df['CANTIDAD'], errors='coerce').fillna(0)
 
-    st.success("✅ Columnas validadas: fechas, duración, numéricos y predecesoras.")
-
-    # --- CALCULO RUTA CRÍTICA ---
+    # --- Calculo ruta crítica ---
     es, ef, ls, lf, tf = {}, {}, {}, {}, {}
     duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
     all_task_ids = set(tareas_df['IDRUBRO'].tolist())
     dependencias = defaultdict(list)
     predecesoras_map = defaultdict(list)
 
+    # Crear mapa de dependencias
     for _, row in tareas_df.iterrows():
         tid = row['IDRUBRO']
         pre_list = str(row['PREDECESORAS']).split(',')
@@ -90,31 +101,33 @@ if archivo_excel:
                     pre_id = int(match.group(1))
                     if pre_id in all_task_ids:
                         dependencias[pre_id].append(tid)
-                        predecesoras_map[tid].append((pre_id,'FC',0))
+                        predecesoras_map[tid].append((pre_id,'FC',0))  # tipo FC, desfase 0
 
-    # Forward Pass
-    from collections import deque
+    # --- Forward Pass ---
     in_degree = {tid: len(predecesoras_map.get(tid,[])) for tid in all_task_ids}
     queue = deque([tid for tid in all_task_ids if in_degree[tid]==0])
     processed = set(queue)
     for tid in queue:
-        task_row = tareas_df[tareas_df['IDRUBRO']==tid]
-        if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
-            es[tid] = task_row.iloc[0]['FECHAINICIO']
-            ef[tid] = es[tid] + timedelta(days=duracion_dict.get(tid,0))
+        es[tid] = tareas_df.loc[tareas_df['IDRUBRO']==tid,'FECHAINICIO'].values[0]
+        ef[tid] = es[tid] + timedelta(days=duracion_dict.get(tid,0))
+
     while queue:
         u = queue.popleft()
+        if u not in ef:  # seguridad
+            continue
         for v in dependencias.get(u,[]):
-            potential_es = ef[u]
-            if v not in es or potential_es>es[v]:
-                es[v] = potential_es
-                ef[v] = es[v]+timedelta(days=duracion_dict.get(v,0))
+            for pre_id, tipo, desfase in predecesoras_map.get(v, []):
+                if pre_id==u:
+                    potential_es = ef[u] + timedelta(days=desfase)
+                    if v not in es or potential_es>es[v]:
+                        es[v]=potential_es
+                        ef[v]=es[v]+timedelta(days=duracion_dict.get(v,0))
             in_degree[v]-=1
             if in_degree[v]==0 and v not in processed:
                 queue.append(v)
                 processed.add(v)
 
-    # Backward Pass
+    # --- Backward Pass ---
     end_tasks = [tid for tid in all_task_ids if tid not in dependencias]
     project_finish = max(ef.values())
     for tid in end_tasks:
@@ -132,12 +145,13 @@ if archivo_excel:
             queue.append(u)
             processed.add(u)
 
-    # Holguras y ruta critica
+    # --- Holguras y ruta crítica ---
     for tid in all_task_ids:
         if tid in ef and tid in lf:
             tf[tid]=(lf[tid]-ef[tid]).days
         else:
             tf[tid]=0
+
     tareas_df['FECHA_INICIO_TEMPRANA'] = tareas_df['IDRUBRO'].map(es)
     tareas_df['FECHA_FIN_TEMPRANA'] = tareas_df['IDRUBRO'].map(ef)
     tareas_df['FECHA_INICIO_TARDE'] = tareas_df['IDRUBRO'].map(ls)
@@ -145,7 +159,7 @@ if archivo_excel:
     tareas_df['HOLGURA_TOTAL'] = tareas_df['IDRUBRO'].map(tf)
     tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL']==0
 
-    # --- Mostrar tabla final con ruta critica ---
+    # --- Mostrar tabla ---
     st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
     st.dataframe(tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
                             'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
@@ -168,14 +182,3 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
-
-
-
-
-
-
-
-
-
-
-
