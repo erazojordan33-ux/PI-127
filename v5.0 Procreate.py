@@ -46,11 +46,12 @@ if archivo_excel:
     tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], errors='coerce', dayfirst=True)
     tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days.fillna(0).astype(int)
     recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
+    recursos_df['CANTIDAD'] = pd.to_numeric(recursos_df.get('CANTIDAD',0), errors='coerce').fillna(0)
 
     st.success("Datos cargados y convertidos correctamente ✅")
 
     # --- Calcular ruta crítica ---
-    es, ef, ls, lf, tf, ff = {}, {}, {}, {}, {}, {}
+    es, ef, ls, lf, tf = {}, {}, {}, {}, {}
     duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
     all_task_ids = set(tareas_df['IDRUBRO'].tolist())
 
@@ -115,6 +116,7 @@ if archivo_excel:
             tf[tid]=(lf[tid]-ef[tid]).days
         else:
             tf[tid]=0
+
     tareas_df['FECHA_INICIO_TEMPRANA'] = tareas_df['IDRUBRO'].map(es)
     tareas_df['FECHA_FIN_TEMPRANA'] = tareas_df['IDRUBRO'].map(ef)
     tareas_df['FECHA_INICIO_TARDE'] = tareas_df['IDRUBRO'].map(ls)
@@ -122,18 +124,23 @@ if archivo_excel:
     tareas_df['HOLGURA_TOTAL'] = tareas_df['IDRUBRO'].map(tf)
     tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL']==0
 
+    # --- Mostrar tabla con rutas y fechas calculadas ---
+    st.subheader("📊 Tareas con Fechas y Ruta Crítica")
+    AgGrid(tareas_df, GridOptionsBuilder.from_dataframe(tareas_df).build(), update_mode=GridUpdateMode.NO_UPDATE)
+
     # --- Diagrama de Gantt ---
     fig_gantt = go.Figure()
     for _, row in tareas_df.iterrows():
-        color = 'red' if row['RUTA_CRITICA'] else 'lightblue'
-        fig_gantt.add_trace(go.Scatter(
-            x=[row['FECHA_INICIO_TEMPRANA'], row['FECHA_FIN_TEMPRANA']],
-            y=[row['RUBRO'], row['RUBRO']],
-            mode='lines',
-            line=dict(color=color, width=12),
-            hovertext=f"{row['RUBRO']} ({row['DURACION']} días)",
-            showlegend=False
-        ))
+        if pd.notna(row['FECHA_INICIO_TEMPRANA']) and pd.notna(row['FECHA_FIN_TEMPRANA']):
+            color = 'red' if row['RUTA_CRITICA'] else 'lightblue'
+            fig_gantt.add_trace(go.Scatter(
+                x=[row['FECHA_INICIO_TEMPRANA'], row['FECHA_FIN_TEMPRANA']],
+                y=[row['RUBRO'], row['RUBRO']],
+                mode='lines',
+                line=dict(color=color, width=12),
+                hovertext=f"{row['RUBRO']} ({row['DURACION']} días)",
+                showlegend=False
+            ))
     fig_gantt.update_layout(title="📅 Diagrama de Gantt - Ruta Crítica")
     st.plotly_chart(fig_gantt, use_container_width=True)
 
@@ -148,39 +155,40 @@ if archivo_excel:
         start = row['FECHAINICIO']
         end = row['FECHAFIN']
         total = row.get('CANTIDAD',0)
-        dur = max(row.get('DURACION',1),1)
-        daily_qty = total/dur
-        dates = pd.date_range(start=start,end=end)
-        df_temp=pd.DataFrame({'Fecha':dates,'IDRUBRO':task_id,'RECURSO':row['RECURSO'],'Cantidad_Diaria':daily_qty})
-        daily_list.append(df_temp)
-    all_daily = pd.concat(daily_list,ignore_index=True)
-    all_daily = all_daily.merge(recursos_df[['RECURSO','TARIFA']],on='RECURSO',how='left')
-    all_daily['Costo_Diario'] = all_daily['Cantidad_Diaria']*all_daily['TARIFA']
-    all_daily['Periodo_Mensual'] = all_daily['Fecha'].dt.to_period('M')
-    monthly_costs = all_daily.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
-    monthly_costs['Costo_Acumulado'] = monthly_costs['Costo_Diario'].cumsum()
+        if pd.notna(start) and pd.notna(end):
+            dur = max((end-start).days+1,1)
+            daily_qty = total/dur
+            dates = pd.date_range(start=start,end=end)
+            df_temp=pd.DataFrame({'Fecha':dates,'IDRUBRO':task_id,'RECURSO':row['RECURSO'],'Cantidad_Diaria':daily_qty})
+            daily_list.append(df_temp)
+    if daily_list:
+        all_daily = pd.concat(daily_list,ignore_index=True)
+        all_daily = all_daily.merge(recursos_df[['RECURSO','TARIFA']],on='RECURSO',how='left')
+        all_daily['Costo_Diario'] = all_daily['Cantidad_Diaria']*all_daily['TARIFA']
+        all_daily['Periodo_Mensual'] = all_daily['Fecha'].dt.to_period('M')
+        monthly_costs = all_daily.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
+        monthly_costs['Costo_Acumulado'] = monthly_costs['Costo_Diario'].cumsum()
 
-    # --- Graficar costos ---
-    fig_costs = go.Figure()
-    fig_costs.add_trace(go.Bar(
-        x=monthly_costs['Periodo_Mensual'].astype(str),
-        y=monthly_costs['Costo_Diario'],
-        name='Costo Mensual'
-    ))
-    fig_costs.add_trace(go.Scatter(
-        x=monthly_costs['Periodo_Mensual'].astype(str),
-        y=monthly_costs['Costo_Acumulado'],
-        mode='lines+markers',
-        name='Costo Acumulado',
-        line=dict(color='red')
-    ))
-    fig_costs.update_layout(title="💰 Cronograma Valorado - Costos Mensuales y Acumulados",
-                            xaxis_title="Periodo", yaxis_title="Costo")
-    st.plotly_chart(fig_costs, use_container_width=True)
+        # --- Graficar costos ---
+        fig_costs = go.Figure()
+        fig_costs.add_trace(go.Bar(
+            x=monthly_costs['Periodo_Mensual'].astype(str),
+            y=monthly_costs['Costo_Diario'],
+            name='Costo Mensual'
+        ))
+        fig_costs.add_trace(go.Scatter(
+            x=monthly_costs['Periodo_Mensual'].astype(str),
+            y=monthly_costs['Costo_Acumulado'],
+            mode='lines+markers',
+            name='Costo Acumulado',
+            line=dict(color='red')
+        ))
+        fig_costs.update_layout(title="💰 Cronograma Valorado - Costos Mensuales y Acumulados",
+                                xaxis_title="Periodo", yaxis_title="Costo")
+        st.plotly_chart(fig_costs, use_container_width=True)
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
-
 
 
 
