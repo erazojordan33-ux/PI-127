@@ -40,13 +40,6 @@ if archivo_excel:
     dependencias_grid = AgGrid(dependencias_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
     dependencias_df = dependencias_grid['data']
 
-    # --- BLOQUE DE CONTROL DE FECHAS AGGRID ---
-    st.subheader("🔍 Controlador de Fechas Tareas")
-    for col in ['FECHAINICIO','FECHAFIN']:
-        st.write(f"Columna: {col}")
-        for i, val in tareas_df[col].items():
-            st.write(f"Fila {i}: Valor = {val} | Tipo real = {type(val)}")
-
     # Transformar directamente en las columnas FECHAINICIO y FECHAFIN
     for col in ['FECHAINICIO','FECHAFIN']:
         # Convertir de string ISO a datetime
@@ -57,7 +50,6 @@ if archivo_excel:
     # Transformar las columnas de texto DD/MM/YYYY a datetime
     for col in ['FECHAINICIO','FECHAFIN']:
         tareas_df[col] = pd.to_datetime(tareas_df[col], dayfirst=True, errors='coerce')
-
 
     # --- Calcular duración ---
     tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days
@@ -170,6 +162,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
