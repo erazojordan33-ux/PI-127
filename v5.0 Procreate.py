@@ -6,6 +6,7 @@ from datetime import timedelta
 from collections import defaultdict
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
+# --- Configuración de la página ---
 st.set_page_config(page_title="Gestión de Proyectos - Cronograma Valorado", layout="wide")
 st.title("📊 Gestión de Proyectos - Cronograma Valorado y Recursos")
 
@@ -13,12 +14,14 @@ st.title("📊 Gestión de Proyectos - Cronograma Valorado y Recursos")
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
 
 if archivo_excel:
+
+    # --- Leer hojas y validar existencia ---
     try:
         tareas_df = pd.read_excel(archivo_excel, sheet_name='Tareas')
         recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
         dependencias_df = pd.read_excel(archivo_excel, sheet_name='Dependencias')
     except:
-        st.error("El archivo no contiene todas las hojas requeridas")
+        st.error("El archivo debe contener las hojas: Tareas, Recursos y Dependencias")
         st.stop()
 
     # --- Mostrar tablas editables ---
@@ -40,32 +43,29 @@ if archivo_excel:
     dependencias_grid = AgGrid(dependencias_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
     dependencias_df = dependencias_grid['data']
 
-
-    # --- Validar y convertir columnas de fecha ---
-    tareas_df['FECHAINICIO'] = tareas_df['FECHAINICIO'].astype(str).str.strip()
-    tareas_df['FECHAFIN'] = tareas_df['FECHAFIN'].astype(str).str.strip()
-    
-    tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], errors='coerce', dayfirst=True)
-    tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], errors='coerce', dayfirst=True)
-    
-    # --- Duración ---
-    # Si ambas fechas existen, duración = (fin-inicio).days +1, mínimo 1
+    # --- Validación y normalización ---
+    # Tareas: FECHAINICIO, FECHAFIN como datetime
+    for col in ['FECHAINICIO','FECHAFIN']:
+        tareas_df[col] = pd.to_datetime(tareas_df[col], errors='coerce', dayfirst=True)
     tareas_df['DURACION'] = tareas_df.apply(
-        lambda row: max((row['FECHAFIN'] - row['FECHAINICIO']).days + 1, 1) 
-        if pd.notna(row['FECHAINICIO']) and pd.notna(row['FECHAFIN']) else 0,
+        lambda row: max((row['FECHAFIN'] - row['FECHAINICIO']).days + 1, 1)
+        if pd.notna(row['FECHAINICIO']) and pd.notna(row['FECHAFIN']) else None,
         axis=1
     )
+    if tareas_df['DURACION'].isnull().any():
+        st.error("Algunas tareas tienen fechas inválidas. Corrige FECHAINICIO y FECHAFIN.")
+        st.stop()
 
-    
-    recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
+    # Recursos: TARIFA como número
+    recursos_df['TARIFA'] = pd.to_numeric(recursos_df.get('TARIFA',0), errors='coerce')
+    if recursos_df['TARIFA'].isnull().any():
+        st.error("Algunas tarifas de recursos no son numéricas. Corrige la columna TARIFA.")
+        st.stop()
 
-    st.success("Datos cargados y convertidos correctamente ✅")
-
-    # --- Calcular ruta crítica ---
+    # --- Calculo ruta crítica (igual que antes) ---
     es, ef, ls, lf, tf = {}, {}, {}, {}, {}
     duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
     all_task_ids = set(tareas_df['IDRUBRO'].tolist())
-
     dependencias = defaultdict(list)
     predecesoras_map = defaultdict(list)
     for _, row in tareas_df.iterrows():
@@ -81,7 +81,7 @@ if archivo_excel:
                         dependencias[pre_id].append(tid)
                         predecesoras_map[tid].append((pre_id,'FC',0))
 
-    # --- Forward Pass ---
+    # Forward Pass
     from collections import deque
     in_degree = {tid: len(predecesoras_map.get(tid,[])) for tid in all_task_ids}
     queue = deque([tid for tid in all_task_ids if in_degree[tid]==0])
@@ -103,7 +103,7 @@ if archivo_excel:
                 queue.append(v)
                 processed.add(v)
 
-    # --- Backward Pass ---
+    # Backward Pass
     end_tasks = [tid for tid in all_task_ids if tid not in dependencias]
     project_finish = max(ef.values())
     for tid in end_tasks:
@@ -121,13 +121,12 @@ if archivo_excel:
             queue.append(u)
             processed.add(u)
 
-    # --- Holguras y ruta crítica ---
+    # Holguras y ruta critica
     for tid in all_task_ids:
         if tid in ef and tid in lf:
             tf[tid]=(lf[tid]-ef[tid]).days
         else:
             tf[tid]=0
-
     tareas_df['FECHA_INICIO_TEMPRANA'] = tareas_df['IDRUBRO'].map(es)
     tareas_df['FECHA_FIN_TEMPRANA'] = tareas_df['IDRUBRO'].map(ef)
     tareas_df['FECHA_INICIO_TARDE'] = tareas_df['IDRUBRO'].map(ls)
@@ -135,75 +134,29 @@ if archivo_excel:
     tareas_df['HOLGURA_TOTAL'] = tareas_df['IDRUBRO'].map(tf)
     tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL']==0
 
-    # --- Mostrar tabla con rutas y fechas calculadas ---
-    st.subheader("📊 Tareas con Fechas y Ruta Crítica")
-    AgGrid(tareas_df, GridOptionsBuilder.from_dataframe(tareas_df).build(), update_mode=GridUpdateMode.NO_UPDATE)
+    # --- Mostrar tabla final con ruta critica ---
+    st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
+    st.dataframe(tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
+                            'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
+                            'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']])
 
     # --- Diagrama de Gantt ---
     fig_gantt = go.Figure()
     for _, row in tareas_df.iterrows():
-        if pd.notna(row['FECHA_INICIO_TEMPRANA']) and pd.notna(row['FECHA_FIN_TEMPRANA']):
-            color = 'red' if row['RUTA_CRITICA'] else 'lightblue'
-            fig_gantt.add_trace(go.Scatter(
-                x=[row['FECHA_INICIO_TEMPRANA'], row['FECHA_FIN_TEMPRANA']],
-                y=[row['RUBRO'], row['RUBRO']],
-                mode='lines',
-                line=dict(color=color, width=12),
-                hovertext=f"{row['RUBRO']} ({row['DURACION']} días)",
-                showlegend=False
-            ))
+        color = 'red' if row['RUTA_CRITICA'] else 'lightblue'
+        fig_gantt.add_trace(go.Scatter(
+            x=[row['FECHA_INICIO_TEMPRANA'], row['FECHA_FIN_TEMPRANA']],
+            y=[row['RUBRO'], row['RUBRO']],
+            mode='lines',
+            line=dict(color=color, width=12),
+            hovertext=f"{row['RUBRO']} ({row['DURACION']} días)",
+            showlegend=False
+        ))
     fig_gantt.update_layout(title="📅 Diagrama de Gantt - Ruta Crítica")
     st.plotly_chart(fig_gantt, use_container_width=True)
 
-    # --- Recursos diarios y costos ---
-    recursos_tareas_df = dependencias_df.merge(
-        tareas_df[['IDRUBRO','RUBRO','FECHAINICIO','FECHAFIN','DURACION']],
-        left_on='CAN', right_on='RUBRO', how='left'
-    )
-    daily_list=[]
-    for _,row in recursos_tareas_df.iterrows():
-        task_id = row['IDRUBRO']
-        start = row['FECHAINICIO']
-        end = row['FECHAFIN']
-        total = row.get('CANTIDAD',0)
-        if pd.notna(start) and pd.notna(end):
-            dur = max((end-start).days+1,1)
-            daily_qty = total/dur
-            dates = pd.date_range(start=start,end=end)
-            df_temp=pd.DataFrame({'Fecha':dates,'IDRUBRO':task_id,'RECURSO':row['RECURSO'],'Cantidad_Diaria':daily_qty})
-            daily_list.append(df_temp)
-    if daily_list:
-        all_daily = pd.concat(daily_list,ignore_index=True)
-        all_daily = all_daily.merge(recursos_df[['RECURSO','TARIFA']],on='RECURSO',how='left')
-        all_daily['Costo_Diario'] = all_daily['Cantidad_Diaria']*all_daily['TARIFA']
-        all_daily['Periodo_Mensual'] = all_daily['Fecha'].dt.to_period('M')
-        monthly_costs = all_daily.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
-        monthly_costs['Costo_Acumulado'] = monthly_costs['Costo_Diario'].cumsum()
-
-        # --- Graficar costos ---
-        fig_costs = go.Figure()
-        fig_costs.add_trace(go.Bar(
-            x=monthly_costs['Periodo_Mensual'].astype(str),
-            y=monthly_costs['Costo_Diario'],
-            name='Costo Mensual'
-        ))
-        fig_costs.add_trace(go.Scatter(
-            x=monthly_costs['Periodo_Mensual'].astype(str),
-            y=monthly_costs['Costo_Acumulado'],
-            mode='lines+markers',
-            name='Costo Acumulado',
-            line=dict(color='red')
-        ))
-        fig_costs.update_layout(title="💰 Cronograma Valorado - Costos Mensuales y Acumulados",
-                                xaxis_title="Periodo", yaxis_title="Costo")
-        st.plotly_chart(fig_costs, use_container_width=True)
-
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
-
-
-
-
 
 
 
