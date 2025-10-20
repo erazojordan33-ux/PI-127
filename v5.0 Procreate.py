@@ -89,6 +89,8 @@ if archivo_excel:
     processed = set(queue)
     for tid in queue:
         es[tid] = tareas_df.loc[tareas_df['IDRUBRO']==tid,'FECHAINICIO'].values[0]
+        if tid not in es:
+            es[tid] = tareas_df.loc[tareas_df['IDRUBRO']==tid, 'FECHAINICIO'].values[0]
         ef[tid] = es[tid] + timedelta(days=duracion_dict.get(tid,0))
 
     while queue:
@@ -162,6 +164,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
