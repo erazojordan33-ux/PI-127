@@ -668,7 +668,7 @@ if archivo_excel:
         if 'tareas_df' in locals() or 'tareas_df' in globals():
 
             tareas_df['RUBRO'] = tareas_df['RUBRO'].astype(str).str.strip()
-            recursos_tareas_df['CAN'] = recursos_tareas_df['CAN'].astype(str).str.strip()
+            recursos_tareas_df['RUBRO'] = recursos_tareas_df['RUBRO'].astype(str).str.strip()
     
             if 'IDRUBRO' in recursos_tareas_df.columns and 'IDRUBRO' in tareas_df.columns:
                  recursos_tareas_df = recursos_tareas_df.merge(
@@ -774,6 +774,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
