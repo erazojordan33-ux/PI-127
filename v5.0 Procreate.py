@@ -993,7 +993,7 @@ if archivo_excel:
         yaxis=dict(
             title='Costo Mensual',
             side='left',
-            showgrid=False
+            showgrid=False,
             anchor='x'
         ),
         yaxis2=dict(
@@ -1001,7 +1001,7 @@ if archivo_excel:
             overlaying='y',
             side='right',
             showgrid=True,
-            gridcolor='lightgrey'
+            gridcolor='lightgrey',
             anchor='x'
         ),
         xaxis=dict(
@@ -1022,6 +1022,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
