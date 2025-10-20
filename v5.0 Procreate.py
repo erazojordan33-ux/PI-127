@@ -585,8 +585,6 @@ if archivo_excel:
         how='left'
     )
     
-    recursos_tareas_df = recursos_tareas_df.drop(columns=['RUBRO'])
-
     # List to hold daily resource usage dataframes for each task/resource combination
     daily_resource_usage_list = []
     
@@ -782,6 +780,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
