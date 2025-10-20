@@ -31,6 +31,8 @@ if archivo_excel:
     tareas_grid = AgGrid(tareas_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
     tareas_df = tareas_grid['data']
 
+    
+
 
     # --- Mini-bloque: Inspección y limpieza de FECHAINICIO y FECHAFIN ---
     st.subheader("🔍 Inspección de fechas")
@@ -72,6 +74,23 @@ if archivo_excel:
     gb.configure_default_column(editable=True)
     dependencias_grid = AgGrid(dependencias_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
     dependencias_df = dependencias_grid['data']
+
+    # --- LIMPIEZA Y CONVERSIÓN DE FECHAS ---
+    for col in ['FECHAINICIO','FECHAFIN']:
+        # Convertir todo a string (AgGrid puede devolver str o datetime)
+        tareas_df[col] = tareas_df[col].astype(str).str.strip()
+        # Reemplazar la T si viene de formato ISO
+        tareas_df[col] = tareas_df[col].str.replace('T',' ')
+        # Convertir a datetime
+        tareas_df[col] = pd.to_datetime(tareas_df[col], dayfirst=True, errors='coerce')
+    
+    # Mostrar filas con fechas inválidas
+    invalid_rows = tareas_df[tareas_df[['FECHAINICIO','FECHAFIN']].isna().any(axis=1)].index.tolist()
+    if invalid_rows:
+        st.warning(f"⚠️ Algunas fechas aún no son válidas en las filas: {invalid_rows}")
+    else:
+        st.success("✅ Todas las fechas son válidas")
+    
 
 
     # -----------------------
@@ -207,6 +226,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
