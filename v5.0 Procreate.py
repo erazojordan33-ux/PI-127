@@ -568,8 +568,16 @@ if archivo_excel:
     # Mostrar el gráfico en Streamlit
     st.plotly_chart(fig, use_container_width=True)
 
-
+    
     # Recursos
+    # Ensure date columns in tareas_df are datetime
+    tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'])
+    tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'])
+    
+    # Clean 'RUBRO' and 'CAN' columns for merging
+    tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
+    dependencias_df['RUBRO'] = dependencias_df['RUBRO'].str.strip()
+        
     recursos_tareas_df = dependencias_df.merge(
         tareas_df[['IDRUBRO', 'RUBRO', 'FECHAINICIO', 'FECHAFIN', 'DURACION']],
         left_on='RUBRO',
@@ -774,6 +782,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
