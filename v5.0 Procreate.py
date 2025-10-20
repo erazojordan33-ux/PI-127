@@ -568,8 +568,206 @@ if archivo_excel:
     # Mostrar el gráfico en Streamlit
     st.plotly_chart(fig, use_container_width=True)
 
+
+    # Recursos
+    recursos_tareas_df = dependencias_df.merge(
+        tareas_df[['IDRUBRO', 'RUBRO', 'FECHAINICIO', 'FECHAFIN', 'DURACION']],
+        left_on='RUBRO',
+        right_on='RUBRO',
+        how='left'
+    )
+    
+    recursos_tareas_df = recursos_tareas_df.drop(columns=['RUBRO'])
+
+    # List to hold daily resource usage dataframes for each task/resource combination
+    daily_resource_usage_list = []
+    
+    # Iterate over each row in the merged DataFrame
+    for index, row in recursos_tareas_df.iterrows():
+        task_id = row['IDRUBRO']
+        resource_name = row['RECURSO']
+        unit = row['UNIDAD']
+        total_quantity = row['CANTIDAD']
+        start_date = row['FECHAINICIO']
+        end_date = row['FECHAFIN']
+        duration_days = row['DURACION']
+    
+        # Ensure dates are valid and duration is non-negative
+        if pd.isna(start_date) or pd.isna(end_date) or start_date > end_date:
+            st.warning(f"⚠️ Advertencia: Fechas inválidas para la tarea ID {task_id}, recurso '{resource_name}'. Saltando.")
+            continue
+    
+        if duration_days <= 0:
+            daily_quantity = total_quantity
+            date_range = [start_date]
+        else:
+            # Calculate daily quantity assuming uniform distribution
+            daily_quantity = total_quantity / (duration_days + 1) # Divide by number of days including start and end
+            date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+
+        temp_df = pd.DataFrame({
+            'Fecha': date_range,
+            'IDRUBRO': task_id,
+            'RECURSO': resource_name,
+            'UNIDAD': unit,
+            'Cantidad_Diaria': daily_quantity,
+            'Cantidad_Total_Tarea': total_quantity # Keep total quantity for reference
+        })
+    
+        # Append the temporary DataFrame to the list
+        daily_resource_usage_list.append(temp_df)
+
+    # Group by Date, Resource, and Unit to sum up daily quantities
+    daily_resource_demand_df = all_daily_resource_usage_df.groupby(
+        ['Fecha', 'RECURSO', 'UNIDAD'],
+        as_index=False
+    )['Cantidad_Diaria'].sum()
+    
+    # Rename the aggregated quantity column for clarity
+    daily_resource_demand_df.rename(columns={'Cantidad_Diaria': 'Demanda_Diaria_Total'}, inplace=True)
+    
+    daily_resource_demand_df['RECURSO'] = daily_resource_demand_df['RECURSO'].str.strip()
+    recursos_df['RECURSO'] = recursos_df['RECURSO'].str.strip()
+    
+    resource_demand_with_details_df = daily_resource_demand_df.merge(
+        recursos_df[['RECURSO', 'TYPE', 'TARIFA']],
+        on='RECURSO',
+        how='left'
+    )
+
+    resource_demand_with_details_df['Costo_Diario'] = resource_demand_with_details_df['Demanda_Diaria_Total'] * resource_demand_with_details_df['TARIFA']
+    
+    # Group by Date and Type to sum daily costs
+    daily_cost_by_type_df = resource_demand_with_details_df.groupby(
+        ['Fecha', 'TYPE'],
+        as_index=False
+    )['Costo_Diario'].sum()
+    
+    # Group by Date and Resource to sum daily quantities
+    daily_demand_by_resource_df = resource_demand_with_details_df.groupby(
+        ['Fecha', 'RECURSO', 'UNIDAD'],
+        as_index=False
+    )['Demanda_Diaria_Total'].sum()
+
+    import pandas as pd
+    import plotly.graph_objects as go
+    import plotly.express as px
+    import re
+    from datetime import timedelta, datetime
+    from collections import defaultdict
+
+    if 'RUBRO' not in recursos_tareas_df.columns:
+
+        if 'tareas_df' in locals() or 'tareas_df' in globals():
+
+            tareas_df['RUBRO'] = tareas_df['RUBRO'].astype(str).str.strip()
+            recursos_tareas_df['CAN'] = recursos_tareas_df['CAN'].astype(str).str.strip()
+    
+            if 'IDRUBRO' in recursos_tareas_df.columns and 'IDRUBRO' in tareas_df.columns:
+                 recursos_tareas_df = recursos_tareas_df.merge(
+                    tareas_df[['IDRUBRO', 'RUBRO']],
+                    left_on='IDRUBRO',
+                    right_on='IDRUBRO',
+                    how='left'
+                )
+                 st.warning("Re-merged to include 'RUBRO' column using IDRUBRO.")
+            else:
+                 st.warning("❌ Error: 'IDRUBRO' column not found in one of the dataframes. Cannot re-add 'RUBRO'.")
+                 raise KeyError("'IDRUBRO' column not found for re-merging.")
+    
+        else:
+            st.warning("❌ Error: 'tareas_df' not found. Cannot re-add 'RUBRO' column.")
+            raise NameError("'tareas_df' not found.")
+    
+    unique_rubros = sorted(recursos_tareas_df['RUBRO'].dropna().unique().tolist())
+
+    fig_resource_timeline = go.Figure()
+
+    pastel_blue = 'rgb(174, 198, 207)' 
+
+    for i, row in recursos_tareas_df.iterrows():
+        fig_resource_timeline.add_trace(go.Scattergl(
+            x=[row['FECHAINICIO'], row['FECHAFIN']],
+            y=[row['RECURSO'], row['RECURSO']],
+            mode='lines',
+            line=dict(color=pastel_blue, width=10), # Use pastel blue for all bars
+            name=row['RECURSO'], # Name for potential legend (though we will hide it)
+            showlegend=False, # Hide default legend
+            hoverinfo='text',
+            text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>Recurso:</b> {row['RECURSO']}<br><b>Inicio:</b> {row['FECHAINICIO'].strftime('%Y-%m-%d')}<br><b>Fin:</b> {row['FECHAFIN'].strftime('%Y-%m-%d')}",
+            customdata=[row['RUBRO']] 
+        ))
+    
+
+    dropdown_options = [{'label': 'All Tasks', 'method': 'update', 'args': [{'visible': [True] * len(fig_resource_timeline.data)}, {'title': 'Línea de Tiempo de Uso de Recursos'}]}]
+
+    for rubro in unique_rubros:
+
+        visibility = [trace.customdata[0] == rubro for trace in fig_resource_timeline.data if trace.customdata and trace.customdata[0] in unique_rubros]
+
+        visibility_list = [trace.customdata[0] == rubro if trace.customdata and len(trace.customdata) > 0 else False for trace in fig_resource_timeline.data]
+    
+        dropdown_options.append({
+            'label': rubro,
+            'method': 'update',
+            'args': [{'visible': visibility_list}, {'title': f'Línea de Tiempo de Uso de Recursos (Filtrado por: {rubro})'}]
+        })
+    
+
+    fig_resource_timeline.update_layout(
+        updatemenus=[
+            go.layout.Updatemenu(
+                buttons=dropdown_options,
+                direction="down",
+                pad={"r": 10, "t": 10},
+                showactive=True,
+                x=0.01,
+                xanchor="left",
+                y=1.1,
+                yanchor="top"
+            ),
+        ],
+        title='Línea de Tiempo de Uso de Recursos', # Updated title
+        yaxis=dict(
+            autorange="reversed",
+            title="Recurso",
+            tickfont=dict(size=10) # Adjust font size if needed
+        ),
+        xaxis=dict(
+            title='Fechas',
+            side='bottom',
+            dtick='M1',  # Monthly ticks
+            tickangle=-90, # Vertical labels
+            showgrid=True,
+            gridcolor='rgba(128,128,128,0.3)',
+            gridwidth=0.5
+        ),
+        # Add a top x-axis for symmetry/clarity if desired (optional, mirroring bottom axis)
+        xaxis2=dict(
+            title='Fechas',
+            overlaying='x',
+            side='top',
+            dtick='M1',
+            tickangle=90,
+            showgrid=True,
+            gridcolor='rgba(128,128,128,0.3)',
+            gridwidth=0.5
+        ),
+        height=max(600, len(recursos_tareas_df['RECURSO'].unique()) * 20), # Adjust height based on number of unique resources
+        showlegend=False, # Hide default legend
+        plot_bgcolor='white',
+        hovermode='closest'
+    )
+
+    st.fig_resource_timeline(fig, use_container_width=True)
+
+
+
+
+
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
