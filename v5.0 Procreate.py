@@ -91,6 +91,13 @@ if archivo_excel:
         task_row = tareas_df[tareas_df['IDRUBRO']==tid]
         if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
             es[tid] = task_row.iloc[0]['FECHAINICIO']
+
+            if pd.notna(es.get(tid)):
+                ef[tid] = es[tid] + timedelta(days=duracion_dict.get(tid,0))
+            else:
+                ef[tid] = pd.NaT  # o puedes usar una fecha por defecto
+
+            
             ef[tid] = es[tid] + timedelta(days=duracion_dict.get(tid,0))
 
     while queue:
@@ -222,6 +229,7 @@ if archivo_excel:
 
 else:
     st.warning("Por favor, sube los tres archivos Excel (Tareas, Recursos y Dependencias) para continuar.")
+
 
 
 
