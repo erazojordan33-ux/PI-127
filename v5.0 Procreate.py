@@ -964,55 +964,44 @@ if archivo_excel:
     monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
     monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
 
-    st.subheader("📊 Cronograma Valorado")
-    fig = go.Figure()
+    from plotly.subplots import make_subplots
+    import plotly.graph_objects as go
     
-    fig.add_trace(go.Bar(
+    st.subheader("📊 Cronograma Valorado")
+    
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    
+    # Barra de Costo Mensual
+    fig.add_bar(
         x=monthly_costs_df['Periodo_Mensual'],
-        y=monthly_costs_df['Costo_Diario'], 
+        y=monthly_costs_df['Costo_Diario'],
         name='Costo Mensual',
-        yaxis='y1', 
-        text=monthly_costs_df['Costo_Mensual_Formateado'], 
-        hoverinfo='text', 
-        hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>' 
-    ))
-
-    fig.add_trace(go.Scatter(
+        text=monthly_costs_df['Costo_Mensual_Formateado'],
+        hoverinfo='text',
+        hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+        secondary_y=False
+    )
+    
+    # Línea de Costo Acumulado
+    fig.add_scatter(
         x=monthly_costs_df['Periodo_Mensual'],
         y=monthly_costs_df['Costo_Acumulado'],
         mode='lines+markers',
         name='Costo Acumulado',
-        yaxis='y2',
-        line=dict(color='red'), 
         text=monthly_costs_df['Costo_Acumulado_Formateado'],
         hoverinfo='text',
-        hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>'
-    ))
-
-
-    fig.update_yaxes(range=[0, max(monthly_costs_df['Costo_Diario'])*1.1], secondary_y=False)
-    fig.update_yaxes(range=[0, max(monthly_costs_df['Costo_Acumulado'])*1.1], secondary_y=True)
-
+        hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+        line=dict(color='red'),
+        secondary_y=True
+    )
     
+    # Configuración de ejes
+    fig.update_yaxes(title_text="Costo Mensual", secondary_y=False, range=[0, monthly_costs_df['Costo_Diario'].max()*1.1])
+    fig.update_yaxes(title_text="Costo Acumulado", secondary_y=True, range=[0, monthly_costs_df['Costo_Acumulado'].max()*1.1])
+    fig.update_xaxes(title_text="Período Mensual", tickangle=-45)
+    
+    # Layout
     fig.update_layout(
-        yaxis=dict(
-            title='Costo Mensual',
-            side='left',
-            showgrid=False,
-            anchor='x'
-        ),
-        yaxis2=dict(
-            title='Costo Acumulado',
-            overlaying='y',
-            side='right',
-            showgrid=True,
-            gridcolor='lightgrey',
-            anchor='x'
-        ),
-        xaxis=dict(
-            title='Período Mensual',
-            tickangle=-45
-        ),
         hovermode='x unified',
         height=600,
         legend=dict(
@@ -1023,10 +1012,13 @@ if archivo_excel:
         ),
         plot_bgcolor='white'
     )
+    
     st.plotly_chart(fig, use_container_width=True)
+
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
