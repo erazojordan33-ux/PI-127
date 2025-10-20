@@ -87,16 +87,20 @@ if archivo_excel:
     in_degree = {tid: len(predecesoras_map.get(tid,[])) for tid in all_task_ids}
     queue = deque([tid for tid in all_task_ids if in_degree[tid]==0])
     processed = set(queue)
+    
     for tid in queue:
-        es[tid] = tareas_df.loc[tareas_df['IDRUBRO']==tid,'FECHAINICIO'].values[0]
-        if tid not in es:
-            es[tid] = tareas_df.loc[tareas_df['IDRUBRO']==tid, 'FECHAINICIO'].values[0]
+        start_value = tareas_df.loc[tareas_df['IDRUBRO']==tid,'FECHAINICIO'].values[0]
+        if pd.isna(start_value):
+            st.warning(f"Tarea {tid} no tiene FECHAINICIO definido. Se usará hoy como inicio temporal.")
+            start_value = pd.Timestamp.today()
+        es[tid] = start_value
         ef[tid] = es[tid] + timedelta(days=duracion_dict.get(tid,0))
 
     while queue:
         u = queue.popleft()
-        if u not in ef:  # seguridad
+        if u not in ef or pd.isna(ef[u]):  # seguridad
             continue
+            
         for v in dependencias.get(u,[]):
             for pre_id, tipo, desfase in predecesoras_map.get(v, []):
                 if pre_id==u:
@@ -164,6 +168,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
