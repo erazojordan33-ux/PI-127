@@ -159,8 +159,21 @@ if archivo_excel:
 
     # --- Mostrar tabla ---
     st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
-    st.dataframe(tareas_df[])
+    st.dataframe(tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
+                            'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
+                            'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']])
 
+    dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
+    dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
+
+    costos_por_can = dependencias_df.groupby('RUBRO', as_index=False)['COSTO'].sum()
+    costos_por_can.rename(columns={'RUBRO': 'RUBRO', 'COSTO': 'COSTO_TOTAL'}, inplace=True)
+    
+    tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
+    costos_por_can['RUBRO'] = costos_por_can['RUBRO'].str.strip()
+
+    tareas_df = tareas_df.merge(costos_por_can[['RUBRO', 'COSTO_TOTAL']], on='RUBRO', how='left')
+    
     # --- Diagrama de Gantt ---
     import pandas as pd
     import plotly.graph_objects as go
@@ -302,8 +315,8 @@ if archivo_excel:
         hover_text = (
             f"📌 <b>Rubro:</b> {row['RUBRO']}<br>"
             f"🗓️ <b>Capítulo:</b> {row['CAPÍTULO']}<br>"
-            f"📅 <b>Inicio Temprano:</b> {start_date.strftime('%d/%m/%Y')}<br>"
-            f"🏁 <b>Fin Temprano:</b> {end_date.strftime('%d/%m/%Y')}<br>"
+            f"📅 <b>Inicio</b> {start_date.strftime('%d/%m/%Y')}<br>"
+            f"🏁 <b>Fin:</b> {end_date.strftime('%d/%m/%Y')}<br>"
             f"⏱️ <b>Duración:</b> {(end_date - start_date).days} días<br>"
             f"⏳ <b>Holgura Total:</b> {row.get('HOLGURA_TOTAL', 'N/A')} días<br>" # Mostrar holgura si existe
             f"💰 <b>Costo:</b> {costo_formateado}"
@@ -557,6 +570,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
