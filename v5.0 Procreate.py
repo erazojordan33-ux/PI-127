@@ -1130,9 +1130,125 @@ if archivo_excel:
 
     st.plotly_chart(fig_resource_timeline, use_container_width=True)
 
+    #__________________________________________________________________________________________________
+
+    if 'resource_demand_with_details_df' in locals() or 'resource_demand_with_details_df' in globals():
+        st.warning("DataFrame 'resource_demand_with_details_df' found.")
+
+        required_columns_and_types = {
+            'Fecha': 'datetime64[ns]',
+            'RECURSO': 'object', # String type
+            'UNIDAD': 'object', # String type
+            'Demanda_Diaria_Total': 'float64', # Assuming numeric, float is safer
+            'TYPE': 'object', # String type
+            'TARIFA': 'float64', # Assuming numeric
+            'Costo_Diario': 'float64' # Assuming numeric
+        }
+    
+        missing_columns = [col for col in required_columns_and_types if col not in resource_demand_with_details_df.columns]
+    
+        if not missing_columns:
+            st.warning(f"All required columns {list(required_columns_and_types.keys())} are present.")
+
+            type_issues = []
+            for col, expected_type in required_columns_and_types.items():c
+                if expected_type == 'object':
+                    if pd.api.types.is_numeric_dtype(resource_demand_with_details_df[col]):
+                        type_issues.append(f"Column '{col}' is numeric but expected object (string).")
+                elif not pd.api.types.is_dtype_equal(resource_demand_with_details_df[col].dtype, expected_type):
+                     if expected_type == 'float64' and pd.api.types.is_integer_dtype(resource_demand_with_details_df[col]):
+                          pass 
+                     else:
+                        type_issues.append(f"Column '{col}' has type {resource_demand_with_details_df[col].dtype} but expected {expected_type}.")
+    
+            if not type_issues:
+                st.warning("Data types for required columns are as expected.")
+                st.warning("\nFirst few rows of resource_demand_with_details_df:")
+            else:
+                st.warning("❌ Error: Data type issues in resource_demand_with_details_df:")
+                for issue in type_issues:
+                    st.warning(issue)
+    
+        else:
+            st.warning(f"❌ Error: Missing required columns in resource_demand_with_details_df: {missing_columns}")
+    else:
+        st.warning("❌ Error: DataFrame 'resource_demand_with_details_df' not found.")
+
+    resource_demand_with_details_df['Fecha'] = pd.to_datetime(resource_demand_with_details_df['Fecha'])
+    resource_demand_with_details_df['Periodo_Mensual'] = resource_demand_with_details_df['Fecha'].dt.to_period('M')
+    monthly_costs_df = resource_demand_with_details_df.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
+    monthly_costs_df['Periodo_Mensual'] = monthly_costs_df['Periodo_Mensual'].astype(str) 
+
+    monthly_costs_df['Costo_Acumulado'] = monthly_costs_df['Costo_Diario'].cumsum()
+     
+    def format_currency(value):
+    if pd.notna(value):
+        return f"S/ {value:,.2f}"  # Separador de miles y 2 decimales
+    return "S/ 0.00"  # Si es NaN o None
+    
+    monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
+    monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
+
+    st.subheader("📊 Cronograma Valorado")
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        x=monthly_costs_df['Periodo_Mensual'],
+        y=monthly_costs_df['Costo_Diario'], # This is actually the monthly sum, column name is a remnant
+        name='Costo Mensual',
+        yaxis='y1', # Associate with the primary y-axis
+        text=monthly_costs_df['Costo_Mensual_Formateado'], # Use formatted text for display
+        hoverinfo='text', # Show only the text on hover
+        hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>' # Customize hover text
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=monthly_costs_df['Periodo_Mensual'],
+        y=monthly_costs_df['Costo_Acumulado'],
+        mode='lines+markers',
+        name='Costo Acumulado',
+        yaxis='y2', # Associate with the secondary y-axis
+        line=dict(color='red'), # Distinct color for the line
+        text=monthly_costs_df['Costo_Acumulado_Formateado'], # Use formatted text for display
+        hoverinfo='text', # Show only the text on hover
+        hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>' # Customize hover text
+    ))
+
+    fig.update_layout(
+        title='Cronograma Valorado - Costos Mensuales y Acumulados', # Chart title
+        yaxis=dict(
+            title='Costo Mensual', # Primary y-axis title
+            side='left',
+            showgrid=False # Hide grid for primary axis
+        ),
+        yaxis2=dict(
+            title='Costo Acumulado', # Secondary y-axis title
+            overlaying='y', # Superimpose on the primary y-axis
+            side='right',
+            showgrid=True, # Show grid for secondary axis
+            gridcolor='lightgrey' # Light color for grid
+        ),
+        xaxis=dict(
+            title='Período Mensual', # X-axis title
+            tickangle=-45 # Rotate labels for readability
+        ),
+        hovermode='x unified', # Show hover info for all traces at a given x position
+        height=600, # Adjust height
+        # width=1000, # Adjust width if needed
+        legend=dict( # Position the legend
+            x=1.1,
+            y=1,
+            bgcolor='rgba(255, 255, 255, 0.5)', # Semi-transparent background
+            bordercolor='rgba(0, 0, 0, 0.5)'
+        ),
+        plot_bgcolor='white' # White background
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
