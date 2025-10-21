@@ -817,113 +817,115 @@ if archivo_excel:
         as_index=False
     )['Demanda_Diaria_Total'].sum()
 
-    import pandas as pd
-    import plotly.graph_objects as go
-    import plotly.express as px
-    import re
-    from datetime import timedelta, datetime
-    from collections import defaultdict
-    st.subheader("📊 Distribución de Recursos")
+    with tab3:
 
-    if 'RUBRO' not in recursos_tareas_df.columns:
-
-        if 'tareas_df' in locals() or 'tareas_df' in globals():
-
-            tareas_df['RUBRO'] = tareas_df['RUBRO'].astype(str).str.strip()
-            recursos_tareas_df['RUBRO'] = recursos_tareas_df['RUBRO'].astype(str).str.strip()
-    
-            if 'IDRUBRO' in recursos_tareas_df.columns and 'IDRUBRO' in tareas_df.columns:
-                 recursos_tareas_df = recursos_tareas_df.merge(
-                    tareas_df[['IDRUBRO', 'RUBRO']],
-                    left_on='IDRUBRO',
-                    right_on='IDRUBRO',
-                    how='left'
-                )
-                 st.warning("Re-merged to include 'RUBRO' column using IDRUBRO.")
-            else:
-                 st.warning("❌ Error: 'IDRUBRO' column not found in one of the dataframes. Cannot re-add 'RUBRO'.")
-                 raise KeyError("'IDRUBRO' column not found for re-merging.")
-    
-        else:
-            st.warning("❌ Error: 'tareas_df' not found. Cannot re-add 'RUBRO' column.")
-            raise NameError("'tareas_df' not found.")
-    
-    unique_rubros = sorted(recursos_tareas_df['RUBRO'].dropna().unique().tolist())
-
-    fig_resource_timeline = go.Figure()
-
-    pastel_blue = 'rgb(174, 198, 207)' 
-
-    for i, row in recursos_tareas_df.iterrows():
-        fig_resource_timeline.add_trace(go.Scattergl(
-            x=[row['FECHAINICIO'], row['FECHAFIN']],
-            y=[row['RECURSO'], row['RECURSO']],
-            mode='lines',
-            line=dict(color=pastel_blue, width=10), 
-            name=row['RECURSO'], 
-            showlegend=False, 
-            hoverinfo='text',
-            text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>Recurso:</b> {row['RECURSO']}<br><b>Inicio:</b> {row['FECHAINICIO'].strftime('%Y-%m-%d')}<br><b>Fin:</b> {row['FECHAFIN'].strftime('%Y-%m-%d')}",
-            customdata=[row['RUBRO']] 
-        ))
-
-    dropdown_options = [{'label': 'All Tasks', 'method': 'update', 'args': [{'visible': [True] * len(fig_resource_timeline.data)}, {'title': 'Línea de Tiempo de Uso de Recursos'}]}]
-
-    for rubro in unique_rubros:
-
-        visibility = [trace.customdata[0] == rubro for trace in fig_resource_timeline.data if trace.customdata and trace.customdata[0] in unique_rubros]
-
-        visibility_list = [trace.customdata[0] == rubro if trace.customdata and len(trace.customdata) > 0 else False for trace in fig_resource_timeline.data]
-    
-        dropdown_options.append({
-            'label': rubro,
-            'method': 'update',
-            'args': [{'visible': visibility_list}, {'title': f'Línea de Tiempo de Uso de Recursos (Filtrado por: {rubro})'}]
-        })
-
-    fig_resource_timeline.update_layout(
-        updatemenus=[
-            go.layout.Updatemenu(
-                buttons=dropdown_options,
-                direction="down",
-                pad={"r": 10, "t": 10},
-                showactive=True,
-                x=0.01,
-                xanchor="left",
-                y=1.1,
-                yanchor="top"
-            ),
-        ],
-        yaxis=dict(
-            autorange="reversed",
-            title="Recurso",
-            tickfont=dict(size=10) 
-        ),
-        xaxis=dict(
-            title='Fechas',
-            side='bottom',
-            dtick='M1', 
-            tickangle=-90, 
-            showgrid=True,
-            gridcolor='rgba(128,128,128,0.3)',
-            gridwidth=0.5
-        ),
-        xaxis2=dict(
-            title='Fechas',
-            overlaying='x',
-            side='top',
-            dtick='M1',
-            tickangle=90,
-            showgrid=True,
-            gridcolor='rgba(128,128,128,0.3)',
-            gridwidth=0.5
-        ),
-        height=max(600, len(recursos_tareas_df['RECURSO'].unique()) * 20), 
-        showlegend=False,
-        plot_bgcolor='white',
-        hovermode='closest'
-    )
-    st.plotly_chart(fig_resource_timeline, use_container_width=True)
+           import pandas as pd
+           import plotly.graph_objects as go
+           import plotly.express as px
+           import re
+           from datetime import timedelta, datetime
+           from collections import defaultdict
+           st.subheader("📊 Distribución de Recursos")
+       
+           if 'RUBRO' not in recursos_tareas_df.columns:
+       
+               if 'tareas_df' in locals() or 'tareas_df' in globals():
+       
+                   tareas_df['RUBRO'] = tareas_df['RUBRO'].astype(str).str.strip()
+                   recursos_tareas_df['RUBRO'] = recursos_tareas_df['RUBRO'].astype(str).str.strip()
+           
+                   if 'IDRUBRO' in recursos_tareas_df.columns and 'IDRUBRO' in tareas_df.columns:
+                        recursos_tareas_df = recursos_tareas_df.merge(
+                           tareas_df[['IDRUBRO', 'RUBRO']],
+                           left_on='IDRUBRO',
+                           right_on='IDRUBRO',
+                           how='left'
+                       )
+                        st.warning("Re-merged to include 'RUBRO' column using IDRUBRO.")
+                   else:
+                        st.warning("❌ Error: 'IDRUBRO' column not found in one of the dataframes. Cannot re-add 'RUBRO'.")
+                        raise KeyError("'IDRUBRO' column not found for re-merging.")
+           
+               else:
+                   st.warning("❌ Error: 'tareas_df' not found. Cannot re-add 'RUBRO' column.")
+                   raise NameError("'tareas_df' not found.")
+           
+           unique_rubros = sorted(recursos_tareas_df['RUBRO'].dropna().unique().tolist())
+       
+           fig_resource_timeline = go.Figure()
+       
+           pastel_blue = 'rgb(174, 198, 207)' 
+       
+           for i, row in recursos_tareas_df.iterrows():
+               fig_resource_timeline.add_trace(go.Scattergl(
+                   x=[row['FECHAINICIO'], row['FECHAFIN']],
+                   y=[row['RECURSO'], row['RECURSO']],
+                   mode='lines',
+                   line=dict(color=pastel_blue, width=10), 
+                   name=row['RECURSO'], 
+                   showlegend=False, 
+                   hoverinfo='text',
+                   text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>Recurso:</b> {row['RECURSO']}<br><b>Inicio:</b> {row['FECHAINICIO'].strftime('%Y-%m-%d')}<br><b>Fin:</b> {row['FECHAFIN'].strftime('%Y-%m-%d')}",
+                   customdata=[row['RUBRO']] 
+               ))
+       
+           dropdown_options = [{'label': 'All Tasks', 'method': 'update', 'args': [{'visible': [True] * len(fig_resource_timeline.data)}, {'title': 'Línea de Tiempo de Uso de Recursos'}]}]
+       
+           for rubro in unique_rubros:
+       
+               visibility = [trace.customdata[0] == rubro for trace in fig_resource_timeline.data if trace.customdata and trace.customdata[0] in unique_rubros]
+       
+               visibility_list = [trace.customdata[0] == rubro if trace.customdata and len(trace.customdata) > 0 else False for trace in fig_resource_timeline.data]
+           
+               dropdown_options.append({
+                   'label': rubro,
+                   'method': 'update',
+                   'args': [{'visible': visibility_list}, {'title': f'Línea de Tiempo de Uso de Recursos (Filtrado por: {rubro})'}]
+               })
+       
+           fig_resource_timeline.update_layout(
+               updatemenus=[
+                   go.layout.Updatemenu(
+                       buttons=dropdown_options,
+                       direction="down",
+                       pad={"r": 10, "t": 10},
+                       showactive=True,
+                       x=0.01,
+                       xanchor="left",
+                       y=1.1,
+                       yanchor="top"
+                   ),
+               ],
+               yaxis=dict(
+                   autorange="reversed",
+                   title="Recurso",
+                   tickfont=dict(size=10) 
+               ),
+               xaxis=dict(
+                   title='Fechas',
+                   side='bottom',
+                   dtick='M1', 
+                   tickangle=-90, 
+                   showgrid=True,
+                   gridcolor='rgba(128,128,128,0.3)',
+                   gridwidth=0.5
+               ),
+               xaxis2=dict(
+                   title='Fechas',
+                   overlaying='x',
+                   side='top',
+                   dtick='M1',
+                   tickangle=90,
+                   showgrid=True,
+                   gridcolor='rgba(128,128,128,0.3)',
+                   gridwidth=0.5
+               ),
+               height=max(600, len(recursos_tareas_df['RECURSO'].unique()) * 20), 
+               showlegend=False,
+               plot_bgcolor='white',
+               hovermode='closest'
+           )
+           st.plotly_chart(fig_resource_timeline, use_container_width=True)
     #__________________________________________________________________________________________________
 
     if 'resource_demand_with_details_df' in locals() or 'resource_demand_with_details_df' in globals():
@@ -967,80 +969,74 @@ if archivo_excel:
 
     monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
     monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
-    
-    from plotly.subplots import make_subplots
-    import plotly.graph_objects as go
-    
-    st.subheader("📊 Cronograma Valorado")
-    
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    
-    # Barra de Costo Mensual
-    fig.add_bar(
-        x=monthly_costs_df['Periodo_Mensual'],
-        y=monthly_costs_df['Costo_Diario'],
-        name='Costo Mensual',
-        text=monthly_costs_df['Costo_Mensual_Formateado'],
-        hoverinfo='text',
-        hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
-        secondary_y=False
-    )
-    
-    # Línea de Costo Acumulado
-    fig.add_scatter(
-        x=monthly_costs_df['Periodo_Mensual'],
-        y=monthly_costs_df['Costo_Acumulado'],
-        mode='lines+markers',
-        name='Costo Acumulado',
-        text=monthly_costs_df['Costo_Acumulado_Formateado'],
-        hoverinfo='text',
-        hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
-        line=dict(color='red'),
-        secondary_y=True
-    )
-    
-    # Configuración de ejes
-    fig.update_yaxes(
-        title_text="Costo Mensual",
-        secondary_y=False,
-        showgrid=False,  # ❌ Sin grilla horizontal para la barra
-        range=[0, monthly_costs_df['Costo_Diario'].max()*1.1]
-    )
-    fig.update_yaxes(
-        title_text="Costo Acumulado",
-        secondary_y=True,
-        showgrid=True,   # ✅ Solo el acumulador tiene grilla
-        gridcolor='lightgrey',
-        range=[0, monthly_costs_df['Costo_Acumulado'].max()*1.1]
-    )
-    fig.update_xaxes(title_text="Período Mensual", tickangle=-45)
-    
-    # Layout
-    fig.update_layout(
-        hovermode='x unified',
-        height=600,
-        legend=dict(
-            x=1.1,
-            y=1,
-            bgcolor='rgba(255, 255, 255, 0.5)',
-            bordercolor='rgba(0, 0, 0, 0.5)'
-        ),
-        plot_bgcolor='white'
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
 
-    # ____________________________________________________________________
-    # CREACION DE PESTAÑAS
-
-
-
-
-
+    with tab4:
+           from plotly.subplots import make_subplots
+           import plotly.graph_objects as go
+           
+           st.subheader("📊 Cronograma Valorado")
+           
+           fig = make_subplots(specs=[[{"secondary_y": True}]])
+           
+           # Barra de Costo Mensual
+           fig.add_bar(
+               x=monthly_costs_df['Periodo_Mensual'],
+               y=monthly_costs_df['Costo_Diario'],
+               name='Costo Mensual',
+               text=monthly_costs_df['Costo_Mensual_Formateado'],
+               hoverinfo='text',
+               hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+               secondary_y=False
+           )
+           
+           # Línea de Costo Acumulado
+           fig.add_scatter(
+               x=monthly_costs_df['Periodo_Mensual'],
+               y=monthly_costs_df['Costo_Acumulado'],
+               mode='lines+markers',
+               name='Costo Acumulado',
+               text=monthly_costs_df['Costo_Acumulado_Formateado'],
+               hoverinfo='text',
+               hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+               line=dict(color='red'),
+               secondary_y=True
+           )
+           
+           # Configuración de ejes
+           fig.update_yaxes(
+               title_text="Costo Mensual",
+               secondary_y=False,
+               showgrid=False,  # ❌ Sin grilla horizontal para la barra
+               range=[0, monthly_costs_df['Costo_Diario'].max()*1.1]
+           )
+           fig.update_yaxes(
+               title_text="Costo Acumulado",
+               secondary_y=True,
+               showgrid=True,   # ✅ Solo el acumulador tiene grilla
+               gridcolor='lightgrey',
+               range=[0, monthly_costs_df['Costo_Acumulado'].max()*1.1]
+           )
+           fig.update_xaxes(title_text="Período Mensual", tickangle=-45)
+           
+           # Layout
+           fig.update_layout(
+               hovermode='x unified',
+               height=600,
+               legend=dict(
+                   x=1.1,
+                   y=1,
+                   bgcolor='rgba(255, 255, 255, 0.5)',
+                   bordercolor='rgba(0, 0, 0, 0.5)'
+               ),
+               plot_bgcolor='white'
+           )
+           
+           st.plotly_chart(fig, use_container_width=True)
 
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
