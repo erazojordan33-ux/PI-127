@@ -698,7 +698,7 @@ if archivo_excel:
               fecha_min = tareas_df['FECHAINICIO'].min()
               fecha_max = tareas_df['FECHAFIN'].max()
               years = list(range(fecha_min.year, fecha_max.year + 1))
-              colors = ['rgba(200,200,200,0.2)', 'rgba(150,150,150,0.2)']  # gris claro y blanco huevo
+              colors = ['rgba(200,200,200,0.2)', 'rgba(100,100,100,0.2)']  # gris claro y blanco huevo
               shapes_years = []
               
               for i, year in enumerate(years):
@@ -1056,6 +1056,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
