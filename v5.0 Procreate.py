@@ -23,7 +23,7 @@ if archivo_excel:
 
     with tab1:   
 
-        st.markdown("### A continuación se presentan los datos importados:")
+        st.markdown("## A continuación se presentan los datos importados:")
 
         st.subheader("📋 Tabla Tareas")
         gb = GridOptionsBuilder.from_dataframe(tareas_df)
@@ -43,13 +43,32 @@ if archivo_excel:
         st.subheader("📋 Tabla Recursos")
         gb = GridOptionsBuilder.from_dataframe(recursos_df)
         gb.configure_default_column(editable=True)
-        recursos_grid = AgGrid(recursos_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
+        grid_options = gb.build()
+        custom_css = {
+           ".ag-header": {  # clase del header completo
+               "background-color": "#0D3B66",  # azul oscuro
+               "color": "white",               # texto blanco
+               "font-weight": "bold",
+               "text-align": "center"
+           }
+       }    
+        recursos_grid = AgGrid(recursos_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
         recursos_df = recursos_grid['data']
     
         st.subheader("📋 Tabla Dependencias")
         gb = GridOptionsBuilder.from_dataframe(dependencias_df)
         gb.configure_default_column(editable=True)
-        dependencias_grid = AgGrid(dependencias_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
+        grid_options = gb.build()
+               custom_css = {
+                  ".ag-header": {  # clase del header completo
+                      "background-color": "#0D3B66",  # azul oscuro
+                      "color": "white",               # texto blanco
+                      "font-weight": "bold",
+                      "text-align": "center"
+                  }
+              }    
+        }
+        dependencias_grid = AgGrid(dependencias_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
         dependencias_df = dependencias_grid['data']
 
     for col in ['FECHAINICIO','FECHAFIN']:
@@ -1047,6 +1066,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
