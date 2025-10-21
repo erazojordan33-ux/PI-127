@@ -37,8 +37,7 @@ if archivo_excel:
                "text-align": "center"
            }
        }
-        
-        tareas_grid = AgGrid(tareas_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
+        tareas_grid = AgGrid(tareas_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
         tareas_df = tareas_grid['data']
     
         st.subheader("📋 Tabla Recursos")
@@ -1048,6 +1047,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
