@@ -462,7 +462,7 @@ if archivo_excel:
     tolerance_days = 1e-9
     tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
     # _________________________________________________________________________________________________
-       with tab2:
+    with tab2:
               st.subheader("📋 Tabla Resumen")
 
               df_preview = tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
@@ -1011,6 +1011,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
