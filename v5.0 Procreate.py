@@ -706,18 +706,7 @@ if archivo_excel:
                       gridcolor='rgba(128,128,128,0.3)',
                       gridwidth=0.5
                   ),
-
-                  xaxis2=dict(
-                         title='Fechas',
-                         overlaying='x',      # se superpone al eje X principal
-                         side='top',          # aparece arriba
-                         dtick='M1',          # un tick por mes
-                         tickangle=-90,       # girar etiquetas si quieres
-                         showgrid=True,
-                         gridcolor='rgba(128,128,128,0.3)',
-                         gridwidth=0.5
-                  ),
-
+                     
                   yaxis_title='Rubro',
                   yaxis=dict(
                       autorange='reversed',
@@ -731,6 +720,16 @@ if archivo_excel:
                   showlegend=False,
                   plot_bgcolor='white',
                   hovermode='closest'
+              )
+
+              fig.update_xaxes(
+                  side="top",
+                  overlaying="x",
+                  dtick='M1',
+                  tickangle=-90,
+                  showgrid=True,
+                  gridcolor='rgba(128,128,128,0.3)',
+                  gridwidth=0.5
               )
               
               st.plotly_chart(fig, use_container_width=True)
@@ -1032,6 +1031,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
