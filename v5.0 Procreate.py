@@ -531,6 +531,8 @@ if archivo_excel:
                   st.warning("⚠️ Columna 'IDRUBRO' no encontrada para ordenar.")
               
               tareas_df['y_num'] = range(len(tareas_df))
+              tareas_df['y_num_plot'] = tareas_df['y_num'] + 0.01
+
               
               # Preparar dependencias y predecesoras
               dependencias = defaultdict(list)
@@ -597,7 +599,7 @@ if archivo_excel:
                   )
                   import numpy as np
                   x_vals = pd.date_range(start=start_date, end=end_date, freq='D')  # un punto por día
-                  y_vals = np.full(len(x_vals), row['y_num'])
+                  y_vals = np.full(len(x_vals), row['y_num_plot'])
                   fig.add_trace(go.Scatter(
                          x=x_vals,
                          y=y_vals,
@@ -610,8 +612,8 @@ if archivo_excel:
               
               # Función para dibujar flechas de dependencias
               def dibujar_flecha(pre_id, suc_id, tipo_relacion, offset=5):
-                     y_pre = tareas_df.loc[tareas_df['IDRUBRO']==pre_id, 'y_num'].values[0]
-                     y_suc = tareas_df.loc[tareas_df['IDRUBRO']==suc_id, 'y_num'].values[0]
+                     y_pre = tareas_df.loc[tareas_df['IDRUBRO']==pre_id, 'y_num_plot'].values[0]
+                     y_suc = tareas_df.loc[tareas_df['IDRUBRO']==suc_id, 'y_num_plot'].values[0]
                      pre_is_critical = is_critical_dict.get(pre_id, False)
                      suc_is_critical = is_critical_dict.get(suc_id, False)
                      arrow_color = 'red' if pre_is_critical and suc_is_critical else 'blue'
@@ -707,8 +709,7 @@ if archivo_excel:
                   yaxis_title='Rubro',
                   yaxis=dict(
                       autorange='reversed',
-                      tickvals=tareas_df['y_num'],
-                      range=[-0.5, len(tareas_df)-0.5],
+                      tickvals=tareas_df['y_num_plot'],
                       ticktext=y_ticktext_styled,
                       tickfont=dict(size=10),
                       showgrid=False
@@ -1019,6 +1020,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
