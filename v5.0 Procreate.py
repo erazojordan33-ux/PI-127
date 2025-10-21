@@ -23,7 +23,7 @@ if archivo_excel:
 
     with tab1:   
 
-        st.markdown("## A continuación se presentan los datos importados:")
+        st.markdown("#### A continuación se presentan los datos importados:")
 
         st.subheader("📋 Tabla Tareas")
         gb = GridOptionsBuilder.from_dataframe(tareas_df)
@@ -1065,6 +1065,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
