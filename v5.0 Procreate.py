@@ -465,24 +465,32 @@ if archivo_excel:
     with tab2:
            st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
 
-           df_to_show = tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
-                               'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
-                               'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']]
+           df_preview = tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
+                        'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
+                        'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']].copy()
        
-           styled_df = df_to_show.style.set_table_styles(
-             [{
-               'selector': 'th',  # fila de encabezados
-               'props': [
-                   ('background-color', '#0D3B66'),  # azul oscuro
-                   ('color', 'white'),               # texto blanco
-                   ('font-weight', 'bold'),          # negrita
-                   ('text-align', 'center')          # centrar texto
-               ]
-             }]
-           )
+           gb = GridOptionsBuilder.from_dataframe(df_preview)
+           gb.configure_default_column(editable=False, resizable=True)
+           grid_options = gb.build()
            
-           st.write(styled_df.to_html(escape=False), unsafe_allow_html=True)
-           
+           custom_css = {
+                  ".ag-header": {
+                      "background-color": "#0D3B66",  # azul oscuro
+                      "color": "white",               # texto blanco
+                      "font-weight": "bold",
+                      "text-align": "center"
+                  }
+              }
+
+           AgGrid(
+                  df_preview,
+                  gridOptions=grid_options,
+                  update_mode=GridUpdateMode.NO_UPDATE,  # NO actualiza DataFrame original
+                  custom_css=custom_css,
+                  fit_columns_on_grid_load=True,
+                  height=400
+              )
+                         
            dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
            dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
            costos_por_can = dependencias_df.groupby('RUBRO', as_index=False)['COSTO'].sum()
@@ -1080,6 +1088,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
