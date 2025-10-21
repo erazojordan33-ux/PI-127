@@ -694,6 +694,31 @@ if archivo_excel:
                       y_ticktext_styled.append(rubro_text)
                   else:
                       y_ticktext_styled.append("")
+
+              fecha_min = tareas_df['FECHAINICIO'].min()
+              fecha_max = tareas_df['FECHAFIN'].max()
+              years = list(range(fecha_min.year, fecha_max.year + 1))
+              colors = ['rgba(200,200,200,0.2)', 'rgba(255,255,240,0.2)']  # gris claro y blanco huevo
+              shapes_years = []
+              
+              for i, year in enumerate(years):
+                  shapes_years.append(
+                      dict(
+                          type='rect',
+                          xref='x',
+                          yref='paper',  # cubre todo el eje Y
+                          x0=pd.Timestamp(f'{year}-01-01'),
+                          x1=pd.Timestamp(f'{year}-12-31'),
+                          y0=0,
+                          y1=1,
+                          fillcolor=colors[i % 2],
+                          opacity=0.5,
+                          layer='below',
+                          line_width=0,
+                      )
+                  )
+
+              shapes = shapes + shapes_years
               
               # Layout
               fig.update_layout(
@@ -1031,6 +1056,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
