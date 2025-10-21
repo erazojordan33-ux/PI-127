@@ -11,7 +11,7 @@ st.title("📊 Gestión de Proyectos - Cronograma Valorado y Recursos")
 
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
 
-tab1, tab2, tab3, tab 4 = st.tabs(["Inicio", "Diagrama Gantt", "Recursos", "Presupuesto"])
+tab1, tab2, tab3, tab4 = st.tabs(["Inicio", "Diagrama Gantt", "Recursos", "Presupuesto"])
        
 if archivo_excel:
     try:
@@ -1043,6 +1043,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
