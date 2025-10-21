@@ -708,6 +708,7 @@ if archivo_excel:
                   yaxis=dict(
                       autorange='reversed',
                       tickvals=tareas_df['y_num'],
+                      range=[-0.5, len(tareas_df)-0.5],
                       ticktext=y_ticktext_styled,
                       tickfont=dict(size=10),
                       showgrid=False
@@ -1018,6 +1019,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
