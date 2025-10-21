@@ -480,7 +480,8 @@ if archivo_excel:
                ]
              }]
            )
-           st.dataframe(styled_df)
+           
+           st.write(styled_df.to_html(escape=False), unsafe_allow_html=True)
            
            dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
            dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
@@ -1079,6 +1080,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
