@@ -497,7 +497,7 @@ if archivo_excel:
               costos_por_can.rename(columns={'RUBRO': 'RUBRO', 'COSTO': 'COSTO_TOTAL'}, inplace=True)
               tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
               costos_por_can['RUBRO'] = costos_por_can['RUBRO'].str.strip()
-              tareas_df = tareas_df.merge(costos_por_can[['RUBRO', 'COSTO_TOTAL']], on='RUBRO', how='left'
+              tareas_df = tareas_df.merge(costos_por_can[['RUBRO', 'COSTO_TOTAL']], on='RUBRO', how='left')
               
                                        
               import pandas as pd
@@ -1011,6 +1011,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
