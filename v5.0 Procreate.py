@@ -595,14 +595,17 @@ if archivo_excel:
                       f"⏳ <b>Holgura Total:</b> {row.get('HOLGURA_TOTAL', 'N/A')} días<br>"
                       f"💰 <b>Costo:</b> {costo_formateado}"
                   )
+                  import numpy as np
+                  x_vals = pd.date_range(start=start_date, end=end_date, freq='D')  # un punto por día
+                  y_vals = np.full(len(x_vals), row['y_num'])
                   fig.add_trace(go.Scatter(
-                      x=[start_date, end_date],
-                      y=[row['y_num'], row['y_num']],
-                      mode='lines',
-                      line=dict(color=line_color, width=line_width),
-                      showlegend=False,
-                      hoverinfo='text',
-                      text=hover_text,
+                         x=x_vals,
+                         y=y_vals,
+                         mode='lines',
+                         line=dict(color=line_color, width=line_width),
+                         showlegend=False,
+                         hoverinfo='text',
+                         text=[hover_text]*len(x_vals),
                   ))
               
               # Función para dibujar flechas de dependencias
@@ -670,8 +673,6 @@ if archivo_excel:
                          showlegend=False,
                      ))
                                    
-
-              
               # Dibujar todas las flechas
               for pre_id, sucesores in dependencias.items():
                   for suc_id in sucesores:
@@ -1017,6 +1018,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
