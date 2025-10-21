@@ -570,21 +570,6 @@ if archivo_excel:
               
               # Bandas alternadas para filas
               shapes = []
-              color_banda = 'rgba(220, 220, 220, 0.3)'
-              for y_pos in range(len(tareas_df)):
-                  if y_pos % 2 == 0:
-                      shapes.append(dict(
-                          type="rect",
-                          xref="paper",
-                          yref="y",
-                          x0=0,
-                          x1=1,
-                          y0=y_pos - 0.5,
-                          y1=y_pos + 0.5,
-                          fillcolor=color_banda,
-                          layer="below",
-                          line_width=0,
-                      ))
               
               # Colores de barras
               color_no_critica_barra = 'lightblue'
@@ -622,49 +607,61 @@ if archivo_excel:
               
               # Función para dibujar flechas de dependencias
               def dibujar_flecha(pre_id, suc_id, tipo_relacion, offset=5):
-                  y_pre = tareas_df.loc[tareas_df['IDRUBRO']==pre_id, 'y_num'].values[0]
-                  y_suc = tareas_df.loc[tareas_df['IDRUBRO']==suc_id, 'y_num'].values[0]
-                  pre_is_critical = is_critical_dict.get(pre_id, False)
-                  suc_is_critical = is_critical_dict.get(suc_id, False)
-                  arrow_color = 'red' if pre_is_critical and suc_is_critical else 'blue'
-              
-                  x_pre_inicio = inicio_rubro_calc.get(pre_id)
-                  x_pre_fin = fin_rubro_calc.get(pre_id)
-                  x_suc_inicio = inicio_rubro_calc.get(suc_id)
-                  x_suc_fin = fin_rubro_calc.get(suc_id)
-              
-                  origin_x = x_pre_fin if tipo_relacion in ['FC', 'FF'] else x_pre_inicio
-                  connection_x = x_suc_inicio if tipo_relacion in ['FC', 'CC'] else x_suc_fin
-                  points_x, points_y = [origin_x], [y_pre]
-              
-                  if tipo_relacion in ['CC', 'FC']:
-                      elbow1_x, elbow1_y = origin_x - timedelta(days=offset), y_pre
-                      elbow2_x, elbow2_y = elbow1_x, y_suc
-                      points_x.extend([elbow1_x, elbow2_x, connection_x])
-                      points_y.extend([elbow1_y, elbow2_y, y_suc])
-                  elif tipo_relacion in ['CF', 'FF']:
-                      elbow1_x, elbow1_y = origin_x, y_suc
-                      points_x.extend([elbow1_x, connection_x])
-                      points_y.extend([elbow1_y, y_suc])
-              
-                  # Línea de flecha
-                  fig.add_trace(go.Scatter(
-                      x=points_x,
-                      y=points_y,
-                      mode='lines',
-                      line=dict(color=arrow_color, width=1, dash='dash'),
-                      hoverinfo='none',
-                      showlegend=False,
-                  ))
-                  # Marcadores
-                  fig.add_trace(go.Scattergl(
-                      x=[origin_x, connection_x],
-                      y=[y_pre, y_suc],
-                      mode='markers',
-                      marker=dict(symbol='triangle-right', size=10, color=arrow_color),
-                      hoverinfo='none',
-                      showlegend=False,
-                  ))
+                     y_pre = tareas_df.loc[tareas_df['IDRUBRO']==pre_id, 'y_num'].values[0]
+                     y_suc = tareas_df.loc[tareas_df['IDRUBRO']==suc_id, 'y_num'].values[0]
+                     pre_is_critical = is_critical_dict.get(pre_id, False)
+                     suc_is_critical = is_critical_dict.get(suc_id, False)
+                     arrow_color = 'red' if pre_is_critical and suc_is_critical else 'blue'
+                     
+                     x_pre_inicio = inicio_rubro_calc.get(pre_id)
+                     x_pre_fin = fin_rubro_calc.get(pre_id)
+                     x_suc_inicio = inicio_rubro_calc.get(suc_id)
+                     x_suc_fin = fin_rubro_calc.get(suc_id)
+                     
+                     origin_x = x_pre_fin if tipo_relacion in ['FC', 'FF'] else x_pre_inicio
+                     connection_x = x_suc_inicio if tipo_relacion in ['FC', 'CC'] else x_suc_fin
+                     points_x, points_y = [origin_x], [y_pre]
+                     
+                     if tipo_relacion in ['CC', 'FC']:
+                             elbow1_x, elbow1_y = origin_x - timedelta(days=offset), y_pre
+                             elbow2_x, elbow2_y = elbow1_x, y_suc
+                             points_x.extend([elbow1_x, elbow2_x, connection_x])
+                             points_y.extend([elbow1_y, elbow2_y, y_suc])
+                     elif tipo_relacion in ['CF', 'FF']:
+                             elbow1_x, elbow1_y = origin_x, y_suc
+                             points_x.extend([elbow1_x, connection_x])
+                             points_y.extend([elbow1_y, y_suc])
+                     # Marcador en el predecesor (círculo)
+                     fig.add_trace(go.Scattergl(
+                         x=[origin_x],
+                         y=[y_pre],
+                         mode='markers',
+                         marker=dict(symbol='circle', size=8, color=arrow_color),
+                         hoverinfo='none',
+                         showlegend=False,
+                     ))
+                     
+                     # Línea de la flecha (igual que antes)
+                     fig.add_trace(go.Scatter(
+                         x=points_x,
+                         y=points_y,
+                         mode='lines',
+                         line=dict(color=arrow_color, width=1, dash='dash'),
+                         hoverinfo='none',
+                         showlegend=False,
+                     ))
+                     
+                     # Marcador en el sucesor (triángulo)
+                     fig.add_trace(go.Scattergl(
+                         x=[connection_x],
+                         y=[y_suc],
+                         mode='markers',
+                         marker=dict(symbol=arrow_symbol, size=10, color=arrow_color),
+                         hoverinfo='none',
+                         showlegend=False,
+                     ))
+                                   
+
               
               # Dibujar todas las flechas
               for pre_id, sucesores in dependencias.items():
@@ -682,7 +679,7 @@ if archivo_excel:
                   row = tareas_df[tareas_df['y_num'] == y_pos]
                   if not row.empty:
                       rubro_text = row.iloc[0]['RUBRO']
-                      y_ticktext_styled.append(f"<b>{rubro_text}</b>")  # todos en negrita
+                      y_ticktext_styled.append(rubro_text)
                   else:
                       y_ticktext_styled.append("")
               
@@ -1011,6 +1008,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
