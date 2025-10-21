@@ -462,18 +462,18 @@ if archivo_excel:
     tolerance_days = 1e-9
     tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
     # _________________________________________________________________________________________________
-    with tab2:
-           st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
+       with tab2:
+              st.subheader("📋 Tabla Resumen")
 
-           df_preview = tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
+              df_preview = tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
                         'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
                         'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']].copy()
-       
-           gb = GridOptionsBuilder.from_dataframe(df_preview)
-           gb.configure_default_column(editable=False, resizable=True)
-           grid_options = gb.build()
-           
-           custom_css = {
+                     
+              gb = GridOptionsBuilder.from_dataframe(df_preview)
+              gb.configure_default_column(editable=False, resizable=True)
+              grid_options = gb.build()
+                  
+              custom_css = {
                   ".ag-header": {
                       "background-color": "#0D3B66",  # azul oscuro
                       "color": "white",               # texto blanco
@@ -482,7 +482,7 @@ if archivo_excel:
                   }
               }
 
-           AgGrid(
+              AgGrid(
                   df_preview,
                   gridOptions=grid_options,
                   update_mode=GridUpdateMode.NO_UPDATE,  # NO actualiza DataFrame original
@@ -491,306 +491,229 @@ if archivo_excel:
                   height=400
               )
                          
-           dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
-           dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
-           costos_por_can = dependencias_df.groupby('RUBRO', as_index=False)['COSTO'].sum()
-           costos_por_can.rename(columns={'RUBRO': 'RUBRO', 'COSTO': 'COSTO_TOTAL'}, inplace=True)
-           tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
-           costos_por_can['RUBRO'] = costos_por_can['RUBRO'].str.strip()
-           tareas_df = tareas_df.merge(costos_por_can[['RUBRO', 'COSTO_TOTAL']], on='RUBRO', how='left')
+              dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
+              dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
+              costos_por_can = dependencias_df.groupby('RUBRO', as_index=False)['COSTO'].sum()
+              costos_por_can.rename(columns={'RUBRO': 'RUBRO', 'COSTO': 'COSTO_TOTAL'}, inplace=True)
+              tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
+              costos_por_can['RUBRO'] = costos_por_can['RUBRO'].str.strip()
+              tareas_df = tareas_df.merge(costos_por_can[['RUBRO', 'COSTO_TOTAL']], on='RUBRO', how='left'
+              
+                                       
+              import pandas as pd
+              import plotly.graph_objects as go
+              import plotly.express as px
+              import re
+              from datetime import timedelta, datetime
+              from collections import defaultdict
+              import streamlit as st
+              
+              st.subheader("📊 Diagrama de Gantt - Ruta Crítica")
+              
+              # Determinar columna de costo
+              cost_column_name = None
+              for col in ['COSTO_TOTAL_RUBRO', 'COSTO_TOTAL_x', 'COSTO_TOTAL']:
+                  if col in tareas_df.columns:
+                      cost_column_name = col
+                      break
+              
+              if cost_column_name:
+                  tareas_df[cost_column_name] = pd.to_numeric(tareas_df[cost_column_name], errors='coerce').fillna(0)
+              else:
+                  st.warning("⚠️ No se encontró una columna de costos reconocida en el DataFrame. Se creará columna de costos en 0.")
+                  tareas_df['COSTO_TOTAL_NUMERICO'] = 0
+                  cost_column_name = 'COSTO_TOTAL_NUMERICO'
+              
+              # Ordenar por IDRUBRO
+              if 'IDRUBRO' in tareas_df.columns:
+                  tareas_df = tareas_df.sort_values(['IDRUBRO'])
+              else:
+                  st.warning("⚠️ Columna 'IDRUBRO' no encontrada para ordenar.")
+              
+              tareas_df['y_num'] = range(len(tareas_df))
+              
+              # Preparar dependencias y predecesoras
+              dependencias = defaultdict(list)
+              predecesoras_map_details = defaultdict(list)
+              warnings_list = []
+              
+              for _, row in tareas_df.iterrows():
+                  tarea_id = row['IDRUBRO']
+                  predecesoras_str = str(row.get('PREDECESORAS', '')).strip()
+                  if predecesoras_str not in ['nan', '']:
+                      pre_list = predecesoras_str.split(',')
+                      for pre_entry in pre_list:
+                          pre_entry = pre_entry.strip()
+                          match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre_entry)
+                          if match:
+                              pre_id = int(match.group(1))
+                              tipo_relacion = match.group(2).upper() if match.group(2) else 'FC'
+                              desfase = int(match.group(3)) if match.group(3) else 0
+                              if pre_id in tareas_df['IDRUBRO'].values:
+                                  dependencias[pre_id].append(tarea_id)
+                                  predecesoras_map_details[tarea_id].append((pre_id, tipo_relacion, desfase))
+                              else:
+                                  warnings_list.append(f"Predecesor ID {pre_id} para tarea {tarea_id} no encontrado.")
+                          elif pre_entry != '':
+                              warnings_list.append(f"Formato de predecesora '{pre_entry}' no reconocido para tarea {tarea_id}.")
+              
+              if warnings_list:
+                  st.warning("⚠️ Advertencias detectadas:\n" + "\n".join(warnings_list))
+              
+              # Diccionarios de fechas y críticos
+              inicio_rubro_calc = tareas_df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
+              fin_rubro_calc = tareas_df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
+              is_critical_dict = tareas_df.set_index('IDRUBRO')['RUTA_CRITICA'].to_dict()
+              
+              # Crear figura
+              fig = go.Figure()
+              
+              # Bandas alternadas para filas
+              shapes = []
+              color_banda = 'rgba(220, 220, 220, 0.3)'
+              for y_pos in range(len(tareas_df)):
+                  if y_pos % 2 == 0:
+                      shapes.append(dict(
+                          type="rect",
+                          xref="paper",
+                          yref="y",
+                          x0=0,
+                          x1=1,
+                          y0=y_pos - 0.5,
+                          y1=y_pos + 0.5,
+                          fillcolor=color_banda,
+                          layer="below",
+                          line_width=0,
+                      ))
+              
+              # Colores de barras
+              color_no_critica_barra = 'lightblue'
+              color_critica_barra = 'rgb(255, 133, 133)'
+              
+              # Agregar barras
+              for i, row in tareas_df.iterrows():
+                  line_color = color_critica_barra if row.get('RUTA_CRITICA', False) else color_no_critica_barra
+                  line_width = 12
+                  start_date = row['FECHAINICIO']
+                  end_date = row['FECHAFIN']
+                  if pd.isna(start_date) or pd.isna(end_date):
+                      continue
+              
+                  valor_costo = float(row.get(cost_column_name, 0))
+                  costo_formateado = f"S/ {valor_costo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                  hover_text = (
+                      f"📌 <b>Rubro:</b> {row['RUBRO']}<br>"
+                      f"🗓️ <b>Capítulo:</b> {row.get('CAPÍTULO', '')}<br>"
+                      f"📅 <b>Inicio:</b> {start_date.strftime('%d/%m/%Y')}<br>"
+                      f"🏁 <b>Fin:</b> {end_date.strftime('%d/%m/%Y')}<br>"
+                      f"⏱️ <b>Duración:</b> {(end_date - start_date).days} días<br>"
+                      f"⏳ <b>Holgura Total:</b> {row.get('HOLGURA_TOTAL', 'N/A')} días<br>"
+                      f"💰 <b>Costo:</b> {costo_formateado}"
+                  )
+                  fig.add_trace(go.Scatter(
+                      x=[start_date, end_date],
+                      y=[row['y_num'], row['y_num']],
+                      mode='lines',
+                      line=dict(color=line_color, width=line_width),
+                      showlegend=False,
+                      hoverinfo='text',
+                      text=hover_text,
+                  ))
+              
+              # Función para dibujar flechas de dependencias
+              def dibujar_flecha(pre_id, suc_id, tipo_relacion, offset=5):
+                  y_pre = tareas_df.loc[tareas_df['IDRUBRO']==pre_id, 'y_num'].values[0]
+                  y_suc = tareas_df.loc[tareas_df['IDRUBRO']==suc_id, 'y_num'].values[0]
+                  pre_is_critical = is_critical_dict.get(pre_id, False)
+                  suc_is_critical = is_critical_dict.get(suc_id, False)
+                  arrow_color = 'red' if pre_is_critical and suc_is_critical else 'blue'
+              
+                  x_pre_inicio = inicio_rubro_calc.get(pre_id)
+                  x_pre_fin = fin_rubro_calc.get(pre_id)
+                  x_suc_inicio = inicio_rubro_calc.get(suc_id)
+                  x_suc_fin = fin_rubro_calc.get(suc_id)
+              
+                  origin_x = x_pre_fin if tipo_relacion in ['FC', 'FF'] else x_pre_inicio
+                  connection_x = x_suc_inicio if tipo_relacion in ['FC', 'CC'] else x_suc_fin
+                  points_x, points_y = [origin_x], [y_pre]
+              
+                  if tipo_relacion in ['CC', 'FC']:
+                      elbow1_x, elbow1_y = origin_x - timedelta(days=offset), y_pre
+                      elbow2_x, elbow2_y = elbow1_x, y_suc
+                      points_x.extend([elbow1_x, elbow2_x, connection_x])
+                      points_y.extend([elbow1_y, elbow2_y, y_suc])
+                  elif tipo_relacion in ['CF', 'FF']:
+                      elbow1_x, elbow1_y = origin_x, y_suc
+                      points_x.extend([elbow1_x, connection_x])
+                      points_y.extend([elbow1_y, y_suc])
+              
+                  # Línea de flecha
+                  fig.add_trace(go.Scatter(
+                      x=points_x,
+                      y=points_y,
+                      mode='lines',
+                      line=dict(color=arrow_color, width=1, dash='dash'),
+                      hoverinfo='none',
+                      showlegend=False,
+                  ))
+                  # Marcadores
+                  fig.add_trace(go.Scattergl(
+                      x=[origin_x, connection_x],
+                      y=[y_pre, y_suc],
+                      mode='markers',
+                      marker=dict(symbol='triangle-right', size=10, color=arrow_color),
+                      hoverinfo='none',
+                      showlegend=False,
+                  ))
+              
+              # Dibujar todas las flechas
+              for pre_id, sucesores in dependencias.items():
+                  for suc_id in sucesores:
+                      tipo_rel = 'FC'
+                      for pre_tmp, type_tmp, _ in predecesoras_map_details.get(suc_id, []):
+                          if pre_tmp == pre_id:
+                              tipo_rel = type_tmp.upper() if type_tmp else 'FC'
+                              break
+                      dibujar_flecha(pre_id, suc_id, tipo_rel)
+              
+              # Preparar Y-ticks
+              y_ticktext_styled = []
+              for y_pos in range(len(tareas_df)):
+                  row = tareas_df[tareas_df['y_num'] == y_pos]
+                  if not row.empty:
+                      rubro_text = row.iloc[0]['RUBRO']
+                      y_ticktext_styled.append(f"<b>{rubro_text}</b>")  # todos en negrita
+                  else:
+                      y_ticktext_styled.append("")
+              
+              # Layout
+              fig.update_layout(
+                  xaxis=dict(
+                      title='Fechas',
+                      side='bottom',
+                      dtick='M1',
+                      tickangle=-90,
+                      showgrid=True,
+                      gridcolor='rgba(128,128,128,0.3)',
+                      gridwidth=0.5
+                  ),
+                  yaxis_title='Rubro',
+                  yaxis=dict(
+                      autorange='reversed',
+                      tickvals=tareas_df['y_num'],
+                      ticktext=y_ticktext_styled,
+                      tickfont=dict(size=10),
+                      showgrid=False
+                  ),
+                  shapes=shapes,
+                  height=max(600, len(tareas_df)*25),
+                  showlegend=False,
+                  plot_bgcolor='white',
+                  hovermode='closest'
+              )
+              
+              st.plotly_chart(fig, use_container_width=True)
     
-           import pandas as pd
-           import plotly.graph_objects as go
-           import plotly.express as px
-           import re
-           from datetime import timedelta, datetime
-    
-           st.subheader("📊 Diagrama de Gantt - Ruta Crítica")
-           cost_column_name = None
-           if 'COSTO_TOTAL_RUBRO' in tareas_df.columns:
-               cost_column_name = 'COSTO_TOTAL_RUBRO'
-           elif 'COSTO_TOTAL_x' in tareas_df.columns:
-                cost_column_name = 'COSTO_TOTAL_x'
-           elif 'COSTO_TOTAL' in tareas_df.columns: 
-                cost_column_name = 'COSTO_TOTAL'
-           if cost_column_name:
-               tareas_df[cost_column_name] = pd.to_numeric(tareas_df[cost_column_name], errors='coerce')
-               tareas_df[cost_column_name] = tareas_df[cost_column_name].fillna(0)
-           else:
-               st.warning("⚠️ Advertencia: No se encontró una columna de costos reconocida en el DataFrame.")
-               tareas_df['COSTO_TOTAL_NUMERICO'] = 0
-               cost_column_name = 'COSTO_TOTAL_NUMERICO'
-           if 'IDRUBRO' in tareas_df.columns:
-               tareas_df = tareas_df.sort_values(['IDRUBRO'])
-           else:
-               st.warning("⚠️ Advertencia: Columna 'IDRUBRO' no encontrada para ordenar.")
-       
-           tareas_df['y_num'] = range(len(tareas_df))
-       
-           fig = go.Figure()
-       
-           fecha_inicio_col = 'FECHAINICIO'
-           fecha_fin_col = 'FECHAFIN'
-           if fecha_inicio_col not in tareas_df.columns or fecha_fin_col not in tareas_df.columns:
-                st.warning("❌ Error: No se encontraron columnas de fechas de inicio/fin necesarias para dibujar el Gantt.")
-           
-           inicio_rubro_calc = tareas_df.set_index('IDRUBRO')[fecha_inicio_col].to_dict()
-           fin_rubro_calc = tareas_df.set_index('IDRUBRO')[fecha_fin_col].to_dict()
-           is_critical_dict = tareas_df.set_index('IDRUBRO')['RUTA_CRITICA'].to_dict()
-           dependencias = defaultdict(list)
-           predecesoras_map_details = defaultdict(list)
-           
-           for _, row in tareas_df.iterrows():
-               tarea_id = row['IDRUBRO']
-               predecesoras_str = str(row['PREDECESORAS']).strip()
-           
-               if predecesoras_str not in ['nan', '']:
-                   pre_list = predecesoras_str.split(',')
-                   for pre_entry in pre_list:
-                       pre_entry = pre_entry.strip()
-                       match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre_entry)
-           
-                       if match:
-                           pre_id = int(match.group(1))
-                           tipo_relacion = match.group(2).upper() if match.group(2) else 'FC' 
-                           desfase = int(match.group(3)) if match.group(3) else 0 
-       
-                           if pre_id in tareas_df['IDRUBRO'].values:
-                                dependencias[pre_id].append(tarea_id)
-                                predecesoras_map_details[tarea_id].append((pre_id, tipo_relacion, desfase))
-                           else:
-                                st.warning(f"⚠️ Advertencia: Predecesor ID {pre_id} mencionado en '{pre_entry}' para tarea {tarea_id} no encontrado en la lista de tareas. Ignorando esta dependencia.")
-                       else:
-                           if pre_entry != '': 
-                               st.warning(f"⚠️ Advertencia: Formato de predecesora '{pre_entry}' no reconocido para la tarea {tarea_id}. Ignorando.")
-       
-           shapes = []
-           color_banda = 'rgba(220, 220, 220, 0.6)'
-       
-           for y_pos in range(len(tareas_df)):
-               if y_pos % 2 == 0: 
-                   shapes.append(
-                       dict(
-                           type="rect",
-                           xref="paper",
-                           yref="y",    
-                           x0=0,        
-                           x1=1,    
-                           y0=y_pos - 0.5, 
-                           y1=y_pos + 0.5, 
-                           fillcolor=color_banda,
-                           layer="below", 
-                           line_width=0,
-                       )
-                   )
-           color_no_critica_barra = 'lightblue' 
-           color_critica_barra = 'rgb(255, 133, 133)'
-           
-           for i, row in tareas_df.iterrows():
-               line_color = color_critica_barra if row.get('RUTA_CRITICA', False) else color_no_critica_barra
-               line_width = 12 
-               start_date = row[fecha_inicio_col]
-               end_date = row[fecha_fin_col]
-       
-               if pd.isna(start_date) or pd.isna(end_date):
-                    st.warning(f"⚠️ Advertencia: Fechas inválidas para la tarea {row['RUBRO']} (ID {row['IDRUBRO']}). No se dibujará la barra.")
-                    continue
-       
-               try:
-                   valor_costo = float(row.get(cost_column_name, 0))
-                   costo_formateado = f"S/ {valor_costo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-               except Exception:
-                   costo_formateado = "S/ 0,00"
-       
-               hover_text = (
-                   f"📌 <b>Rubro:</b> {row['RUBRO']}<br>"
-                   f"🗓️ <b>Capítulo:</b> {row['CAPÍTULO']}<br>"
-                   f"📅 <b>Inicio</b> {start_date.strftime('%d/%m/%Y')}<br>"
-                   f"🏁 <b>Fin:</b> {end_date.strftime('%d/%m/%Y')}<br>"
-                   f"⏱️ <b>Duración:</b> {(end_date - start_date).days} días<br>"
-                   f"⏳ <b>Holgura Total:</b> {row.get('HOLGURA_TOTAL', 'N/A')} días<br>"
-                   f"💰 <b>Costo:</b> {costo_formateado}"
-               )
-           
-               fig.add_trace(go.Scatter(
-                   x=[start_date, end_date],
-                   y=[row['y_num'], row['y_num']],
-                   mode='lines',
-                   line=dict(color=line_color, width=line_width),
-                   showlegend=False, 
-                   hoverinfo='text',
-                   text=hover_text,
-               ))
-       
-           offset_days_horizontal = 5 
-       
-           color_no_critica_flecha = 'blue'
-           color_critica_flecha = 'red'
-       
-           for pre_id, sucesores in dependencias.items():
-               pre_row_df = tareas_df[tareas_df['IDRUBRO'] == pre_id]
-               if pre_row_df.empty:
-                   st.warning(f"⚠️ Advertencia: Predecesor ID {pre_id} en el grafo de dependencias no encontrado en tareas_df. Saltando flechas desde este ID.")
-                   continue
-               y_pre = pre_row_df.iloc[0]['y_num']
-               pre_is_critical = is_critical_dict.get(pre_id, False)
-               x_pre_inicio = inicio_rubro_calc.get(pre_id)
-               x_pre_fin = fin_rubro_calc.get(pre_id)
-       
-               if pd.isna(x_pre_inicio) or pd.isna(x_pre_fin):
-                    st.warning(f"⚠️ Advertencia: Fechas calculadas no encontradas o inválidas para el predecesor ID {pre_id}. No se dibujarán flechas desde este ID.")
-                    continue
-           
-               for suc_id in sucesores:
-                   suc_row_df = tareas_df[tareas_df['IDRUBRO'] == suc_id]
-                   if suc_row_df.empty:
-                       st.warning(f"⚠️ Advertencia: Sucesor ID {suc_id} en el grafo de dependencias no encontrado en tareas_df. Saltando flecha hacia este ID.")
-                       continue
-                   y_suc = suc_row_df.iloc[0]['y_num']
-                   suc_is_critical = is_critical_dict.get(suc_id, False)
-                   arrow_color = color_critica_flecha if pre_is_critical and suc_is_critical else color_no_critica_flecha
-                   line_style = dict(color=arrow_color, width=1, dash='dash')
-                   x_suc_inicio = inicio_rubro_calc.get(suc_id)
-                   x_suc_fin = fin_rubro_calc.get(suc_id)
-                   if pd.isna(x_suc_inicio) or pd.isna(x_suc_fin):
-                        st.warning(f"⚠️ Advertencia: Fechas calculadas no encontradas o inválidas para el sucesor ID {suc_id}. No se dibujará la flecha.")
-                        continue
-           
-                   tipo_relacion = 'FC' 
-                   for pre_id_suc, type_suc, desfase_suc in predecesoras_map_details.get(suc_id, []):
-                       if pre_id_suc == pre_id:
-                            tipo_relacion = type_suc.upper() if type_suc else 'FC'
-                            break 
-       
-                   origin_x = x_pre_fin
-                   if tipo_relacion == 'CC':
-                       origin_x = x_pre_inicio
-                   elif tipo_relacion == 'CF':
-                       origin_x = x_pre_inicio
-                   elif tipo_relacion == 'FF':
-                       origin_x = x_pre_fin
-       
-                   connection_x = x_suc_inicio 
-                   arrow_symbol = 'triangle-right' 
-           
-                   if tipo_relacion == 'CC':
-                       connection_x = x_suc_inicio
-                       arrow_symbol = 'triangle-right'
-                   elif tipo_relacion == 'CF':
-                       connection_x = x_suc_fin
-                       arrow_symbol = 'triangle-left'
-                   elif tipo_relacion == 'FF':
-                       connection_x = x_suc_fin
-                       arrow_symbol = 'triangle-left' 
-       
-                   fig.add_trace(go.Scattergl(
-                       x=[origin_x],
-                       y=[y_pre],
-                       mode='markers',
-                       marker=dict(
-                           symbol='circle',
-                           size=8, 
-                           color=arrow_color, 
-                       ),
-                       hoverinfo='none',
-                       showlegend=False,
-                   ))
-       
-                   line_style = dict(color=arrow_color, width=1, dash='dash') 
-                   points_x = [origin_x]
-                   points_y = [y_pre]
-       
-                   if tipo_relacion in ['CC', 'FC']:
-                       elbow1_x = origin_x - timedelta(days=offset_days_horizontal)
-                       elbow1_y = y_pre
-                       elbow2_x = elbow1_x 
-                       elbow2_y = y_suc 
-                       points_x.append(elbow1_x)
-                       points_y.append(elbow1_y)
-                       points_x.append(elbow2_x)
-                       points_y.append(elbow2_y)
-                       points_x.append(connection_x)
-                       points_y.append(y_suc)
-       
-                   elif tipo_relacion in ['CF', 'FF']:
-                        elbow1_x = origin_x
-                        elbow1_y = y_suc 
-                        points_x.append(elbow1_x)
-                        points_y.append(elbow1_y)
-                        points_x.append(connection_x)
-                        points_y.append(y_suc)
-           
-                   else:
-                        st.warning(f"⚠️ Tipo de relación '{tipo_relacion}' no reconocido para dibujar segmentos de flecha entre ID {pre_id} y ID {suc_id}. Saltando flecha.")
-                        continue
-           
-                   fig.add_trace(go.Scatter(
-                       x=points_x,
-                       y=points_y,
-                       mode='lines',
-                       line=line_style,
-                       hoverinfo='none',
-                       showlegend=False,
-                   ))
-           
-                   fig.add_trace(go.Scattergl(
-                       x=[connection_x],
-                       y=[y_suc],
-                       mode='markers',
-                       marker=dict(
-                           symbol=arrow_symbol, 
-                           size=10, 
-                           color=arrow_color,
-                       ),
-                       hoverinfo='none',
-                       showlegend=False,
-                   ))
-           
-           y_ticktext_styled = []
-           for y_pos in range(len(tareas_df)):
-               row_for_y_pos = tareas_df[tareas_df['y_num'] == y_pos]
-               if not row_for_y_pos.empty:
-                   rubro_text = row_for_y_pos.iloc[0]['RUBRO']
-                   y_ticktext_styled.append(f"<b>{rubro_text}</b>" if y_pos % 2 == 0 else rubro_text)    
-               else:
-                    y_ticktext_styled.append("")
-           fig.update_layout(
-               xaxis=dict(
-                   title='Fechas',
-                   side='bottom', 
-                   dtick='M1',
-                   tickangle=-90, 
-                   showgrid=True,
-                   gridcolor='rgba(128,128,128,0.3)',
-                   gridwidth=0.5
-               ),
-               xaxis2=dict(
-                   title='Fechas',
-                   overlaying='x', 
-                   side='top',
-                   dtick='M1', 
-                   tickangle=90,
-                   showgrid=True, 
-                   gridcolor='rgba(128,128,128,0.3)', 
-                   gridwidth=0.5
-               ),
-               yaxis_title='Rubro',
-               yaxis=dict(
-                   autorange='reversed',
-                   tickvals=tareas_df['y_num'],
-                   ticktext=y_ticktext_styled, 
-                   tickfont=dict(size=10),
-                   showgrid=False
-               ),
-               shapes=shapes,
-               height=max(600, len(tareas_df) * 25), 
-               showlegend=False, 
-               plot_bgcolor='white',
-               hovermode='closest'
-           )
-       
-           st.plotly_chart(fig, use_container_width=True)
-
     tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'])
     tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'])
 
@@ -1088,6 +1011,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
