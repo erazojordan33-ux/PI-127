@@ -7,10 +7,9 @@ from collections import defaultdict, deque
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 st.set_page_config(page_title="Gestión de Proyectos - Cronograma Valorado", layout="wide")
-st.title("📊 Gestión de Proyectos - Cronograma Valorado y Recursos")
+st.title("📊 Gestión de Proyectos - Seguimiento y Control")
 
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
-
 tab1, tab2, tab3, tab4 = st.tabs(["Inicio", "Diagrama Gantt", "Recursos", "Presupuesto"])
        
 if archivo_excel:
@@ -23,10 +22,23 @@ if archivo_excel:
         st.stop()
 
     with tab1:   
+
+        st.markdown("### A continuación se presentan los datos importados:")
+
         st.subheader("📋 Tabla Tareas")
         gb = GridOptionsBuilder.from_dataframe(tareas_df)
         gb.configure_default_column(editable=True)
-        tareas_grid = AgGrid(tareas_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
+        grid_options = gb.build()
+        custom_css = {
+           ".ag-header": {  # clase del header completo
+               "background-color": "#0D3B66",  # azul oscuro
+               "color": "white",               # texto blanco
+               "font-weight": "bold",
+               "text-align": "center"
+           }
+       }
+        
+        tareas_grid = AgGrid(tareas_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
         tareas_df = tareas_grid['data']
     
         st.subheader("📋 Tabla Recursos")
@@ -1036,6 +1048,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
