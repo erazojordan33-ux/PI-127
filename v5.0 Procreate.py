@@ -175,7 +175,6 @@ if archivo_excel:
     import math 
     
     try:
-
         if 'tareas_df' not in locals() and 'tareas_df' not in globals():
              raise NameError("tareas_df not found, attempting to load.")
 
@@ -464,10 +463,25 @@ if archivo_excel:
     tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
     # _________________________________________________________________________________________________
     with tab2:
-           st.header("📋 Tareas con Fechas Calculadas y Ruta Crítica")
-           st.dataframe(tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
-                                   'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
-                                   'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']])
+           st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
+
+           df_to_show = tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
+                               'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
+                               'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']]
+       
+           styled_df = df_to_show.style.set_table_styles(
+             [{
+               'selector': 'th',  # fila de encabezados
+               'props': [
+                   ('background-color', '#0D3B66'),  # azul oscuro
+                   ('color', 'white'),               # texto blanco
+                   ('font-weight', 'bold'),          # negrita
+                   ('text-align', 'center')          # centrar texto
+               ]
+             }]
+           )
+           st.dataframe(styled_df)
+           
            dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
            dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
            costos_por_can = dependencias_df.groupby('RUBRO', as_index=False)['COSTO'].sum()
@@ -1065,6 +1079,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
