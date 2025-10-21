@@ -716,7 +716,7 @@ if archivo_excel:
                          showgrid=True,
                          gridcolor='rgba(128,128,128,0.3)',
                          gridwidth=0.5
-                  )
+                  ),
 
                   yaxis_title='Rubro',
                   yaxis=dict(
@@ -1032,6 +1032,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
