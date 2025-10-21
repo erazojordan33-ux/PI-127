@@ -59,15 +59,14 @@ if archivo_excel:
         gb = GridOptionsBuilder.from_dataframe(dependencias_df)
         gb.configure_default_column(editable=True)
         grid_options = gb.build()
-               custom_css = {
+        custom_css = {
                   ".ag-header": {  # clase del header completo
                       "background-color": "#0D3B66",  # azul oscuro
                       "color": "white",               # texto blanco
                       "font-weight": "bold",
                       "text-align": "center"
                   }
-              }    
-        }
+        }    
         dependencias_grid = AgGrid(dependencias_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
         dependencias_df = dependencias_grid['data']
 
@@ -1066,6 +1065,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
