@@ -11,6 +11,8 @@ st.title("📊 Gestión de Proyectos - Cronograma Valorado y Recursos")
 
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
 
+tab1, tab2, tab3, tab 4 = st.tabs(["Inicio", "Diagrama Gantt", "Recursos", "Presupuesto"])
+       
 if archivo_excel:
     try:
         tareas_df = pd.read_excel(archivo_excel, sheet_name='Tareas')
@@ -20,23 +22,27 @@ if archivo_excel:
         st.error("El archivo debe contener las hojas: Tareas, Recursos y Dependencias")
         st.stop()
 
-    st.subheader("📋 Tabla Tareas")
-    gb = GridOptionsBuilder.from_dataframe(tareas_df)
-    gb.configure_default_column(editable=True)
-    tareas_grid = AgGrid(tareas_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
-    tareas_df = tareas_grid['data']
+    with tab1:
 
-    st.subheader("📋 Tabla Recursos")
-    gb = GridOptionsBuilder.from_dataframe(recursos_df)
-    gb.configure_default_column(editable=True)
-    recursos_grid = AgGrid(recursos_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
-    recursos_df = recursos_grid['data']
-
-    st.subheader("📋 Tabla Dependencias")
-    gb = GridOptionsBuilder.from_dataframe(dependencias_df)
-    gb.configure_default_column(editable=True)
-    dependencias_grid = AgGrid(dependencias_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
-    dependencias_df = dependencias_grid['data']
+        st.subheader("📊 Gestión de Proyectos")
+        
+        st.subheader("📋 Tabla Tareas")
+        gb = GridOptionsBuilder.from_dataframe(tareas_df)
+        gb.configure_default_column(editable=True)
+        tareas_grid = AgGrid(tareas_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
+        tareas_df = tareas_grid['data']
+    
+        st.subheader("📋 Tabla Recursos")
+        gb = GridOptionsBuilder.from_dataframe(recursos_df)
+        gb.configure_default_column(editable=True)
+        recursos_grid = AgGrid(recursos_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
+        recursos_df = recursos_grid['data']
+    
+        st.subheader("📋 Tabla Dependencias")
+        gb = GridOptionsBuilder.from_dataframe(dependencias_df)
+        gb.configure_default_column(editable=True)
+        dependencias_grid = AgGrid(dependencias_df, gridOptions=gb.build(), update_mode=GridUpdateMode.MODEL_CHANGED)
+        dependencias_df = dependencias_grid['data']
 
     for col in ['FECHAINICIO','FECHAFIN']:
         tareas_df[col] = pd.to_datetime(tareas_df[col], errors='coerce')
@@ -1026,9 +1032,18 @@ if archivo_excel:
     
     st.plotly_chart(fig, use_container_width=True)
 
+    # ____________________________________________________________________
+    # CREACION DE PESTAÑAS
+
+
+
+
+
+
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
