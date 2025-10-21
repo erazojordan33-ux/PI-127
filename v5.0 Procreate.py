@@ -631,6 +631,15 @@ if archivo_excel:
                              elbow1_x, elbow1_y = origin_x, y_suc
                              points_x.extend([elbow1_x, connection_x])
                              points_y.extend([elbow1_y, y_suc])
+
+                     arrow_symbol = 'triangle-right'  # valor por defecto
+                     if tipo_relacion == 'CC':
+                         arrow_symbol = 'triangle-right'
+                     elif tipo_relacion == 'CF':
+                         arrow_symbol = 'triangle-left'
+                     elif tipo_relacion == 'FF':
+                         arrow_symbol = 'triangle-left'
+
                      # Marcador en el predecesor (círculo)
                      fig.add_trace(go.Scattergl(
                          x=[origin_x],
@@ -1008,6 +1017,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
