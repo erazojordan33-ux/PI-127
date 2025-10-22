@@ -662,27 +662,27 @@ if archivo_excel:
               end_date = row['FECHAFIN']
               duration_days = row['DURACION']
 
-       if pd.isna(start_date) or pd.isna(end_date) or start_date > end_date:
-              st.warning(f"⚠️ Advertencia: Fechas inválidas para la tarea ID {task_id}, recurso '{resource_name}'. Saltando.")
-              continue
+              if pd.isna(start_date) or pd.isna(end_date) or start_date > end_date:
+                     st.warning(f"⚠️ Advertencia: Fechas inválidas para la tarea ID {task_id}, recurso '{resource_name}'. Saltando.")
+                     continue
     
-       if duration_days <= 0:
-            daily_quantity = total_quantity
-            date_range = [start_date]
-       else:
-            daily_quantity = total_quantity / (duration_days + 1)
-            date_range = pd.date_range(start=start_date, end=end_date, freq='D')
-
-       temp_df = pd.DataFrame({
-            'Fecha': date_range,
-            'IDRUBRO': task_id,
-            'RECURSO': resource_name,
-            'UNIDAD': unit,
-            'Cantidad_Diaria': daily_quantity,
-            'Cantidad_Total_Tarea': total_quantity
-        })
-        
-       daily_resource_usage_list.append(temp_df)
+              if duration_days <= 0:
+                   daily_quantity = total_quantity
+                   date_range = [start_date]
+              else:
+                   daily_quantity = total_quantity / (duration_days + 1)
+                   date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+       
+              temp_df = pd.DataFrame({
+                   'Fecha': date_range,
+                   'IDRUBRO': task_id,
+                   'RECURSO': resource_name,
+                   'UNIDAD': unit,
+                   'Cantidad_Diaria': daily_quantity,
+                   'Cantidad_Total_Tarea': total_quantity
+               })
+               
+              daily_resource_usage_list.append(temp_df)
 
        if daily_resource_usage_list:
               all_daily_resource_usage_df = pd.concat(daily_resource_usage_list, ignore_index=True)
@@ -935,6 +935,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
