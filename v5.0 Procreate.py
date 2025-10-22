@@ -89,6 +89,27 @@ if archivo_excel:
               if 'TARIFA' in recursos_df.columns:
                      recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
 
+              def forzar_critica(tareas_df, id_rubro_critico, columna_ruta='RUTA_CRITICA'):
+                  tareas_df = tareas_df.copy()
+                  
+                  # Marcar la tarea seleccionada como crítica
+                  tareas_df.loc[tareas_df['IDRUBRO'] == id_rubro_critico, columna_ruta] = True
+                  
+                  # Encontrar la siguiente tarea crítica en la secuencia (la que dependa de esta)
+                  sucesores = tareas_df[tareas_df['PREDECESORAS'].notna()].copy()
+                  
+                  for idx, fila in sucesores.iterrows():
+                      pre_list = str(fila['PREDECESORAS']).split(',')
+                      pre_list = [p.strip() for p in pre_list]
+                      # Si la tarea seleccionada ya no está como predecesora, la añadimos
+                      if not any(str(id_rubro_critico) in p for p in pre_list):
+                          # Añadimos con tipo FC para que empiece después de que termine la tarea crítica
+                          pre_list.append(f"{id_rubro_critico}FC")
+                          tareas_df.at[idx, 'PREDECESORAS'] = ', '.join(pre_list)
+                  
+                  return tareas_df
+
+
               def calcular_fechas(df):
                      df = df.copy()
                      df.columns = df.columns.str.strip()
@@ -923,6 +944,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
