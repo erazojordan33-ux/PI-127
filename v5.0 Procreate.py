@@ -58,6 +58,14 @@ if archivo_excel:
         st.subheader("📋 Tabla Dependencias")
         gb = GridOptionsBuilder.from_dataframe(dependencias_df)
         gb.configure_default_column(editable=True)
+
+        gb.configure_column(
+           "CANTIDAD",
+           type=["numericColumn", "numberColumnFilter", "customNumericFormat"],
+           precision=2,  # número de decimales
+           editable=True
+       )
+
         grid_options = gb.build()
         custom_css = {
                   ".ag-header": {  # clase del header completo
@@ -1056,6 +1064,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
