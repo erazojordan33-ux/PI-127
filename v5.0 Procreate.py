@@ -681,7 +681,8 @@ if archivo_excel:
             'Cantidad_Diaria': daily_quantity,
             'Cantidad_Total_Tarea': total_quantity
         })
-        daily_resource_usage_list.append(temp_df)
+        
+       daily_resource_usage_list.append(temp_df)
 
        if daily_resource_usage_list:
               all_daily_resource_usage_df = pd.concat(daily_resource_usage_list, ignore_index=True)
@@ -935,6 +936,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
