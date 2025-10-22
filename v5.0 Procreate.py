@@ -104,12 +104,12 @@ if archivo_excel:
                             if predecesoras_str not in ['nan','']:
                                    pre_list = predecesoras_str.split(',')
                                    for pre in pre_list:
-                                   pre = pre.strip()
-                                   match = re.match(r'(\d+)', pre)
-                                   if match:
-                                          pre_id = int(match.group(1))
-                                          dependencias[pre_id].append(tarea_id)
-                                          pre_count[tarea_id] += 1
+                                          pre = pre.strip()
+                                          match = re.match(r'(\d+)', pre)
+                                          if match:
+                                                 pre_id = int(match.group(1))
+                                                 dependencias[pre_id].append(tarea_id)
+                                                 pre_count[tarea_id] += 1
 
                      queue = deque([tid for tid in df['IDRUBRO'] if pre_count[tid] == 0])
                      inicio_calc = inicio_rubro.copy()
@@ -941,6 +941,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
