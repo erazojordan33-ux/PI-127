@@ -445,19 +445,14 @@ if archivo_excel:
               
               if warnings_list:
                   st.warning("⚠️ Advertencias detectadas:\n" + "\n".join(warnings_list))
-              
-              # Diccionarios de fechas y críticos
+
               inicio_rubro_calc = tareas_df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
               fin_rubro_calc = tareas_df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
               is_critical_dict = tareas_df.set_index('IDRUBRO')['RUTA_CRITICA'].to_dict()
-              
-              # Crear figura
+
               fig = go.Figure()
-              
-              # Bandas alternadas para filas
               shapes = []
-              
-              # Colores de barras
+
               color_no_critica_barra = 'lightblue'
               color_critica_barra = 'rgb(255, 133, 133)'
               
@@ -643,42 +638,42 @@ if archivo_excel:
               
               st.plotly_chart(fig, use_container_width=True)
     
-    tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'])
-    tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'])
+       tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'])
+       tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'])
 
-    tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
-    dependencias_df['RUBRO'] = dependencias_df['RUBRO'].str.strip()
+       tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
+       dependencias_df['RUBRO'] = dependencias_df['RUBRO'].str.strip()
         
-    recursos_tareas_df = dependencias_df.merge(
-        tareas_df[['IDRUBRO', 'RUBRO', 'FECHAINICIO', 'FECHAFIN', 'DURACION']],
-        left_on='RUBRO',
-        right_on='RUBRO',
-        how='left'
-    )
+       recursos_tareas_df = dependencias_df.merge(
+              tareas_df[['IDRUBRO', 'RUBRO', 'FECHAINICIO', 'FECHAFIN', 'DURACION']],
+              left_on='RUBRO',
+              right_on='RUBRO',
+              how='left'
+       )
 
-    daily_resource_usage_list = []
+       daily_resource_usage_list = []
 
-    for index, row in recursos_tareas_df.iterrows():
-        task_id = row['IDRUBRO']
-        resource_name = row['RECURSO']
-        unit = row['UNIDAD']
-        total_quantity = row['CANTIDAD']
-        start_date = row['FECHAINICIO']
-        end_date = row['FECHAFIN']
-        duration_days = row['DURACION']
+       for index, row in recursos_tareas_df.iterrows():
+              task_id = row['IDRUBRO']
+              resource_name = row['RECURSO']
+              unit = row['UNIDAD']
+              total_quantity = row['CANTIDAD']
+              start_date = row['FECHAINICIO']
+              end_date = row['FECHAFIN']
+              duration_days = row['DURACION']
 
-        if pd.isna(start_date) or pd.isna(end_date) or start_date > end_date:
-            st.warning(f"⚠️ Advertencia: Fechas inválidas para la tarea ID {task_id}, recurso '{resource_name}'. Saltando.")
-            continue
+       if pd.isna(start_date) or pd.isna(end_date) or start_date > end_date:
+              st.warning(f"⚠️ Advertencia: Fechas inválidas para la tarea ID {task_id}, recurso '{resource_name}'. Saltando.")
+              continue
     
-        if duration_days <= 0:
+       if duration_days <= 0:
             daily_quantity = total_quantity
             date_range = [start_date]
-        else:
+       else:
             daily_quantity = total_quantity / (duration_days + 1)
             date_range = pd.date_range(start=start_date, end=end_date, freq='D')
 
-        temp_df = pd.DataFrame({
+       temp_df = pd.DataFrame({
             'Fecha': date_range,
             'IDRUBRO': task_id,
             'RECURSO': resource_name,
@@ -688,40 +683,40 @@ if archivo_excel:
         })
         daily_resource_usage_list.append(temp_df)
 
-    if daily_resource_usage_list:
-        all_daily_resource_usage_df = pd.concat(daily_resource_usage_list, ignore_index=True)
-    else:
-        st.warning("\nNo se generaron datos de uso diario de recursos.")
-        all_daily_resource_usage_df = pd.DataFrame()
+       if daily_resource_usage_list:
+              all_daily_resource_usage_df = pd.concat(daily_resource_usage_list, ignore_index=True)
+       else:
+              st.warning("\nNo se generaron datos de uso diario de recursos.")
+              all_daily_resource_usage_df = pd.DataFrame()
         
-    daily_resource_demand_df = all_daily_resource_usage_df.groupby(
-        ['Fecha', 'RECURSO', 'UNIDAD'],
-        as_index=False
-    )['Cantidad_Diaria'].sum()
+       daily_resource_demand_df = all_daily_resource_usage_df.groupby(
+              ['Fecha', 'RECURSO', 'UNIDAD'],
+              as_index=False
+       )['Cantidad_Diaria'].sum()
 
-    daily_resource_demand_df.rename(columns={'Cantidad_Diaria': 'Demanda_Diaria_Total'}, inplace=True)
-    daily_resource_demand_df['RECURSO'] = daily_resource_demand_df['RECURSO'].str.strip()
-    recursos_df['RECURSO'] = recursos_df['RECURSO'].str.strip()
+       daily_resource_demand_df.rename(columns={'Cantidad_Diaria': 'Demanda_Diaria_Total'}, inplace=True)
+       daily_resource_demand_df['RECURSO'] = daily_resource_demand_df['RECURSO'].str.strip()
+       recursos_df['RECURSO'] = recursos_df['RECURSO'].str.strip()
     
-    resource_demand_with_details_df = daily_resource_demand_df.merge(
-        recursos_df[['RECURSO', 'TYPE', 'TARIFA']],
-        on='RECURSO',
-        how='left'
-    )
+       resource_demand_with_details_df = daily_resource_demand_df.merge(
+              recursos_df[['RECURSO', 'TYPE', 'TARIFA']],
+              on='RECURSO',
+              how='left'
+       )
 
-    resource_demand_with_details_df['Costo_Diario'] = resource_demand_with_details_df['Demanda_Diaria_Total'] * resource_demand_with_details_df['TARIFA']
+       resource_demand_with_details_df['Costo_Diario'] = resource_demand_with_details_df['Demanda_Diaria_Total'] * resource_demand_with_details_df['TARIFA']
 
-    daily_cost_by_type_df = resource_demand_with_details_df.groupby(
-        ['Fecha', 'TYPE'],
-        as_index=False
-    )['Costo_Diario'].sum()
+       daily_cost_by_type_df = resource_demand_with_details_df.groupby(
+              ['Fecha', 'TYPE'],
+              as_index=False
+       )['Costo_Diario'].sum()
 
-    daily_demand_by_resource_df = resource_demand_with_details_df.groupby(
-        ['Fecha', 'RECURSO', 'UNIDAD'],
-        as_index=False
-    )['Demanda_Diaria_Total'].sum()
+       daily_demand_by_resource_df = resource_demand_with_details_df.groupby(
+              ['Fecha', 'RECURSO', 'UNIDAD'],
+              as_index=False
+       )['Demanda_Diaria_Total'].sum()
 
-    with tab3:
+       with tab3:
 
            import pandas as pd
            import plotly.graph_objects as go
@@ -940,6 +935,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
