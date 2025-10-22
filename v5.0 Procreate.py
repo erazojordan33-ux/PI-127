@@ -340,8 +340,7 @@ if archivo_excel:
                    duration = duracion_dict.get(tid, 0)
                    if not isinstance(duration, (int, float)): duration = 0
                    ls[tid] = lf[tid] - timedelta(days=duration)
-                   st.warning(f"⚠️ Advertencia: Tarea final ID {tid} no procesada completamente
-
+                   st.warning(f"⚠️ Advertencia: Tarea final ID {tid} no procesada completamente hacia adelante. Inicializando LF/LS basado en su EF.")
      
        tareas_df['FECHA_INICIO_TEMPRANA'] = tareas_df['IDRUBRO'].map(es)
        tareas_df['FECHA_FIN_TEMPRANA'] = tareas_df['IDRUBRO'].map(ef)
@@ -941,6 +940,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
