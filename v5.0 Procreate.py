@@ -89,25 +89,46 @@ if archivo_excel:
               if 'TARIFA' in recursos_df.columns:
                      recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
 
-              def forzar_critica(tareas_df, id_rubro_critico, columna_ruta='RUTA_CRITICA'):
+              def actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA'):
                   tareas_df = tareas_df.copy()
                   
-                  # Marcar la tarea seleccionada como crítica
-                  tareas_df.loc[tareas_df['IDRUBRO'] == id_rubro_critico, columna_ruta] = True
+                  # Guardar copia anterior para detectar cambios
+                  if 'prev_ruta_critica' not in st.session_state:
+                      st.session_state.prev_ruta_critica = tareas_df[columna_ruta].copy()
                   
-                  # Encontrar la siguiente tarea crítica en la secuencia (la que dependa de esta)
-                  sucesores = tareas_df[tareas_df['PREDECESORAS'].notna()].copy()
+                  prev = st.session_state.prev_ruta_critica
+                  curr = tareas_df[columna_ruta]
                   
-                  for idx, fila in sucesores.iterrows():
-                      pre_list = str(fila['PREDECESORAS']).split(',')
-                      pre_list = [p.strip() for p in pre_list]
-                      # Si la tarea seleccionada ya no está como predecesora, la añadimos
-                      if not any(str(id_rubro_critico) in p for p in pre_list):
-                          # Añadimos con tipo FC para que empiece después de que termine la tarea crítica
-                          pre_list.append(f"{id_rubro_critico}FC")
-                          tareas_df.at[idx, 'PREDECESORAS'] = ', '.join(pre_list)
+                  for idx, tarea_id in enumerate(tareas_df['IDRUBRO']):
+                      fue_critica = prev.iloc[idx]
+                      es_critica = curr.iloc[idx]
+                      
+                      if not fue_critica and es_critica:
+                          # Caso: no crítica -> crítica
+                          # Buscar la siguiente tarea crítica (sucesor en la secuencia)
+                          sucesores = tareas_df[tareas_df['PREDECESORAS'].notna()]
+                          for s_idx, fila in sucesores.iterrows():
+                              pre_list = str(fila['PREDECESORAS']).split(',')
+                              pre_list = [p.strip() for p in pre_list]
+                              if not any(str(tarea_id) in p for p in pre_list):
+                                  # Añadir dependencia FC
+                                  pre_list.append(f"{tarea_id}FC")
+                                  tareas_df.at[s_idx, 'PREDECESORAS'] = ', '.join(pre_list)
+                      
+                      elif fue_critica and not es_critica:
+                          # Caso: crítica -> no crítica
+                          # Eliminar dependencias automáticas creadas por esta función
+                          for s_idx, fila in tareas_df.iterrows():
+                              pre_list = str(fila['PREDECESORAS']).split(',')
+                              pre_list = [p.strip() for p in pre_list if p != f"{tarea_id}FC"]
+                              tareas_df.at[s_idx, 'PREDECESORAS'] = ', '.join(pre_list)
+                  
+                  # Actualizar copia anterior
+                  st.session_state.prev_ruta_critica = curr.copy()
                   
                   return tareas_df
+
+              tareas_df = actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA')
 
 
               def calcular_fechas(df):
@@ -944,6 +965,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
