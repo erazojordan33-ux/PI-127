@@ -89,6 +89,11 @@ if archivo_excel:
               if 'TARIFA' in recursos_df.columns:
                      recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
 
+
+              if 'RUTA_CRITICA' not in tareas_df.columns:
+                  tareas_df['RUTA_CRITICA'] = False
+              
+
               def actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA'):
                   # Solo actuar si la columna existe
                   if columna_ruta not in tareas_df.columns:
@@ -129,7 +134,7 @@ if archivo_excel:
                   return tareas_df
 
 
-              tareas_df = actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA')
+
 
 
               def calcular_fechas(df):
@@ -382,6 +387,8 @@ if archivo_excel:
        tareas_df['HOLGURA_LIBRE'] = tareas_df['HOLGURA_LIBRE_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
        tolerance_days = 1e-9
        tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
+
+       tareas_df = actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA')
 
     # _________________________________________________________________________________________________
        with tab2:
@@ -966,6 +973,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
