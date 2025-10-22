@@ -828,49 +828,48 @@ if archivo_excel:
            st.plotly_chart(fig_resource_timeline, use_container_width=True)
     #__________________________________________________________________________________________________
 
-    if 'resource_demand_with_details_df' in locals() or 'resource_demand_with_details_df' in globals():
-        required_columns_and_types = {
-            'Fecha': 'datetime64[ns]',
-            'RECURSO': 'object', 
-            'UNIDAD': 'object', 
-            'Demanda_Diaria_Total': 'float64', 
-            'TYPE': 'object',
-            'TARIFA': 'float64', 
-            'Costo_Diario': 'float64' 
-        }
-        missing_columns = [col for col in required_columns_and_types if col not in resource_demand_with_details_df.columns]
-        if not missing_columns:
-            type_issues = []
-            for col, expected_type in required_columns_and_types.items():
-                if expected_type == 'object':
-                    if pd.api.types.is_numeric_dtype(resource_demand_with_details_df[col]):
-                        type_issues.append(f"Column '{col}' is numeric but expected object (string).")
-                elif not pd.api.types.is_dtype_equal(resource_demand_with_details_df[col].dtype, expected_type):
-                     if expected_type == 'float64' and pd.api.types.is_integer_dtype(resource_demand_with_details_df[col]):
-                          pass 
-                     else:
-                        type_issues.append(f"Column '{col}' has type {resource_demand_with_details_df[col].dtype} but expected {expected_type}.")
-        else:
-            st.warning(f"❌ Error: Missing required columns in resource_demand_with_details_df: {missing_columns}")
-    else:
-        st.warning("❌ Error: DataFrame 'resource_demand_with_details_df' not found.")
+       if 'resource_demand_with_details_df' in locals() or 'resource_demand_with_details_df' in globals():
+              required_columns_and_types = {
+                     'Fecha': 'datetime64[ns]',
+                     'RECURSO': 'object', 
+                     'UNIDAD': 'object', 
+                     'Demanda_Diaria_Total': 'float64', 
+                     'TYPE': 'object',
+                     'TARIFA': 'float64', 
+                     'Costo_Diario': 'float64' 
+              }
+              missing_columns = [col for col in required_columns_and_types if col not in resource_demand_with_details_df.columns]
+              if not missing_columns:
+                     type_issues = []
+                     for col, expected_type in required_columns_and_types.items():
+                            if expected_type == 'object':
+                                   if pd.api.types.is_numeric_dtype(resource_demand_with_details_df[col]):
+                                          type_issues.append(f"Column '{col}' is numeric but expected object (string).")
+                            elif not pd.api.types.is_dtype_equal(resource_demand_with_details_df[col].dtype, expected_type):
+                                   if expected_type == 'float64' and pd.api.types.is_integer_dtype(resource_demand_with_details_df[col]):
+                                          pass 
+                                   else:
+                                          type_issues.append(f"Column '{col}' has type {resource_demand_with_details_df[col].dtype} but expected {expected_type}.")
+              else:
+                     st.warning(f"❌ Error: Missing required columns in resource_demand_with_details_df: {missing_columns}")
+       else:
+              st.warning("❌ Error: DataFrame 'resource_demand_with_details_df' not found.")
 
-    resource_demand_with_details_df['Fecha'] = pd.to_datetime(resource_demand_with_details_df['Fecha'])
-    resource_demand_with_details_df['Periodo_Mensual'] = resource_demand_with_details_df['Fecha'].dt.to_period('M')
-    monthly_costs_df = resource_demand_with_details_df.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
-    monthly_costs_df['Periodo_Mensual'] = monthly_costs_df['Periodo_Mensual'].astype(str) 
-
-    monthly_costs_df['Costo_Acumulado'] = monthly_costs_df['Costo_Diario'].cumsum()
+       resource_demand_with_details_df['Fecha'] = pd.to_datetime(resource_demand_with_details_df['Fecha'])
+       resource_demand_with_details_df['Periodo_Mensual'] = resource_demand_with_details_df['Fecha'].dt.to_period('M')
+       monthly_costs_df = resource_demand_with_details_df.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
+       monthly_costs_df['Periodo_Mensual'] = monthly_costs_df['Periodo_Mensual'].astype(str) 
+       monthly_costs_df['Costo_Acumulado'] = monthly_costs_df['Costo_Diario'].cumsum()
      
-    def format_currency(value):
-        if pd.notna(value):
-            return f"S/ {value:,.2f}"  
-        return "S/ 0.00"  
+       def format_currency(value):
+              if pd.notna(value):
+                     return f"S/ {value:,.2f}"  
+              return "S/ 0.00"  
+       
+       monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
+       monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
 
-    monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
-    monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
-
-    with tab4:
+       with tab4:
            from plotly.subplots import make_subplots
            import plotly.graph_objects as go
            
@@ -935,7 +934,8 @@ if archivo_excel:
 
 
 else:
-    st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+       st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
