@@ -23,7 +23,7 @@ if archivo_excel:
         st.stop()
 
     # --- Tab 1: Mostrar tablas originales ---
-                with tab1:
+    with tab1:
                     st.markdown("#### Tablas importadas")
             
                     # Función para mostrar tabla editable
@@ -866,6 +866,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
