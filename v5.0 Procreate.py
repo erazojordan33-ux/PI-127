@@ -482,21 +482,21 @@ if archivo_excel:
                           elif pre_entry != '':
                               warnings_list.append(f"Formato de predecesora '{pre_entry}' no reconocido para tarea {tarea_id}.")
               
-            if warnings_list:
+              if warnings_list:
                   st.warning("⚠️ Advertencias detectadas:\n" + "\n".join(warnings_list))
 
-            inicio_rubro_calc = tareas_df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
-            fin_rubro_calc = tareas_df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
-            is_critical_dict = tareas_df.set_index('IDRUBRO')['RUTA_CRITICA'].to_dict()
+              inicio_rubro_calc = tareas_df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
+              fin_rubro_calc = tareas_df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
+              is_critical_dict = tareas_df.set_index('IDRUBRO')['RUTA_CRITICA'].to_dict()
 
-            fig = go.Figure()
-            shapes = []
+              fig = go.Figure()
+              shapes = []
 
-            color_no_critica_barra = 'lightblue'
-            color_critica_barra = 'rgb(255, 133, 133)'
+              color_no_critica_barra = 'lightblue'
+              color_critica_barra = 'rgb(255, 133, 133)'
               
               # Agregar barras
-            for i, row in tareas_df.iterrows():
+              for i, row in tareas_df.iterrows():
                   line_color = color_critica_barra if row.get('RUTA_CRITICA', False) else color_no_critica_barra
                   line_width = 12
                   start_date = row['FECHAINICIO']
@@ -529,7 +529,7 @@ if archivo_excel:
                   ))
               
               # Función para dibujar flechas de dependencias
-            def dibujar_flecha(pre_id, suc_id, tipo_relacion, offset=5):
+              def dibujar_flecha(pre_id, suc_id, tipo_relacion, offset=5):
                      y_pre = tareas_df.loc[tareas_df['IDRUBRO']==pre_id, 'y_num_plot'].values[0]
                      y_suc = tareas_df.loc[tareas_df['IDRUBRO']==suc_id, 'y_num_plot'].values[0]
                      pre_is_critical = is_critical_dict.get(pre_id, False)
@@ -594,7 +594,7 @@ if archivo_excel:
                      ))
                                    
               # Dibujar todas las flechas
-            for pre_id, sucesores in dependencias.items():
+              for pre_id, sucesores in dependencias.items():
                   for suc_id in sucesores:
                       tipo_rel = 'FC'
                       for pre_tmp, type_tmp, _ in predecesoras_map_details.get(suc_id, []):
@@ -604,8 +604,8 @@ if archivo_excel:
                       dibujar_flecha(pre_id, suc_id, tipo_rel)
               
               # Preparar Y-ticks
-            y_ticktext_styled = []
-            for y_pos in range(len(tareas_df)):
+              y_ticktext_styled = []
+              for y_pos in range(len(tareas_df)):
                   row = tareas_df[tareas_df['y_num'] == y_pos]
                   if not row.empty:
                       rubro_text = row.iloc[0]['RUBRO']
@@ -613,13 +613,13 @@ if archivo_excel:
                   else:
                       y_ticktext_styled.append("")
 
-            fecha_min = tareas_df['FECHAINICIO'].min()
-            fecha_max = tareas_df['FECHAFIN'].max()
-            years = list(range(fecha_min.year, fecha_max.year + 1))
-            colors = ['rgba(200,200,200,0.2)', 'rgba(100,100,100,0.2)']  # gris claro y blanco huevo
-            shapes_years = []
+              fecha_min = tareas_df['FECHAINICIO'].min()
+              fecha_max = tareas_df['FECHAFIN'].max()
+              years = list(range(fecha_min.year, fecha_max.year + 1))
+              colors = ['rgba(200,200,200,0.2)', 'rgba(100,100,100,0.2)']  # gris claro y blanco huevo
+              shapes_years = []
               
-            for i, year in enumerate(years):
+              for i, year in enumerate(years):
                   shapes_years.append(
                       dict(
                           type='rect',
@@ -636,10 +636,10 @@ if archivo_excel:
                       )
                   )
 
-            shapes = shapes + shapes_years
+              shapes = shapes + shapes_years
               
               # Layout
-            fig.update_layout(
+              fig.update_layout(
                   xaxis=dict(
                       title='Fechas',
                       side='bottom',
@@ -665,7 +665,7 @@ if archivo_excel:
                   hovermode='closest'
               )
 
-            fig.update_xaxes(
+              fig.update_xaxes(
                   side="top",
                   overlaying="x",
                   dtick='M1',
@@ -675,24 +675,24 @@ if archivo_excel:
                   gridwidth=0.5
               )
               
-            st.plotly_chart(fig, use_container_width=True)
+              st.plotly_chart(fig, use_container_width=True)
     
-    tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'])
-    tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'])
+       tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'])
+       tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'])
 
-    tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
-    dependencias_df['RUBRO'] = dependencias_df['RUBRO'].str.strip()
+       tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
+       dependencias_df['RUBRO'] = dependencias_df['RUBRO'].str.strip()
         
-    recursos_tareas_df = dependencias_df.merge(
+       recursos_tareas_df = dependencias_df.merge(
               tareas_df[['IDRUBRO', 'RUBRO', 'FECHAINICIO', 'FECHAFIN', 'DURACION']],
               left_on='RUBRO',
               right_on='RUBRO',
               how='left'
-    )
+       )
 
-    daily_resource_usage_list = []
+       daily_resource_usage_list = []
 
-    for index, row in recursos_tareas_df.iterrows():
+       for index, row in recursos_tareas_df.iterrows():
               task_id = row['IDRUBRO']
               resource_name = row['RECURSO']
               unit = row['UNIDAD']
@@ -723,40 +723,39 @@ if archivo_excel:
                
               daily_resource_usage_list.append(temp_df)
 
-    if daily_resource_usage_list:
+       if daily_resource_usage_list:
               all_daily_resource_usage_df = pd.concat(daily_resource_usage_list, ignore_index=True)
-    else:
+       else:
               st.warning("\nNo se generaron datos de uso diario de recursos.")
               all_daily_resource_usage_df = pd.DataFrame()
         
-    daily_resource_demand_df = all_daily_resource_usage_df.groupby(
+       daily_resource_demand_df = all_daily_resource_usage_df.groupby(
               ['Fecha', 'RECURSO', 'UNIDAD'],
               as_index=False
-    )['Cantidad_Diaria'].sum()
+       )['Cantidad_Diaria'].sum()
 
-    daily_resource_demand_df.rename(columns={'Cantidad_Diaria': 'Demanda_Diaria_Total'}, inplace=True)
-    daily_resource_demand_df['RECURSO'] = daily_resource_demand_df['RECURSO'].str.strip()
-    recursos_df['RECURSO'] = recursos_df['RECURSO'].str.strip()
+       daily_resource_demand_df.rename(columns={'Cantidad_Diaria': 'Demanda_Diaria_Total'}, inplace=True)
+       daily_resource_demand_df['RECURSO'] = daily_resource_demand_df['RECURSO'].str.strip()
+       recursos_df['RECURSO'] = recursos_df['RECURSO'].str.strip()
     
-    resource_demand_with_details_df = daily_resource_demand_df.merge(
+       resource_demand_with_details_df = daily_resource_demand_df.merge(
               recursos_df[['RECURSO', 'TYPE', 'TARIFA']],
               on='RECURSO',
               how='left'
-    )
+       )
+       resource_demand_with_details_df['Costo_Diario'] = resource_demand_with_details_df['Demanda_Diaria_Total'] * resource_demand_with_details_df['TARIFA']
 
-    resource_demand_with_details_df['Costo_Diario'] = resource_demand_with_details_df['Demanda_Diaria_Total'] * resource_demand_with_details_df['TARIFA']
-
-    daily_cost_by_type_df = resource_demand_with_details_df.groupby(
+       daily_cost_by_type_df = resource_demand_with_details_df.groupby(
               ['Fecha', 'TYPE'],
               as_index=False
-    )['Costo_Diario'].sum()
+       )['Costo_Diario'].sum()
 
-    daily_demand_by_resource_df = resource_demand_with_details_df.groupby(
+       daily_demand_by_resource_df = resource_demand_with_details_df.groupby(
               ['Fecha', 'RECURSO', 'UNIDAD'],
               as_index=False
-    )['Demanda_Diaria_Total'].sum()
+       )['Demanda_Diaria_Total'].sum()
 
-    with tab3:
+       with tab3:
 
            import pandas as pd
            import plotly.graph_objects as go
@@ -867,7 +866,7 @@ if archivo_excel:
            st.plotly_chart(fig_resource_timeline, use_container_width=True)
     #__________________________________________________________________________________________________
 
-    if 'resource_demand_with_details_df' in locals() or 'resource_demand_with_details_df' in globals():
+       if 'resource_demand_with_details_df' in locals() or 'resource_demand_with_details_df' in globals():
               required_columns_and_types = {
                      'Fecha': 'datetime64[ns]',
                      'RECURSO': 'object', 
@@ -891,24 +890,24 @@ if archivo_excel:
                                           type_issues.append(f"Column '{col}' has type {resource_demand_with_details_df[col].dtype} but expected {expected_type}.")
               else:
                      st.warning(f"❌ Error: Missing required columns in resource_demand_with_details_df: {missing_columns}")
-    else:
+       else:
               st.warning("❌ Error: DataFrame 'resource_demand_with_details_df' not found.")
 
-    resource_demand_with_details_df['Fecha'] = pd.to_datetime(resource_demand_with_details_df['Fecha'])
-    resource_demand_with_details_df['Periodo_Mensual'] = resource_demand_with_details_df['Fecha'].dt.to_period('M')
-    monthly_costs_df = resource_demand_with_details_df.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
-    monthly_costs_df['Periodo_Mensual'] = monthly_costs_df['Periodo_Mensual'].astype(str) 
-    monthly_costs_df['Costo_Acumulado'] = monthly_costs_df['Costo_Diario'].cumsum()
+       resource_demand_with_details_df['Fecha'] = pd.to_datetime(resource_demand_with_details_df['Fecha'])
+       resource_demand_with_details_df['Periodo_Mensual'] = resource_demand_with_details_df['Fecha'].dt.to_period('M')
+       monthly_costs_df = resource_demand_with_details_df.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
+       monthly_costs_df['Periodo_Mensual'] = monthly_costs_df['Periodo_Mensual'].astype(str) 
+       monthly_costs_df['Costo_Acumulado'] = monthly_costs_df['Costo_Diario'].cumsum()
      
-    def format_currency(value):
+       def format_currency(value):
               if pd.notna(value):
                      return f"S/ {value:,.2f}"  
               return "S/ 0.00"  
        
-    monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
-    monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
+       monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
+       monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
 
-    with tab4:
+       with tab4:
            from plotly.subplots import make_subplots
            import plotly.graph_objects as go
            
@@ -973,7 +972,8 @@ if archivo_excel:
 
 
 else:
-    st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+       st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
