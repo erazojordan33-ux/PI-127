@@ -14,7 +14,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Inicio", "Diagrama Gantt", "Recursos", "Presu
        
 if archivo_excel:
        try:
-              tareas_df_original = pd.read_excel(archivo_excel, sheet_name='Tareas')
+              tareas_df = pd.read_excel(archivo_excel, sheet_name='Tareas')
               recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
               dependencias_df = pd.read_excel(archivo_excel, sheet_name='Dependencias')
        except:
@@ -25,7 +25,7 @@ if archivo_excel:
               st.markdown("#### A continuación se presentan los datos importados:")
 
               st.subheader("📋 Tabla Tareas")
-              gb = GridOptionsBuilder.from_dataframe(tareas_df_original)
+              gb = GridOptionsBuilder.from_dataframe(tareas_df)
               gb.configure_default_column(editable=True)
               grid_options = gb.build()
               custom_css = {
@@ -36,8 +36,8 @@ if archivo_excel:
                      "text-align": "center"
                      }
               }
-              tareas_grid = AgGrid(tareas_df_original, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
-              tareas_df_original = tareas_grid['data']
+              tareas_grid = AgGrid(tareas_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
+              tareas_df = tareas_grid['data']
               
               st.subheader("📋 Tabla Recursos")
               gb = GridOptionsBuilder.from_dataframe(recursos_df)
@@ -74,11 +74,6 @@ if archivo_excel:
               }    
               dependencias_grid = AgGrid(dependencias_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
               dependencias_df = dependencias_grid['data']
-
-              if "tareas_df_work" in st.session_state:
-                  tareas_df = st.session_state.tareas_df_work
-              else:
-                  tareas_df = tareas_df_original
               
               for col in ['FECHAINICIO','FECHAFIN']:
                      tareas_df[col] = pd.to_datetime(tareas_df[col], errors='coerce')
@@ -973,6 +968,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
