@@ -14,7 +14,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Inicio", "Diagrama Gantt", "Recursos", "Presu
        
 if archivo_excel:
        try:
-              tareas_df = pd.read_excel(archivo_excel, sheet_name='Tareas')
+              tareas_df_original = pd.read_excel(archivo_excel, sheet_name='Tareas')
               recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
               dependencias_df = pd.read_excel(archivo_excel, sheet_name='Dependencias')
        except:
@@ -25,7 +25,7 @@ if archivo_excel:
               st.markdown("#### A continuación se presentan los datos importados:")
 
               st.subheader("📋 Tabla Tareas")
-              gb = GridOptionsBuilder.from_dataframe(tareas_df)
+              gb = GridOptionsBuilder.from_dataframe(tareas_df_original)
               gb.configure_default_column(editable=True)
               grid_options = gb.build()
               custom_css = {
@@ -36,8 +36,8 @@ if archivo_excel:
                      "text-align": "center"
                      }
               }
-              tareas_grid = AgGrid(tareas_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
-              tareas_df = tareas_grid['data']
+              tareas_grid = AgGrid(tareas_df_original, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
+              tareas_df_original = tareas_grid['data']
               
               st.subheader("📋 Tabla Recursos")
               gb = GridOptionsBuilder.from_dataframe(recursos_df)
@@ -75,6 +75,11 @@ if archivo_excel:
               dependencias_grid = AgGrid(dependencias_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
               dependencias_df = dependencias_grid['data']
 
+              if "tareas_df_work" in st.session_state:
+                  tareas_df = st.session_state.tareas_df_work
+              else:
+                  tareas_df = tareas_df_original
+              
               for col in ['FECHAINICIO','FECHAFIN']:
                      tareas_df[col] = pd.to_datetime(tareas_df[col], errors='coerce')
                      tareas_df[col] = tareas_df[col].dt.strftime('%d/%m/%Y')
@@ -88,11 +93,6 @@ if archivo_excel:
 
               if 'TARIFA' in recursos_df.columns:
                      recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
-
-
-              if 'RUTA_CRITICA' not in tareas_df.columns:
-                  tareas_df['RUTA_CRITICA'] = False
-              
 
               def actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA'):
                   # Solo actuar si la columna existe
@@ -132,10 +132,6 @@ if archivo_excel:
                   st.session_state.prev_ruta_critica = curr.copy()
                   
                   return tareas_df
-
-
-
-
 
               def calcular_fechas(df):
                      df = df.copy()
@@ -213,6 +209,7 @@ if archivo_excel:
     
                      return df
 
+              tareas_df = actualizar_dependencias_por_critica(tareas_df)
               tareas_df = calcular_fechas(tareas_df)
 
     # _________________________________________________________________________________________________
@@ -388,7 +385,10 @@ if archivo_excel:
        tolerance_days = 1e-9
        tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
 
-       tareas_df = actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA')
+       tareas_df_work=tareas_df
+       st.session_state.tareas_df_work = tareas_df_work
+
+
 
     # _________________________________________________________________________________________________
        with tab2:
@@ -973,6 +973,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
