@@ -388,8 +388,6 @@ if archivo_excel:
        tareas_df_work=tareas_df
        st.session_state.tareas_df_work = tareas_df_work
 
-
-
     # _________________________________________________________________________________________________
        with tab2:
               st.subheader("📋 Tabla Resumen")
@@ -415,7 +413,7 @@ if archivo_excel:
               AgGrid(
                   df_preview,
                   gridOptions=grid_options,
-                  update_mode=GridUpdateMode.NO_UPDATE,  # NO actualiza DataFrame original
+                  update_mode=GridUpdateMode.MODEL_CHANGED, 
                   custom_css=custom_css,
                   fit_columns_on_grid_load=True,
                   height=400
@@ -973,6 +971,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
