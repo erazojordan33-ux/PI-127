@@ -9,418 +9,310 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 st.set_page_config(page_title="Gestión de Proyectos - Cronograma Valorado", layout="wide")
 st.title("📊 Gestión de Proyectos - Seguimiento y Control")
 
+# --- Carga de archivo ---
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
 tab1, tab2, tab3, tab4 = st.tabs(["Inicio", "Diagrama Gantt", "Recursos", "Presupuesto"])
-       
+
 if archivo_excel:
-       try:
-              tareas_df_original = pd.read_excel(archivo_excel, sheet_name='Tareas')
-              recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
-              dependencias_df = pd.read_excel(archivo_excel, sheet_name='Dependencias')
-       except:
-              st.error("El archivo debe contener las hojas: Tareas, Recursos y Dependencias")
-              st.stop()
-       
-       with tab1:   
-              st.markdown("#### A continuación se presentan los datos importados:")
+    try:
+        tareas_df_original = pd.read_excel(archivo_excel, sheet_name='Tareas')
+        recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
+        dependencias_df = pd.read_excel(archivo_excel, sheet_name='Dependencias')
+    except:
+        st.error("El archivo debe contener las hojas: Tareas, Recursos y Dependencias")
+        st.stop()
 
-              st.subheader("📋 Tabla Tareas")
-              gb = GridOptionsBuilder.from_dataframe(tareas_df_original)
-              gb.configure_default_column(editable=True)
-              grid_options = gb.build()
-              custom_css = {
-                     ".ag-header": {  # clase del header completo
-                     "background-color": "#0D3B66",  # azul oscuro
-                     "color": "white",               # texto blanco
-                     "font-weight": "bold",
-                     "text-align": "center"
-                     }
-              }
-              tareas_grid = AgGrid(tareas_df_original, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
-              tareas_df_original = tareas_grid['data']
-              
-              st.subheader("📋 Tabla Recursos")
-              gb = GridOptionsBuilder.from_dataframe(recursos_df)
-              gb.configure_default_column(editable=True)
-              grid_options = gb.build()
-              custom_css = {
-                     ".ag-header": {  # clase del header completo
-                     "background-color": "#0D3B66",  # azul oscuro
-                     "color": "white",               # texto blanco
-                     "font-weight": "bold",
-                     "text-align": "center"
-                     }
-              }    
-              recursos_grid = AgGrid(recursos_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
-              recursos_df = recursos_grid['data']
-    
-              st.subheader("📋 Tabla Dependencias")
-              gb = GridOptionsBuilder.from_dataframe(dependencias_df)
-              gb.configure_default_column(editable=True)
-              gb.configure_column(
-                     "CANTIDAD",
-                     type=["numericColumn", "numberColumnFilter", "customNumericFormat"],
-                     precision=2,  # número de decimales
-                     editable=True
-              )
-              grid_options = gb.build()
-              custom_css = {
-                     ".ag-header": {  # clase del header completo
-                     "background-color": "#0D3B66",  # azul oscuro
-                     "color": "white",               # texto blanco
-                     "font-weight": "bold",
-                     "text-align": "center"
-                     }
-              }    
-              dependencias_grid = AgGrid(dependencias_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
-              dependencias_df = dependencias_grid['data']
+    # --- Tab 1: Mostrar tablas originales ---
+    with tab1:
+        st.markdown("#### Tablas importadas")
 
-              if "tareas_df_work" in st.session_state:
-                  tareas_df = st.session_state.tareas_df_work
-              else:
-                  tareas_df = tareas_df_original
-              
-              for col in ['FECHAINICIO','FECHAFIN']:
-                     tareas_df[col] = pd.to_datetime(tareas_df[col], errors='coerce')
-                     tareas_df[col] = tareas_df[col].dt.strftime('%d/%m/%Y')
-                     
-              for col in ['FECHAINICIO','FECHAFIN']:
-                     tareas_df[col] = pd.to_datetime(tareas_df[col], dayfirst=True, errors='coerce')
+        # Función para mostrar tabla editable
+        def mostrar_tabla(df, editable_cols=None, altura=300):
+            df_display = df.copy()
+            gb = GridOptionsBuilder.from_dataframe(df_display)
+            gb.configure_default_column(editable=False, resizable=True)
+            if editable_cols:
+                for col in editable_cols:
+                    gb.configure_column(col, editable=True)
+            grid_options = gb.build()
+            custom_css = {
+                ".ag-header": {
+                    "background-color": "#0D3B66",
+                    "color": "white",
+                    "font-weight": "bold",
+                    "text-align": "center"
+                }
+            }
+            grid_response = AgGrid(
+                df_display,
+                gridOptions=grid_options,
+                update_mode=GridUpdateMode.MODEL_CHANGED,
+                custom_css=custom_css,
+                fit_columns_on_grid_load=True,
+                height=altura
+            )
+            return pd.DataFrame(grid_response['data'])
 
-              tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days
-              tareas_df.loc[tareas_df['DURACION'] < 0, 'DURACION'] = 0  # prevenir negativos
-              tareas_df['PREDECESORAS'] = tareas_df['PREDECESORAS'].fillna('').astype(str)
+        st.subheader("📋 Tareas")
+        tareas_df_original = mostrar_tabla(tareas_df_original, editable_cols=tareas_df_original.columns.tolist(), altura=400)
 
-              if 'TARIFA' in recursos_df.columns:
-                     recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
+        st.subheader("📋 Recursos")
+        recursos_df = mostrar_tabla(recursos_df, editable_cols=recursos_df.columns.tolist(), altura=300)
 
-              def actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA'):
-                  # Solo actuar si la columna existe
-                  if columna_ruta not in tareas_df.columns:
-                      return tareas_df
-              
-                  tareas_df = tareas_df.copy()
-                  
-                  # Inicializar session_state si no existe
-                  if 'prev_ruta_critica' not in st.session_state:
-                      st.session_state.prev_ruta_critica = tareas_df[columna_ruta].copy()
-                  
-                  prev = st.session_state.prev_ruta_critica
-                  curr = tareas_df[columna_ruta]
-                  
-                  for idx, tarea_id in enumerate(tareas_df['IDRUBRO']):
-                      fue_critica = prev.iloc[idx]
-                      es_critica = curr.iloc[idx]
-                      
-                      if not fue_critica and es_critica:
-                          # no crítica -> crítica
-                          sucesores = tareas_df[tareas_df['PREDECESORAS'].notna()]
-                          for s_idx, fila in sucesores.iterrows():
-                              pre_list = str(fila['PREDECESORAS']).split(',')
-                              pre_list = [p.strip() for p in pre_list]
-                              if not any(str(tarea_id) in p for p in pre_list):
-                                  pre_list.append(f"{tarea_id}FC")
-                                  tareas_df.at[s_idx, 'PREDECESORAS'] = ', '.join(pre_list)
-                      
-                      elif fue_critica and not es_critica:
-                          # crítica -> no crítica
-                          for s_idx, fila in tareas_df.iterrows():
-                              pre_list = str(fila['PREDECESORAS']).split(',')
-                              pre_list = [p.strip() for p in pre_list if p != f"{tarea_id}FC"]
-                              tareas_df.at[s_idx, 'PREDECESORAS'] = ', '.join(pre_list)
-                  
-                  st.session_state.prev_ruta_critica = curr.copy()
-                  
-                  return tareas_df
+        st.subheader("📋 Dependencias")
+        dependencias_df = mostrar_tabla(dependencias_df, editable_cols=dependencias_df.columns.tolist(), altura=300)
 
-              def calcular_fechas(df):
-                     df = df.copy()
-                     df.columns = df.columns.str.strip()
-                     inicio_rubro = df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
-                     fin_rubro = df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
-                     duracion_rubro = (df.set_index('IDRUBRO')['FECHAFIN'] - df.set_index('IDRUBRO')['FECHAINICIO']).dt.days.to_dict()
-                     dependencias = defaultdict(list)
-                     pre_count = defaultdict(int)
-                     
-                     for _, row in df.iterrows():
-                            tarea_id = row['IDRUBRO']
-                            predecesoras_str = str(row['PREDECESORAS']).strip()
-                            if predecesoras_str not in ['nan','']:
-                                   pre_list = predecesoras_str.split(',')
-                                   for pre in pre_list:
-                                          pre = pre.strip()
-                                          match = re.match(r'(\d+)', pre)
-                                          if match:
-                                                 pre_id = int(match.group(1))
-                                                 dependencias[pre_id].append(tarea_id)
-                                                 pre_count[tarea_id] += 1
+    # --- Normalización de variables ---
+    tareas_df = tareas_df_original.copy()
+    for col in ['FECHAINICIO','FECHAFIN']:
+        tareas_df[col] = pd.to_datetime(tareas_df[col], errors='coerce', dayfirst=True)
+    tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days.clip(lower=0)
+    tareas_df['PREDECESORAS'] = tareas_df['PREDECESORAS'].fillna('').astype(str)
 
-                     queue = deque([tid for tid in df['IDRUBRO'] if pre_count[tid] == 0])
-                     inicio_calc = inicio_rubro.copy()
-                     fin_calc = fin_rubro.copy()
-                     
-                     while queue:
-                            tarea_id = queue.popleft()
-                            row = df[df['IDRUBRO']==tarea_id].iloc[0]
-                            duracion = duracion_rubro[tarea_id]
-                            predecesoras_str = str(row['PREDECESORAS']).strip()
-                            nueva_inicio = inicio_calc[tarea_id]
-                            nueva_fin = fin_calc[tarea_id]
-    
-                            if predecesoras_str not in ['nan','']:
-                                   pre_list = predecesoras_str.split(',')
-                                   for pre in pre_list:
-                                          pre = pre.strip()
-                                          match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre)
-                                          if match:
-                                                 pre_id = int(match.group(1))
-                                                 tipo = match.group(2).upper() if match.group(2) else 'FC'
-                                                 desfase = int(match.group(3)) if match.group(3) else 0
-    
-                                                 if pre_id in inicio_calc and pre_id in fin_calc:
-                                                        inicio_pre = inicio_calc[pre_id]
-                                                        fin_pre = fin_calc[pre_id]
-                            
-                                                        if tipo == 'CC':
-                                                               nueva_inicio = inicio_pre + timedelta(days=desfase)
-                                                               nueva_fin = nueva_inicio + timedelta(days=duracion)
-                                                        elif tipo == 'FC':
-                                                               nueva_inicio = fin_pre + timedelta(days=desfase)
-                                                               nueva_fin = nueva_inicio + timedelta(days=duracion)
-                                                        elif tipo == 'CF':
-                                                               nueva_fin = inicio_pre + timedelta(days=desfase)
-                                                               nueva_inicio = nueva_fin - timedelta(days=duracion)
-                                                        elif tipo == 'FF':
-                                                               nueva_fin = fin_pre + timedelta(days=desfase)
-                                                               nueva_inicio = nueva_fin - timedelta(days=duracion)
-                                                        else:
-                                                               st.warning(f"⚠️ Tipo de relación '{tipo}' no reconocido en '{pre}' para tarea {tarea_id}") 
+    if 'TARIFA' in recursos_df.columns:
+        recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
 
-                            inicio_calc[tarea_id] = nueva_inicio
-                            fin_calc[tarea_id] = nueva_fin
+    # --- Función para actualizar dependencias por RUTA_CRITICA ---
+    def actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA'):
+        if columna_ruta not in tareas_df.columns:
+            return tareas_df
+        tareas_df = tareas_df.copy()
 
-                            for hijo in dependencias[tarea_id]:
-                                   pre_count[hijo] -= 1
-                                   if pre_count[hijo] == 0:
-                                          queue.append(hijo)
+        # Inicializar prev_ruta_critica en session_state
+        if 'prev_ruta_critica' not in st.session_state:
+            st.session_state.prev_ruta_critica = tareas_df[columna_ruta].copy()
 
-                     df['FECHAINICIO'] = df['IDRUBRO'].map(inicio_calc)
-                     df['FECHAFIN'] = df['IDRUBRO'].map(fin_calc)
-    
-                     return df
+        prev = st.session_state.prev_ruta_critica
+        curr = tareas_df[columna_ruta]
 
-              tareas_df = actualizar_dependencias_por_critica(tareas_df)
-              tareas_df = calcular_fechas(tareas_df)
+        for idx, tarea_id in enumerate(tareas_df['IDRUBRO']):
+            fue_critica = prev.iloc[idx]
+            es_critica = curr.iloc[idx]
 
-    # _________________________________________________________________________________________________
-       import math
-       from collections import defaultdict, deque
-       from datetime import timedelta
-       import pandas as pd
-       import streamlit as st
-       import re
-       
-       try:
-           if 'tareas_df' not in locals() and 'tareas_df' not in globals():
-               raise NameError("tareas_df not found, attempting to load.")
-       
-           if not pd.api.types.is_datetime64_any_dtype(tareas_df['FECHAINICIO']) or \
-              not pd.api.types.is_datetime64_any_dtype(tareas_df['FECHAFIN']):
-               print("Date columns not in datetime format, re-converting.")
-               tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], dayfirst=True)
-               tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], dayfirst=True)
-       
-       except (NameError, KeyError) as e:
-           st.warning(f"Error checking tareas_df ({e}). Attempting to reload and process dates.")
-           if 'archivo' in locals() or 'archivo' in globals():
-               try:
-                   tareas_df = pd.read_excel(archivo, sheet_name='Tareas')
-                   tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], dayfirst=True)
-                   tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], dayfirst=True)
-                   st.warning("tareas_df re-loaded and dates converted.")
-               except Exception as load_error:
-                   st.warning(f"❌ Error re-loading tareas_df: {load_error}")
-                   raise load_error
-           else:
-               st.warning("❌ Error: 'archivo' variable not found. Cannot re-load tareas_df.")
-               raise NameError("'archivo' variable not found. Cannot proceed.")
-       
-       tareas_df.columns = tareas_df.columns.str.strip()
-       tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days.fillna(0).astype(int)
-       
-       # Inicialización de diccionarios
-       es = {}  # Early Start
-       ef = {}  # Early Finish
-       ls = {}  # Late Start
-       lf = {}  # Late Finish
-       tf = {}  # Total Float
-       ff = {}  # Free Float
-       duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
-       
-       dependencias = defaultdict(list)
-       predecesoras_map = defaultdict(list)
-       all_task_ids = set(tareas_df['IDRUBRO'].tolist())
-       
-       # Procesar predecesores
-       for _, row in tareas_df.iterrows():
-           tarea_id = row['IDRUBRO']
-           predecesoras_str = str(row['PREDECESORAS']).strip()
-           if predecesoras_str not in ['nan', '']:
-               pre_list = predecesoras_str.split(',')
-               for pre_entry in pre_list:
-                   pre_entry = pre_entry.strip()
-                   match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre_entry)
-                   if match:
-                       pre_id = int(match.group(1))
-                       tipo_relacion = match.group(2).upper() if match.group(2) else 'FC'
-                       desfase = int(match.group(3)) if match.group(3) else 0
-                       if pre_id in all_task_ids:
-                           dependencias[pre_id].append(tarea_id)
-                           predecesoras_map[tarea_id].append((pre_id, tipo_relacion, desfase))
-                       else:
-                           st.warning(f"⚠️ Predecesor ID {pre_id} en '{pre_entry}' para tarea {tarea_id} no encontrado. Ignorando.")
-                   else:
-                       if pre_entry != '':
-                           st.warning(f"⚠️ Formato de predecesora '{pre_entry}' no reconocido para tarea {tarea_id}. Ignorando.")
-       
-       # Pase hacia adelante (ES/EF)
-       in_degree = {tid: len(predecesoras_map.get(tid, [])) for tid in all_task_ids}
-       queue = deque([tid for tid in all_task_ids if in_degree[tid] == 0])
-       
-       while queue:
-           u = queue.popleft()
-           if u not in es:
-               task_row = tareas_df[tareas_df['IDRUBRO'] == u]
-               if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
-                   es[u] = task_row.iloc[0]['FECHAINICIO']
-                   ef[u] = es[u] + timedelta(days=duracion_dict.get(u, 0))
-           for v in dependencias.get(u, []):
-               for pre_id_v, tipo_v, desfase_v in predecesoras_map.get(v, []):
-                   if pre_id_v == u:
-                       duration_v = duracion_dict.get(v, 0)
-                       if tipo_v == 'CC':
-                           start = es[u] + timedelta(days=desfase_v)
-                       elif tipo_v == 'FC':
-                           start = ef[u] + timedelta(days=desfase_v)
-                       elif tipo_v == 'CF':
-                           start = es[u] + timedelta(days=desfase_v) - timedelta(days=duration_v)
-                       elif tipo_v == 'FF':
-                           start = ef[u] + timedelta(days=desfase_v) - timedelta(days=duration_v)
-                       else:
-                           start = ef[u] + timedelta(days=desfase_v)
-                           st.warning(f"⚠️ Tipo relación '{tipo_v}' no reconocido para ES de tarea {v}. Usando FC por defecto.")
-                       if v not in es or start > es[v]:
-                           es[v] = start
-                           ef[v] = es[v] + timedelta(days=duration_v)
-               in_degree[v] -= 1
-               if in_degree[v] == 0:
-                   queue.append(v)
-       
-       # Pase hacia atrás (LS/LF y Holguras)
-       end_tasks_ids = [tid for tid in all_task_ids if tid not in dependencias]
-       project_finish_date = max(ef.values())
-       queue = deque(end_tasks_ids)
-       
-       for tid in end_tasks_ids:
-           lf[tid] = project_finish_date
-           ls[tid] = lf[tid] - timedelta(days=duracion_dict.get(tid, 0))
-       
-       successor_map = defaultdict(list)
-       for tid, pres in predecesoras_map.items():
-           for pre_id, tipo, lag in pres:
-               successor_map[pre_id].append((tid, tipo, lag))
-       
-       while queue:
-           v = queue.popleft()
-           for u, tipo_uv, desfase_uv in predecesoras_map.get(v, []):
-               duration_u = duracion_dict.get(u, 0)
-               if tipo_uv == 'CC':
-                   lf_u = ls[v] - timedelta(days=desfase_uv) + timedelta(days=duration_u)
-               elif tipo_uv == 'FC':
-                   lf_u = ls[v] - timedelta(days=desfase_uv)
-               elif tipo_uv == 'CF':
-                   lf_u = lf[v] - timedelta(days=desfase_uv) + timedelta(days=duration_u)
-               elif tipo_uv == 'FF':
-                   lf_u = lf[v] - timedelta(days=desfase_uv)
-               else:
-                   lf_u = ls[v] - timedelta(days=desfase_uv)
-                   st.warning(f"⚠️ Tipo relación '{tipo_uv}' no reconocido para LF de tarea {u}. Usando FC por defecto.")
-               if u not in lf or lf_u < lf[u]:
-                   lf[u] = lf_u
-                   ls[u] = lf[u] - timedelta(days=duration_u)
-               queue.append(u)
-       
-       # Calcular holguras
-       for tid in all_task_ids:
-           if tid in ef and tid in lf:
-               tf[tid] = lf[tid] - ef[tid]
-               min_succ_start = None
-               for suc_id, tipo, desfase in successor_map.get(tid, []):
-                   if suc_id in es:
-                       if tipo == 'CC':
-                           s = es[tid] + timedelta(days=desfase)
-                       elif tipo == 'FC':
-                           s = ef[tid] + timedelta(days=desfase)
-                       elif tipo == 'CF':
-                           s = es[tid] + timedelta(days=desfase) - timedelta(days=duracion_dict.get(suc_id, 0))
-                       elif tipo == 'FF':
-                           s = ef[tid] + timedelta(days=desfase) - timedelta(days=duracion_dict.get(suc_id, 0))
-                       else:
-                           s = ef[tid] + timedelta(days=desfase)
-                       if min_succ_start is None or s < min_succ_start:
-                           min_succ_start = s
-               ff[tid] = (min_succ_start - ef[tid]) if min_succ_start else timedelta(days=0)
-           else:
-               tf[tid] = pd.NA
-               ff[tid] = pd.NA
-       
-       tareas_df['FECHA_INICIO_TEMPRANA'] = tareas_df['IDRUBRO'].map(es)
-       tareas_df['FECHA_FIN_TEMPRANA'] = tareas_df['IDRUBRO'].map(ef)
-       tareas_df['FECHA_INICIO_TARDE'] = tareas_df['IDRUBRO'].map(ls)
-       tareas_df['FECHA_FIN_TARDE'] = tareas_df['IDRUBRO'].map(lf)
-       tareas_df['HOLGURA_TOTAL_TD'] = tareas_df['IDRUBRO'].map(tf)
-       tareas_df['HOLGURA_LIBRE_TD'] = tareas_df['IDRUBRO'].map(ff)
-       tareas_df['HOLGURA_TOTAL'] = tareas_df['HOLGURA_TOTAL_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
-       tareas_df['HOLGURA_LIBRE'] = tareas_df['HOLGURA_LIBRE_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
-       tolerance_days = 1e-9
-       tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
+            if not fue_critica and es_critica:
+                # No crítica -> crítica
+                for s_idx, fila in tareas_df.iterrows():
+                    pre_list = str(fila['PREDECESORAS']).split(',')
+                    pre_list = [p.strip() for p in pre_list]
+                    if not any(str(tarea_id) in p for p in pre_list):
+                        pre_list.append(f"{tarea_id}FC")
+                        tareas_df.at[s_idx, 'PREDECESORAS'] = ', '.join(pre_list)
 
-       tareas_df_work=tareas_df
-       st.session_state.tareas_df_work = tareas_df_work
+            elif fue_critica and not es_critica:
+                # Crítica -> no crítica
+                for s_idx, fila in tareas_df.iterrows():
+                    pre_list = str(fila['PREDECESORAS']).split(',')
+                    pre_list = [p.strip() for p in pre_list if p != f"{tarea_id}FC"]
+                    tareas_df.at[s_idx, 'PREDECESORAS'] = ', '.join(pre_list)
 
-    # _________________________________________________________________________________________________
-       with tab2:
-              st.subheader("📋 Tabla Resumen")
+        st.session_state.prev_ruta_critica = curr.copy()
+        return tareas_df
 
-              df_preview = tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
-                        'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
-                        'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']].copy()
-                     
-              gb = GridOptionsBuilder.from_dataframe(df_preview)
-              gb.configure_default_column(editable=False, resizable=True)
-              gb.configure_column("RUTA_CRITICA", editable=True)
-              grid_options = gb.build()
-                  
-              custom_css = {
-                  ".ag-header": {
-                      "background-color": "#0D3B66",  # azul oscuro
-                      "color": "white",               # texto blanco
-                      "font-weight": "bold",
-                      "text-align": "center"
-                  }
-              }
+    # --- Función para calcular fechas según predecesoras ---
+    def calcular_fechas(df):
+        df = df.copy()
+        df.columns = df.columns.str.strip()
+        inicio_rubro = df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
+        fin_rubro = df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
+        duracion_rubro = (df.set_index('IDRUBRO')['FECHAFIN'] - df.set_index('IDRUBRO')['FECHAINICIO']).dt.days.to_dict()
+        dependencias = defaultdict(list)
+        pre_count = defaultdict(int)
 
-              AgGrid(
-                  df_preview,
-                  gridOptions=grid_options,
-                  update_mode=GridUpdateMode.MODEL_CHANGED, 
-                  custom_css=custom_css,
-                  fit_columns_on_grid_load=True,
-                  height=400
-              )
+        for _, row in df.iterrows():
+            tarea_id = row['IDRUBRO']
+            predecesoras_str = str(row['PREDECESORAS']).strip()
+            if predecesoras_str not in ['nan','']:
+                pre_list = predecesoras_str.split(',')
+                for pre in pre_list:
+                    pre = pre.strip()
+                    match = re.match(r'(\d+)', pre)
+                    if match:
+                        pre_id = int(match.group(1))
+                        dependencias[pre_id].append(tarea_id)
+                        pre_count[tarea_id] += 1
 
-              tareas_df_work=tareas_df
-              st.session_state.tareas_df_work = tareas_df_work
+        queue = deque([tid for tid in df['IDRUBRO'] if pre_count[tid] == 0])
+        inicio_calc = inicio_rubro.copy()
+        fin_calc = fin_rubro.copy()
+
+        while queue:
+            tarea_id = queue.popleft()
+            row = df[df['IDRUBRO']==tarea_id].iloc[0]
+            duracion = duracion_rubro[tarea_id]
+            predecesoras_str = str(row['PREDECESORAS']).strip()
+            nueva_inicio = inicio_calc[tarea_id]
+            nueva_fin = fin_calc[tarea_id]
+
+            if predecesoras_str not in ['nan','']:
+                pre_list = predecesoras_str.split(',')
+                for pre in pre_list:
+                    pre = pre.strip()
+                    match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre)
+                    if match:
+                        pre_id = int(match.group(1))
+                        tipo = match.group(2).upper() if match.group(2) else 'FC'
+                        desfase = int(match.group(3)) if match.group(3) else 0
+
+                        if pre_id in inicio_calc and pre_id in fin_calc:
+                            inicio_pre = inicio_calc[pre_id]
+                            fin_pre = fin_calc[pre_id]
+
+                            if tipo == 'CC':
+                                nueva_inicio = inicio_pre + timedelta(days=desfase)
+                                nueva_fin = nueva_inicio + timedelta(days=duracion)
+                            elif tipo == 'FC':
+                                nueva_inicio = fin_pre + timedelta(days=desfase)
+                                nueva_fin = nueva_inicio + timedelta(days=duracion)
+                            elif tipo == 'CF':
+                                nueva_fin = inicio_pre + timedelta(days=desfase)
+                                nueva_inicio = nueva_fin - timedelta(days=duracion)
+                            elif tipo == 'FF':
+                                nueva_fin = fin_pre + timedelta(days=desfase)
+                                nueva_inicio = nueva_fin - timedelta(days=duracion)
+
+            inicio_calc[tarea_id] = nueva_inicio
+            fin_calc[tarea_id] = nueva_fin
+
+            for hijo in dependencias[tarea_id]:
+                pre_count[hijo] -= 1
+                if pre_count[hijo] == 0:
+                    queue.append(hijo)
+
+        df['FECHAINICIO'] = df['IDRUBRO'].map(inicio_calc)
+        df['FECHAFIN'] = df['IDRUBRO'].map(fin_calc)
+        return df
+
+    # --- Función para recalcular RUTA_CRITICA ---
+    def calcular_ruta_critica(tareas_df):
+        df = tareas_df.copy()
+        df.columns = df.columns.str.strip()
+        es, ef, ls, lf, tf, ff = {}, {}, {}, {}, {}, {}
+        duracion_dict = df.set_index('IDRUBRO')['DURACION'].to_dict()
+        dependencias, predecesoras_map = defaultdict(list), defaultdict(list)
+        all_task_ids = set(df['IDRUBRO'].tolist())
+
+        for _, row in df.iterrows():
+            tarea_id = row['IDRUBRO']
+            predecesoras_str = str(row['PREDECESORAS']).strip()
+            if predecesoras_str not in ['nan', '']:
+                pre_list = predecesoras_str.split(',')
+                for pre_entry in pre_list:
+                    pre_entry = pre_entry.strip()
+                    match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre_entry)
+                    if match:
+                        pre_id = int(match.group(1))
+                        tipo_relacion = match.group(2).upper() if match.group(2) else 'FC'
+                        desfase = int(match.group(3)) if match.group(3) else 0
+                        if pre_id in all_task_ids:
+                            dependencias[pre_id].append(tarea_id)
+                            predecesoras_map[tarea_id].append((pre_id, tipo_relacion, desfase))
+
+        # Pase hacia adelante (ES/EF)
+        in_degree = {tid: len(predecesoras_map.get(tid, [])) for tid in all_task_ids}
+        queue = deque([tid for tid in all_task_ids if in_degree[tid]==0])
+        while queue:
+            u = queue.popleft()
+            es[u] = df.loc[df['IDRUBRO']==u,'FECHAINICIO'].values[0]
+            ef[u] = es[u] + timedelta(days=duracion_dict.get(u,0))
+            for v in dependencias.get(u,[]):
+                for pre_id_v, tipo_v, desfase_v in predecesoras_map.get(v,[]):
+                    if pre_id_v==u:
+                        duration_v = duracion_dict.get(v,0)
+                        if tipo_v=='CC': start = es[u]+timedelta(days=desfase_v)
+                        elif tipo_v=='FC': start = ef[u]+timedelta(days=desfase_v)
+                        elif tipo_v=='CF': start = es[u]+timedelta(days=desfase_v)-timedelta(days=duration_v)
+                        elif tipo_v=='FF': start = ef[u]+timedelta(days=desfase_v)-timedelta(days=duration_v)
+                        else: start = ef[u]+timedelta(days=desfase_v)
+                        if v not in es or start>es[v]:
+                            es[v] = start
+                            ef[v] = es[v]+timedelta(days=duration_v)
+                in_degree[v]-=1
+                if in_degree[v]==0: queue.append(v)
+
+        # Pase hacia atrás y holguras
+        end_tasks_ids = [tid for tid in all_task_ids if tid not in dependencias]
+        project_finish_date = max(ef.values())
+        ls, lf = {}, {}
+        for tid in end_tasks_ids:
+            lf[tid] = project_finish_date
+            ls[tid] = lf[tid]-timedelta(days=duracion_dict.get(tid,0))
+
+        # Holguras
+        tf, ff = {}, {}
+        successor_map = defaultdict(list)
+        for tid, pres in predecesoras_map.items():
+            for pre_id, tipo, lag in pres:
+                successor_map[pre_id].append((tid, tipo, lag))
+        for tid in all_task_ids:
+            tf[tid] = (lf.get(tid, pd.NA)-ef.get(tid, pd.NA)) if tid in lf and tid in ef else pd.NA
+            ff[tid] = pd.Timedelta(days=0)
+
+        df['FECHA_INICIO_TEMPRANA'] = df['IDRUBRO'].map(es)
+        df['FECHA_FIN_TEMPRANA'] = df['IDRUBRO'].map(ef)
+        df['FECHA_INICIO_TARDE'] = df['IDRUBRO'].map(ls)
+        df['FECHA_FIN_TARDE'] = df['IDRUBRO'].map(lf)
+        df['HOLGURA_TOTAL'] = df['IDRUBRO'].map(lambda x: tf.get(x, pd.NA).days if pd.notna(tf.get(x, pd.NA)) else pd.NA)
+        df['RUTA_CRITICA'] = df['HOLGURA_TOTAL'].apply(lambda x: x==0 if pd.notna(x) else False)
+
+        return df
+
+    # --- Cálculo inicial de fechas y rutas críticas ---
+    tareas_df = calcular_fechas(tareas_df)
+    tareas_df = calcular_ruta_critica(tareas_df)
+    st.session_state.tareas_df_work = tareas_df
+
+    # --- Tab 2: Interacción con RUTA_CRITICA ---
+    with tab2:
+        st.subheader("🧩 Control de Ruta Crítica")
+
+        tareas_df = st.session_state.get("tareas_df_work", tareas_df_original).copy()
+        df_preview = tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
+                                'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
+                                'FECHA_INICIO_TARDE','FECHA_FIN_TARDE',
+                                'DURACION','HOLGURA_TOTAL','RUTA_CRITICA']].copy()
+
+        gb = GridOptionsBuilder.from_dataframe(df_preview)
+        gb.configure_default_column(editable=False, resizable=True)
+        gb.configure_column("RUTA_CRITICA", editable=True)
+        grid_options = gb.build()
+
+        custom_css = {
+            ".ag-header": {
+                "background-color": "#0D3B66",
+                "color": "white",
+                "font-weight": "bold",
+                "text-align": "center"
+            }
+        }
+
+        grid_response = AgGrid(
+            df_preview,
+            gridOptions=grid_options,
+            update_mode=GridUpdateMode.MODEL_CHANGED,
+            custom_css=custom_css,
+            fit_columns_on_grid_load=True,
+            height=400
+        )
+
+        df_editado = pd.DataFrame(grid_response['data'])
+
+        # Detectar cambios en RUTA_CRITICA
+        if not df_editado['RUTA_CRITICA'].equals(df_preview['RUTA_CRITICA']):
+            st.success("🔄 Cambios detectados en RUTA_CRITICA. Recalculando...")
+
+            # Guardar versión antes y después
+            st.session_state.tareas_df_before_edit = tareas_df.copy()
+            st.session_state.tareas_df_after_edit = df_editado.copy()
+
+            tareas_df['RUTA_CRITICA'] = df_editado['RUTA_CRITICA']
+
+            # Recalcular dependencias y fechas
+            tareas_df = actualizar_dependencias_por_critica(tareas_df)
+            tareas_df = calcular_fechas(tareas_df)
+            tareas_df = calcular_ruta_critica(tareas_df)
+
+            st.session_state.tareas_df_work = tareas_df
+            st.experimental_rerun()
                          
               dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
               dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
@@ -974,6 +866,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
