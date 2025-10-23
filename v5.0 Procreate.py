@@ -419,50 +419,50 @@ if archivo_excel:
                   height=400
               )
 
-            tareas_df_work=tareas_df
-            st.session_state.tareas_df_work = tareas_df_work te mando de nuevo el codigo no hagas nada un parece que no me entendiste y te voy a explicar de nuevo.
+              tareas_df_work=tareas_df
+              st.session_state.tareas_df_work = tareas_df_work
                          
-            dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
-            dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
-            costos_por_can = dependencias_df.groupby('RUBRO', as_index=False)['COSTO'].sum()
-            costos_por_can.rename(columns={'RUBRO': 'RUBRO', 'COSTO': 'COSTO_TOTAL'}, inplace=True)
-            tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
-            costos_por_can['RUBRO'] = costos_por_can['RUBRO'].str.strip()
-            tareas_df = tareas_df.merge(costos_por_can[['RUBRO', 'COSTO_TOTAL']], on='RUBRO', how='left')
+              dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
+              dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
+              costos_por_can = dependencias_df.groupby('RUBRO', as_index=False)['COSTO'].sum()
+              costos_por_can.rename(columns={'RUBRO': 'RUBRO', 'COSTO': 'COSTO_TOTAL'}, inplace=True)
+              tareas_df['RUBRO'] = tareas_df['RUBRO'].str.strip()
+              costos_por_can['RUBRO'] = costos_por_can['RUBRO'].str.strip()
+              tareas_df = tareas_df.merge(costos_por_can[['RUBRO', 'COSTO_TOTAL']], on='RUBRO', how='left')
               
-            import plotly.graph_objects as go
-            import plotly.express as px
-            from collections import defaultdict
+              import plotly.graph_objects as go
+              import plotly.express as px
+              from collections import defaultdict
               
-            st.subheader("📊 Diagrama de Gantt - Ruta Crítica")
+              st.subheader("📊 Diagrama de Gantt - Ruta Crítica")
               
               # Determinar columna de costo
-            cost_column_name = None
-            for col in ['COSTO_TOTAL_RUBRO', 'COSTO_TOTAL_x', 'COSTO_TOTAL']:
+              cost_column_name = None
+              for col in ['COSTO_TOTAL_RUBRO', 'COSTO_TOTAL_x', 'COSTO_TOTAL']:
                      if col in tareas_df.columns:
                             cost_column_name = col
                             break
               
-            if cost_column_name:
+              if cost_column_name:
                      tareas_df[cost_column_name] = pd.to_numeric(tareas_df[cost_column_name], errors='coerce').fillna(0)
-            else:
+              else:
                      st.warning("⚠️ No se encontró una columna de costos reconocida en el DataFrame. Se creará columna de costos en 0.")
                      tareas_df['COSTO_TOTAL_NUMERICO'] = 0
                      cost_column_name = 'COSTO_TOTAL_NUMERICO'
               
-            if 'IDRUBRO' in tareas_df.columns:
+              if 'IDRUBRO' in tareas_df.columns:
                      tareas_df = tareas_df.sort_values(['IDRUBRO'])
-            else:
+              else:
                      st.warning("⚠️ Columna 'IDRUBRO' no encontrada para ordenar.")
               
-            tareas_df['y_num'] = range(len(tareas_df))
-            tareas_df['y_num_plot'] = tareas_df['y_num'] + 0.01
+              tareas_df['y_num'] = range(len(tareas_df))
+              tareas_df['y_num_plot'] = tareas_df['y_num'] + 0.01
 
-            dependencias = defaultdict(list)
-            predecesoras_map_details = defaultdict(list)
-            warnings_list = []
+              dependencias = defaultdict(list)
+              predecesoras_map_details = defaultdict(list)
+              warnings_list = []
               
-            for _, row in tareas_df.iterrows():
+              for _, row in tareas_df.iterrows():
                   tarea_id = row['IDRUBRO']
                   predecesoras_str = str(row.get('PREDECESORAS', '')).strip()
                   if predecesoras_str not in ['nan', '']:
@@ -974,6 +974,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
