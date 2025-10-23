@@ -418,6 +418,9 @@ if archivo_excel:
                   fit_columns_on_grid_load=True,
                   height=400
               )
+
+              tareas_df_work=tareas_df
+              st.session_state.tareas_df_work = tareas_df_work
                          
               dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
               dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
@@ -971,6 +974,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
