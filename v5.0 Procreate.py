@@ -37,8 +37,15 @@ if archivo_excel:
           (st.session_state.tareas_df_prev.equals(st.session_state.tareas_df_work)):
            tareas_df = tareas_df_original.copy()
        else:
-           # Caso con cambios en RUTA_CRITICA: recalcula dependencias antes
-           tareas_df = actualizar_dependencias_por_critica(st.session_state.tareas_df_work)
+           columnas = ["IDRUBRO", "CAPÍTULO", "RUBRO", "PREDECESORAS", "FECHAINICIO", "FECHAFIN"]
+
+           st.session_state.tareas_df_work = actualizar_dependencias_por_critica(
+               st.session_state.tareas_df_work
+           )
+           tareas_df = st.session_state.tareas_df_work[columnas].copy()
+
+
+              
 
 #__________________________________PESTAÑA 1_________________________________________________________________________________________________________________________________________________
        with tab1: 
@@ -115,44 +122,66 @@ if archivo_excel:
 
 #__________________________________FUNCION PARA CALCULAR DEPENDENCIAS EN FUNCION A LA ELECCION DE LA RUTA CRITICA _________________________________________________________________________________________________________________________________________________
 
-              def actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA'):
-                  # Solo actuar si la columna existe
-                  if columna_ruta not in tareas_df.columns:
-                      return tareas_df
+               def actualizar_dependencias_por_critica(tareas_df_work):
+                  import pandas as pd
               
-                  tareas_df = tareas_df.copy()
-                  
-                  # Inicializar session_state si no existe
-                  if 'prev_ruta_critica' not in st.session_state:
-                      st.session_state.prev_ruta_critica = tareas_df[columna_ruta].copy()
-                  
-                  prev = st.session_state.prev_ruta_critica
-                  curr = tareas_df[columna_ruta]
-                  
-                  for idx, tarea_id in enumerate(tareas_df['IDRUBRO']):
-                      fue_critica = prev.iloc[idx]
-                      es_critica = curr.iloc[idx]
-                      
+                  # Inicializar session_state para dependencias críticas si no existe
+                  if 'crit_dependencies' not in st.session_state:
+                      st.session_state.crit_dependencies = {}  # {IDRUBRO fila editada: IDRUBRO dependencias agregadas}
+              
+                  df_prev = st.session_state.tareas_df_prev
+                  df_curr = tareas_df_work.copy()
+
+                  cambios = df_prev['RUTA_CRITICA'] != df_curr['RUTA_CRITICA']
+                  filas_cambiadas = df_curr[cambios].index
+              
+                  for idx in filas_cambiadas:
+                      tarea = df_curr.loc[idx]
+                      tarea_id = str(tarea['IDRUBRO'])
+                      fue_critica = df_prev.loc[idx, 'RUTA_CRITICA']
+                      es_critica = df_curr.loc[idx, 'RUTA_CRITICA']
+              
+                      # Si el usuario marcó como crítica
                       if not fue_critica and es_critica:
-                          # no crítica -> crítica
-                          sucesores = tareas_df[tareas_df['PREDECESORAS'].notna()]
-                          for s_idx, fila in sucesores.iterrows():
-                              pre_list = str(fila['PREDECESORAS']).split(',')
-                              pre_list = [p.strip() for p in pre_list]
-                              if not any(str(tarea_id) in p for p in pre_list):
-                                  pre_list.append(f"{tarea_id}FC")
-                                  tareas_df.at[s_idx, 'PREDECESORAS'] = ', '.join(pre_list)
-                      
+                          # Buscar tarea posterior crítica más cercana
+                          posteriores = df_curr[
+                              (df_curr['FECHAINICIO'] > tarea['FECHAINICIO']) &
+                              (df_curr['RUTA_CRITICA'] == True)
+                          ].sort_values('FECHAINICIO')
+              
+                          if not posteriores.empty:
+                              tarea_posterior = posteriores.iloc[0]
+                          else:
+                              # Si no hay, tomar la última tarea crítica del proyecto
+                              criticas = df_curr[df_curr['RUTA_CRITICA'] == True]
+                              tarea_posterior = criticas.sort_values('FECHAINICIO', ascending=False).iloc[0]
+              
+                          id_dependencia = str(tarea_posterior['IDRUBRO']) + 'CF'
+              
+                          # Agregar a PREDECESORAS, evitando duplicados
+                          predecesoras = str(tarea.get('PREDECESORAS', '')).strip()
+                          pre_list = [p.strip() for p in predecesoras.split(';') if p.strip()]
+                          if id_dependencia not in pre_list:
+                              pre_list.append(id_dependencia)
+                          df_curr.at[idx, 'PREDECESORAS'] = ';'.join(pre_list)
+              
+                          # Guardar en session_state para luego eliminar si desmarcan
+                          st.session_state.crit_dependencies[tarea_id] = id_dependencia
+              
+                      # Si el usuario desmarcó la tarea como crítica
                       elif fue_critica and not es_critica:
-                          # crítica -> no crítica
-                          for s_idx, fila in tareas_df.iterrows():
-                              pre_list = str(fila['PREDECESORAS']).split(',')
-                              pre_list = [p.strip() for p in pre_list if p != f"{tarea_id}FC"]
-                              tareas_df.at[s_idx, 'PREDECESORAS'] = ', '.join(pre_list)
-                  
-                  st.session_state.prev_ruta_critica = curr.copy()
-                  
-                  return tareas_df
+                          predecesoras = str(tarea.get('PREDECESORAS', '')).strip()
+                          pre_list = [p.strip() for p in predecesoras.split(';') if p.strip()]
+                          id_dependencia = st.session_state.crit_dependencies.get(tarea_id)
+                          if id_dependencia and id_dependencia in pre_list:
+                              pre_list.remove(id_dependencia)
+                          df_curr.at[idx, 'PREDECESORAS'] = ';'.join(pre_list)
+                          # Limpiar registro
+                          if tarea_id in st.session_state.crit_dependencies:
+                              del st.session_state.crit_dependencies[tarea_id]
+              
+                  return df_curr
+
 #__________________________________FUNCION PARA RECALCULAR FECHAINICIO Y FECHAFIN SEGUN DEPENDENCIAS_________________________________________________________________________________________________________________________________________________
 
               def calcular_fechas(df):
@@ -986,6 +1015,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
