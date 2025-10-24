@@ -5,27 +5,48 @@ import re
 from datetime import timedelta
 from collections import defaultdict, deque
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+import math
 
 st.set_page_config(page_title="Gestión de Proyectos - Cronograma Valorado", layout="wide")
 st.title("📊 Gestión de Proyectos - Seguimiento y Control")
 
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
 tab1, tab2, tab3, tab4 = st.tabs(["Inicio", "Diagrama Gantt", "Recursos", "Presupuesto"])
+
        
 if archivo_excel:
+
+#__________________________________IMPORTACION DE ARCHIVOS__________________________________________________________________________________________________________________________________
        try:
-              tareas_df = pd.read_excel(archivo_excel, sheet_name='Tareas')
+              tareas_df_original = pd.read_excel(archivo_excel, sheet_name='Tareas')
               recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
               dependencias_df = pd.read_excel(archivo_excel, sheet_name='Dependencias')
        except:
               st.error("El archivo debe contener las hojas: Tareas, Recursos y Dependencias")
               st.stop()
+
+
+       if "tareas_df_prev" not in st.session_state:
+           st.session_state.tareas_df_prev = None
        
-       with tab1:   
+       if "tareas_df_work" not in st.session_state:
+           st.session_state.tareas_df_work = None
+
+       if (st.session_state.tareas_df_prev is None) or \
+          (st.session_state.tareas_df_work is None) or \
+          (st.session_state.tareas_df_prev.equals(st.session_state.tareas_df_work)):
+           tareas_df = tareas_df_original.copy()
+       else:
+           # Caso con cambios en RUTA_CRITICA: recalcula dependencias antes
+           tareas_df = actualizar_dependencias_por_critica(st.session_state.tareas_df_work)
+
+#__________________________________PESTAÑA 1_________________________________________________________________________________________________________________________________________________
+       with tab1: 
               st.markdown("#### A continuación se presentan los datos importados:")
 
+#__________________________________CONSTRUCCION DE DATAFRAME: TABLAS DINAMICAS (MUESTRA EN INTERFAZ)________________________________________________________________________________________
               st.subheader("📋 Tabla Tareas")
-              gb = GridOptionsBuilder.from_dataframe(tareas_df)
+              gb = GridOptionsBuilder.from_dataframe(tareas_df_original)
               gb.configure_default_column(editable=True)
               grid_options = gb.build()
               custom_css = {
@@ -36,7 +57,7 @@ if archivo_excel:
                      "text-align": "center"
                      }
               }
-              tareas_grid = AgGrid(tareas_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
+              tareas_grid = AgGrid(tareas_df_original, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
               tareas_df = tareas_grid['data']
               
               st.subheader("📋 Tabla Recursos")
@@ -74,6 +95,11 @@ if archivo_excel:
               }    
               dependencias_grid = AgGrid(dependencias_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css)
               dependencias_df = dependencias_grid['data']
+
+#__________________________________NORMALIZACION DE VARIABLES (COLUMNAS) Y CREACION DE COLUMNA DURACION EN tareas_df _________________________________________________________________________________________________________________________________________________
+
+              if 'TARIFA' in recursos_df.columns:
+                     recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
               
               for col in ['FECHAINICIO','FECHAFIN']:
                      tareas_df[col] = pd.to_datetime(tareas_df[col], errors='coerce')
@@ -82,12 +108,12 @@ if archivo_excel:
               for col in ['FECHAINICIO','FECHAFIN']:
                      tareas_df[col] = pd.to_datetime(tareas_df[col], dayfirst=True, errors='coerce')
 
+              tareas_df['PREDECESORAS'] = tareas_df['PREDECESORAS'].fillna('').astype(str)
+              
               tareas_df['DURACION'] = (tareas_df['FECHAFIN'] - tareas_df['FECHAINICIO']).dt.days
               tareas_df.loc[tareas_df['DURACION'] < 0, 'DURACION'] = 0  # prevenir negativos
-              tareas_df['PREDECESORAS'] = tareas_df['PREDECESORAS'].fillna('').astype(str)
 
-              if 'TARIFA' in recursos_df.columns:
-                     recursos_df['TARIFA'] = pd.to_numeric(recursos_df['TARIFA'], errors='coerce').fillna(0)
+#__________________________________FUNCION PARA CALCULAR DEPENDENCIAS EN FUNCION A LA ELECCION DE LA RUTA CRITICA _________________________________________________________________________________________________________________________________________________
 
               def actualizar_dependencias_por_critica(tareas_df, columna_ruta='RUTA_CRITICA'):
                   # Solo actuar si la columna existe
@@ -127,6 +153,7 @@ if archivo_excel:
                   st.session_state.prev_ruta_critica = curr.copy()
                   
                   return tareas_df
+#__________________________________FUNCION PARA RECALCULAR FECHAINICIO Y FECHAFIN SEGUN DEPENDENCIAS_________________________________________________________________________________________________________________________________________________
 
               def calcular_fechas(df):
                      df = df.copy()
@@ -203,18 +230,13 @@ if archivo_excel:
                      df['FECHAFIN'] = df['IDRUBRO'].map(fin_calc)
     
                      return df
+#__________________________________LLAMADO A LAS FUNCIONES _________________________________________________________________________________________________________________________________________________
 
               tareas_df = actualizar_dependencias_por_critica(tareas_df)
               tareas_df = calcular_fechas(tareas_df)
 
-    # _________________________________________________________________________________________________
-       import math
-       from collections import defaultdict, deque
-       from datetime import timedelta
-       import pandas as pd
-       import streamlit as st
-       import re
-       
+#__________________________________CÓDIGO (FUNCIÓN) PARA DETERMINAR LAS FECHAS TEMPRANAS Y TARDIAS, DEFINICIÓN DE TAREAS CRÍTICAS _________________________________________________________________________________________________________________________________________________
+      
        try:
            if 'tareas_df' not in locals() and 'tareas_df' not in globals():
                raise NameError("tareas_df not found, attempting to load.")
@@ -255,8 +277,7 @@ if archivo_excel:
        dependencias = defaultdict(list)
        predecesoras_map = defaultdict(list)
        all_task_ids = set(tareas_df['IDRUBRO'].tolist())
-       
-       # Procesar predecesores
+
        for _, row in tareas_df.iterrows():
            tarea_id = row['IDRUBRO']
            predecesoras_str = str(row['PREDECESORAS']).strip()
@@ -344,8 +365,7 @@ if archivo_excel:
                    lf[u] = lf_u
                    ls[u] = lf[u] - timedelta(days=duration_u)
                queue.append(u)
-       
-       # Calcular holguras
+
        for tid in all_task_ids:
            if tid in ef and tid in lf:
                tf[tid] = lf[tid] - ef[tid]
@@ -380,13 +400,12 @@ if archivo_excel:
        tolerance_days = 1e-9
        tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
 
-       tareas_df_work=tareas_df
-       st.session_state.tareas_df_work = tareas_df_work
-
-    # _________________________________________________________________________________________________
+       st.session_state.tareas_df_prev = tareas_df.copy()
+       
+#__________________________________PESTAÑA 2: MUESTRA TABLA tareas_df_________________________________________________________________________________________________________________________________________________
+      
        with tab2:
               st.subheader("📋 Tabla Resumen")
-
               df_preview = tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
                         'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
                         'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']].copy()
@@ -404,7 +423,6 @@ if archivo_excel:
                       "text-align": "center"
                   }
               }
-
               AgGrid(
                   df_preview,
                   gridOptions=grid_options,
@@ -414,9 +432,9 @@ if archivo_excel:
                   height=400
               )
 
-              tareas_df_work=tareas_df
-              st.session_state.tareas_df_work = tareas_df_work
-                         
+              df_editado = pd.DataFrame(grid_response['data'])
+              st.session_state.tareas_df_work = df_editado.copy()
+ 
               dependencias_df = dependencias_df.merge(recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
               dependencias_df['COSTO'] = dependencias_df['CANTIDAD'] * dependencias_df['TARIFA']
               costos_por_can = dependencias_df.groupby('RUBRO', as_index=False)['COSTO'].sum()
@@ -968,6 +986,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
