@@ -450,7 +450,7 @@ if archivo_excel:
                       "text-align": "center"
                   }
               }
-              AgGrid(
+              grid_response = AgGrid(
                   df_preview,
                   gridOptions=grid_options,
                   update_mode=GridUpdateMode.MODEL_CHANGED, 
@@ -458,7 +458,7 @@ if archivo_excel:
                   fit_columns_on_grid_load=True,
                   height=400
               )
-
+              
               df_editado = pd.DataFrame(grid_response['data'])
               st.session_state.tareas_df_work = df_editado.copy()
  
@@ -1013,6 +1013,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
