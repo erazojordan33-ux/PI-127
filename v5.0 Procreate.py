@@ -260,8 +260,6 @@ if archivo_excel:
     
                      return df
 #__________________________________LLAMADO A LAS FUNCIONES _________________________________________________________________________________________________________________________________________________
-
-              tareas_df = actualizar_dependencias_por_critica(tareas_df)
               tareas_df = calcular_fechas(tareas_df)
 
 #__________________________________CÓDIGO (FUNCIÓN) PARA DETERMINAR LAS FECHAS TEMPRANAS Y TARDIAS, DEFINICIÓN DE TAREAS CRÍTICAS _________________________________________________________________________________________________________________________________________________
@@ -1015,6 +1013,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
