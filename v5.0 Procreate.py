@@ -122,7 +122,7 @@ if archivo_excel:
 
 #__________________________________FUNCION PARA CALCULAR DEPENDENCIAS EN FUNCION A LA ELECCION DE LA RUTA CRITICA _________________________________________________________________________________________________________________________________________________
 
-               def actualizar_dependencias_por_critica(tareas_df_work):
+              def actualizar_dependencias_por_critica(tareas_df_work):
                   import pandas as pd
               
                   # Inicializar session_state para dependencias críticas si no existe
@@ -1015,6 +1015,7 @@ if archivo_excel:
 
 else:
        st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
