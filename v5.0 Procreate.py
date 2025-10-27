@@ -442,14 +442,13 @@ if archivo_excel:
         
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
         with tab2:
-                from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
-                tareas_df = st.session_state.tareas_df.copy()
+                tareas_df1 = st.session_state.tareas_df.copy()
                 
                 st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica (Editable)")
                 
                 # Configurar AgGrid
-                gb = GridOptionsBuilder.from_dataframe(tareas_df)
+                gb = GridOptionsBuilder.from_dataframe(tareas_df1)
                 gb.configure_default_column(editable=False)  # por defecto no editable
                 gb.configure_column("PREDECESORAS", editable=True)
                 gb.configure_column("RUTA_CRITICA", editable=True)
@@ -458,7 +457,7 @@ if archivo_excel:
                 grid_options = gb.build()
                 
                 grid_response = AgGrid(
-                    tareas_df,
+                    tareas_df1,
                     gridOptions=grid_options,
                     update_mode=GridUpdateMode.VALUE_CHANGED,
                     allow_unsafe_jscode=True,
@@ -900,6 +899,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
