@@ -302,7 +302,7 @@ if archivo_excel:
                      "text-align": "center"
                      }
         }
-        tareas_df_original_grid_response = AgGrid(st.session_state.tareas_df_original, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css, key='tareas_df_original_grid_tab1')
+        tareas_df_original_grid_response = AgGrid(st.session_state.tareas_df_original, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css, key='tareasoriginal_grid_tab1')
         st.session_state.tareas_df_original = pd.DataFrame(tareas_df_original_grid_response['data'])
             
         st.subheader("📋 Tabla Recursos")
@@ -951,6 +951,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias para empezar.")
+
 
 
 
