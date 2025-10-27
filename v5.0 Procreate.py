@@ -635,25 +635,25 @@ if archivo_excel:
                         'Costo_Diario': 'float64' 
                     }
                 
-                    missing_columns = [col for col in required_columns_and_types if col not in st.session_state.resource_demand_with_details_df.columns]
+                    missing_columns = [col for col in required_columns_and_types if col not in resource_demand_with_details_df.columns]
                     if not missing_columns:
                         type_issues = []
                         for col, expected_type in required_columns_and_types.items():
                             if expected_type == 'object':
-                                if pd.api.types.is_numeric_dtype(st.session_state.resource_demand_with_details_df[col]):
+                                if pd.api.types.is_numeric_dtype(resource_demand_with_details_df[col]):
                                     type_issues.append(f"Column '{col}' is numeric but expected object (string).")
-                            elif not pd.api.types.is_dtype_equal(st.session_state.resource_demand_with_details_df[col].dtype, expected_type):
-                                if expected_type == 'float64' and pd.api.types.is_integer_dtype(st.session_state.resource_demand_with_details_df[col]):
+                            elif not pd.api.types.is_dtype_equal(resource_demand_with_details_df[col].dtype, expected_type):
+                                if expected_type == 'float64' and pd.api.types.is_integer_dtype(resource_demand_with_details_df[col]):
                                     pass 
                                 else:
-                                    type_issues.append(f"Column '{col}' has type {st.session_state.resource_demand_with_details_df[col].dtype} but expected {expected_type}.")
+                                    type_issues.append(f"Column '{col}' has type {resource_demand_with_details_df[col].dtype} but expected {expected_type}.")
                         if type_issues:
                             for issue in type_issues:
                                 st.warning(f"⚠️ Tipo de dato: {issue}")
                     else:
                         st.warning(f"❌ Error: Missing required columns: {missing_columns}")
                 
-                    df = st.session_state.resource_demand_with_details_df.copy()
+                    df = resource_demand_with_details_df.copy()
                     df['Fecha'] = pd.to_datetime(df['Fecha'])
                     df['Periodo_Mensual'] = df['Fecha'].dt.to_period('M')
                     monthly_costs_df = df.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
@@ -732,6 +732,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
