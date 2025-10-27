@@ -377,7 +377,7 @@ if archivo_excel:
                 "background-color": "#FFDDC1",
                 "font-weight": "bold",
             },
-            ".ag-cell.critical-path": {
+            ".critical-path": {
                  "background-color": "#FFDDC1",
                  "font-weight": "bold",
             }
@@ -954,6 +954,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias para empezar.")
+
 
 
 
