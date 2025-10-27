@@ -371,8 +371,24 @@ def calculo_predecesoras(df, fila_editada):
             else:
                 df.at[idx_predecesora, 'PREDECESORAS'] += f", {nuevo_valor}"
 
-    else:  # si se desmarcó
-        df.at[fila_editada, 'PREDECESORAS'] = ""
+    else: 
+
+            id_a_eliminar = str(row['IDRUBRO'])
+            for idx, pre_row in df.iterrows():
+                predecesoras = pre_row['PREDECESORAS']
+                if pd.notna(predecesoras) and predecesoras != "":
+                    partes = [p.strip() for p in predecesoras.split(",")]
+                    nuevas_partes = []
+                    for p in partes:
+                        # Buscar patrón: ID + tipo (FC, CC, FF, CF)
+                        match = re.match(r"(\d+)(FC|CC|FF|CF)", p)
+                        if match:
+                            if match.group(1) != id_a_eliminar:
+                                nuevas_partes.append(p)
+                        else:
+                            # Si no coincide con patrón, lo dejamos
+                            nuevas_partes.append(p)
+                    df.at[idx, 'PREDECESORAS'] = ", ".join(nuevas_partes)
     return df
 
 # Definicion de variables y calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
@@ -947,6 +963,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
