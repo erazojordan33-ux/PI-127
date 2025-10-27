@@ -233,8 +233,8 @@ if archivo_excel:
             st.session_state.tareas_df.loc[st.session_state.tareas_df['DURACION'] < 0, 'DURACION'] = 0  # prevenir negativos
             st.session_state.tareas_df['PREDECESORAS'] = st.session_state.tareas_df['PREDECESORAS'].fillna('').astype(str)
 
-            tareas_df=calcular_fechas(tareas_df)
-            tareas_df=calculo_ruta_critica(tareas_df)
+            st.session_state.tareas_df=calcular_fechas(st.session_state.tareas_df)
+            st.session_state.tareas_df=calculo_ruta_critica(st.session_state.tareas_df)
             
         except:
             st.error(f"Error al leer el archivo Excel. Asegúrese de que contiene las hojas 'Tareas', 'Recursos' y 'Dependencias' y que el formato es correcto: {e}")
@@ -891,6 +891,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
