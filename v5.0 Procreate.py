@@ -624,9 +624,7 @@ if archivo_excel:
 
 # Mostrar variables en la Pestaña 4___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
         with tab4:
-                
-                if 'resource_demand_with_details_df' in st.session_state:
-                
+                             
                     required_columns_and_types = {
                         'Fecha': 'datetime64[ns]',
                         'RECURSO': 'object', 
@@ -731,13 +729,10 @@ if archivo_excel:
                 
                     st.plotly_chart(fig, use_container_width=True)
                 
-                else:
-                    st.warning("❌ Error: DataFrame 'resource_demand_with_details_df' no encontrado en st.session_state.")
-
-
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
