@@ -443,30 +443,29 @@ if archivo_excel:
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
         with tab2:
 
-                tareas_df1 = st.session_state.tareas_df.copy()
-                
                 st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica (Editable)")
-                
-                # Configurar AgGrid
-                gb = GridOptionsBuilder.from_dataframe(tareas_df1)
-                gb.configure_default_column(editable=False)  # por defecto no editable
-                gb.configure_column("PREDECESORAS", editable=True)
-                gb.configure_column("RUTA_CRITICA", editable=True)
-                gb.configure_selection(selection_mode="single", use_checkbox=True)
-                gb.configure_grid_options(domLayout='normal')
+
+                gb = GridOptionsBuilder.from_dataframe(st.session_state.tareas_df)
+                gb.configure_default_column(editable=True)  # por defecto no editable
                 grid_options = gb.build()
+                custom_css = {
+                                         ".ag-header": {  # clase del header completo
+                                         "background-color": "#0D3B66",  # azul oscuro
+                                         "color": "white",               # texto blanco
+                                         "font-weight": "bold",
+                                         "text-align": "center"
+                                         }
+                }
                 
-                grid_response = AgGrid(
-                    tareas_df1,
+                tareas_grid_response = AgGrid(
+                    st.session_state.tareas_df,
                     gridOptions=grid_options,
-                    update_mode=GridUpdateMode.VALUE_CHANGED,
-                    allow_unsafe_jscode=True,
-                    enable_enterprise_modules=False,
-                    height=400,
+                    update_mode=GridUpdateMode.MODEL_CHANGED,
+                    custom_css=custom_css,
+                    key='tareasmod_grid_tab1'
                 )
-                
-                # Guardar cambios de vuelta en session_state
-                st.session_state.tareas_df.update(grid_response['data'])
+
+                st.session_state.tareas_df_original = pd.DataFrame(tareas_grid_response['data'])
 
                 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
@@ -899,6 +898,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
