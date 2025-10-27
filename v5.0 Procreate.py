@@ -237,7 +237,7 @@ if archivo_excel:
             st.session_state.tareas_df=calculo_ruta_critica(st.session_state.tareas_df)
             
         except:
-            st.error(f"Error al leer el archivo Excel. Asegúrese de que contiene las hojas 'Tareas', 'Recursos' y 'Dependencias' y que el formato es correcto: {e}")
+            st.error(f"Error al leer el archivo Excel. Asegúrese de que contiene las hojas 'Tareas', 'Recursos' y 'Dependencias' ")
             st.stop()
 
 # Mostrar variables en la Pestaña 1___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
@@ -738,6 +738,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
