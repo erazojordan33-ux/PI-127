@@ -214,7 +214,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                      duration = duracion_dict.get(tid, 0)
                      if not isinstance(duration, (int, float)): duration = 0
                      ef[tid] = es[tid] + timedelta(days=duration)
-                     st.warning(f"Inicializando ES/EF para tarea no procesada {tid} con su fecha de inicio original.")
                  else:
                      st.warning(f"❌ Error: Tarea no procesada {tid} no encontrada o FECHAINICIO inválida. No se pudo inicializar ES/EF.")
     
@@ -946,6 +945,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
