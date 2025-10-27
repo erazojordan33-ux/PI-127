@@ -13,33 +13,7 @@ st.title("📊 Gestión de Proyectos - Seguimiento y Control")
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
 tab1, tab2, tab3, tab4 = st.tabs(["Inicio", "Diagrama Gantt", "Recursos", "Presupuesto"])
 
-if archivo_excel:
-    if 'archivo_hash' not in st.session_state or st.session_state.archivo_hash != hash(archivo_excel.getvalue()):
-        st.session_state.archivo_hash = hash(archivo_excel.getvalue())
-        try:
-            st.session_state.tareas_df_original = pd.read_excel(archivo_excel, sheet_name='Tareas')
-            st.session_state.recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
-            st.session_state.dependencias_df = pd.read_excel(archivo_excel, sheet_name='Dependencias')
-            st.session_state.tareas_df = st.session_state.tareas_df_original.copy()
-
-            if 'TARIFA' in st.session_state.recursos_df.columns:
-                st.session_state.recursos_df['TARIFA'] = pd.to_numeric(st.session_state.recursos_df['TARIFA'], errors='coerce').fillna(0)
-
-            for col in ['FECHAINICIO','FECHAFIN']:
-                 st.session_state.tareas_df[col] = pd.to_datetime(st.session_state.tareas_df[col], dayfirst=True, errors='coerce')
-
-            st.session_state.tareas_df['PREDECESORAS'] = st.session_state.tareas_df['PREDECESORAS'].fillna('').astype(str)
-            st.session_state.tareas_df['DURACION'] = (st.session_state.tareas_df['FECHAFIN'] - st.session_state.tareas_df['FECHAINICIO']).dt.days.fillna(0).astype(int)
-            st.session_state.tareas_df.loc[st.session_state.tareas_df['DURACION'] < 0, 'DURACION'] = 0
-            st.session_state.tareas_df = calcular_fechas(st.session_state.tareas_df, st)
-            st.session_state.tareas_df = calcular_ruta_critica(st.session_state.tareas_df, st)
-            st.session_state.tareas_df_last_calculated = st.session_state.tareas_df.copy()
-
-        except Exception as e:
-            st.error(f"Error al leer el archivo Excel. Asegúrese de que contiene las hojas 'Tareas', 'Recursos' y 'Dependencias' y que el formato es correcto: {e}")
-            st.stop()
-
-    def calcular_fechas(df, st_session=None):
+def calcular_fechas(df, st_session=None):
         df = df.copy()
         df.columns = df.columns.str.strip()
 
@@ -208,6 +182,35 @@ if archivo_excel:
         df['FECHAFIN'] = df.apply(lambda row: row['FECHA_FIN_TEMPRANA'] if pd.isna(row['FECHAFIN']) else row['FECHAFIN'], axis=1)
 
         return df
+    
+
+if archivo_excel:
+    if 'archivo_hash' not in st.session_state or st.session_state.archivo_hash != hash(archivo_excel.getvalue()):
+        st.session_state.archivo_hash = hash(archivo_excel.getvalue())
+        try:
+            st.session_state.tareas_df_original = pd.read_excel(archivo_excel, sheet_name='Tareas')
+            st.session_state.recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
+            st.session_state.dependencias_df = pd.read_excel(archivo_excel, sheet_name='Dependencias')
+            st.session_state.tareas_df = st.session_state.tareas_df_original.copy()
+
+            if 'TARIFA' in st.session_state.recursos_df.columns:
+                st.session_state.recursos_df['TARIFA'] = pd.to_numeric(st.session_state.recursos_df['TARIFA'], errors='coerce').fillna(0)
+
+            for col in ['FECHAINICIO','FECHAFIN']:
+                 st.session_state.tareas_df[col] = pd.to_datetime(st.session_state.tareas_df[col], dayfirst=True, errors='coerce')
+
+            st.session_state.tareas_df['PREDECESORAS'] = st.session_state.tareas_df['PREDECESORAS'].fillna('').astype(str)
+            st.session_state.tareas_df['DURACION'] = (st.session_state.tareas_df['FECHAFIN'] - st.session_state.tareas_df['FECHAINICIO']).dt.days.fillna(0).astype(int)
+            st.session_state.tareas_df.loc[st.session_state.tareas_df['DURACION'] < 0, 'DURACION'] = 0
+            st.session_state.tareas_df = calcular_fechas(st.session_state.tareas_df, st)
+            st.session_state.tareas_df = calcular_ruta_critica(st.session_state.tareas_df, st)
+            st.session_state.tareas_df_last_calculated = st.session_state.tareas_df.copy()
+
+        except Exception as e:
+            st.error(f"Error al leer el archivo Excel. Asegúrese de que contiene las hojas 'Tareas', 'Recursos' y 'Dependencias' y que el formato es correcto: {e}")
+            st.stop()
+
+
 
     def calcular_ruta_critica(df, st_session=None):
         df = df.copy()
@@ -942,9 +945,9 @@ if archivo_excel:
     else:
         st.info("Sube un archivo Excel para visualizar el Cronograma Valorado.")
 
-
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias para empezar.")
+
 
 
 
