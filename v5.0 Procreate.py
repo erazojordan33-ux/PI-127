@@ -360,18 +360,18 @@ def calculo_predecesoras(df, fila_editada):
     if row['RUTA_CRITICA']: 
         criticas = df[(df['RUTA_CRITICA']==True) & (df.index != fila_editada)]
         if not criticas.empty:
-            fila_predecesora = criticas.loc[criticas['FECHAFIN'].idxmin()]
-            nuevo_valor = f"{fila_predecesora['IDRUBRO']}CF"
+            fila_predecesora = criticas.loc[criticas['FECHAINICIO'].idxmin()]
+            nuevo_valor = f"{fila_editada['IDRUBRO']}FC"
 
-            if pd.isna(row['PREDECESORAS']) or row['PREDECESORAS'] == "":
-                df.at[fila_editada, 'PREDECESORAS'] = nuevo_valor
+            idx_predecesora = fila_predecesora.name
+            if pd.isna(df.at[idx_predecesora, 'PREDECESORAS']) or df.at[idx_predecesora, 'PREDECESORAS'] == "":
+                df.at[fila_predecesora, 'PREDECESORAS'] = nuevo_valor
             else:
-                df.at[fila_editada, 'PREDECESORAS'] += f", {nuevo_valor}"
+                df.at[fila_predecesora, 'PREDECESORAS'] += f", {nuevo_valor}"
 
     else:  # si se desmarcó
         df.at[fila_editada, 'PREDECESORAS'] = ""
     return df
-
 
 # Definicion de variables y calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
@@ -945,6 +945,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
