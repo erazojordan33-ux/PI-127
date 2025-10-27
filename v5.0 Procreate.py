@@ -508,6 +508,13 @@ if archivo_excel:
                     st.session_state.tareas_df = calculo_ruta_critica(st.session_state.tareas_df)
 
                     st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
+                
+                st.data_editor(
+                    st.session_state.tareas_df[cols],
+                    key="tareas_editor_actualizada",  # distinto key para forzar actualización
+                    use_container_width=True,
+                    column_config={col: {"editable": True} for col in columnas_editables}
+                )
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
                 st.session_state.dependencias_df['COSTO'] = st.session_state.dependencias_df['CANTIDAD'] * st.session_state.dependencias_df['TARIFA']
@@ -939,6 +946,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
