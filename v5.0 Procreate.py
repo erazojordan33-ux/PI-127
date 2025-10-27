@@ -390,7 +390,7 @@ if archivo_excel:
             st.markdown("#### Datos Importados:")
 
             st.subheader("📋 Tabla Tareas")
-            gb = GridOptionsBuilder.from_dataframe(st.session_state.tareas_df_original)
+            gb = GridOptionsBuilder.from_dataframe(st.session_state.tareas_df)
             gb.configure_default_column(editable=False)
             grid_options = gb.build()
             custom_css = {
@@ -401,8 +401,8 @@ if archivo_excel:
                          "text-align": "center"
                          }
             }
-            tareas_df_original_grid_response = AgGrid(st.session_state.tareas_df_original, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css, key='tareasoriginal_grid_tab1')
-            st.session_state.tareas_df_original = pd.DataFrame(tareas_df_original_grid_response['data'])
+            tareas_df_original_grid_response = AgGrid(st.session_state.tareas_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css, key='tareasoriginal_grid_tab1')
+            st.session_state.tareas_df = pd.DataFrame(tareas_df_original_grid_response['data'])
                 
             st.subheader("📋 Tabla Recursos")
             gb = GridOptionsBuilder.from_dataframe(st.session_state.recursos_df)
@@ -879,6 +879,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
