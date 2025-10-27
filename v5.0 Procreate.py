@@ -446,7 +446,7 @@ if archivo_excel:
                 st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica (Editable)")
 
                 st.dataframe(st.session_state.tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
-                                    'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',FECHAINICIO, FECHAFIN
+                                    'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
                                     'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']])
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
@@ -879,6 +879,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
