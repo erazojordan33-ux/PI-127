@@ -196,6 +196,7 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
         else:
             tf[tid]=pd.NA
             ff[tid]=pd.NA
+                
     tareas_df['FECHA_INICIO_TEMPRANA'] = tareas_df['IDRUBRO'].map(es)
     tareas_df['FECHA_FIN_TEMPRANA'] = tareas_df['IDRUBRO'].map(ef)
     tareas_df['FECHA_INICIO_TARDE'] = tareas_df['IDRUBRO'].map(ls)
@@ -211,8 +212,7 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
 # Definicion de variables y calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 if archivo_excel:
-    if 'archivo_hash' not in st.session_state or st.session_state.archivo_hash != hash(archivo_excel.getvalue()):
-        st.session_state.archivo_hash = hash(archivo_excel.getvalue())
+
         try:
             st.session_state.tareas_df_original = pd.read_excel(archivo_excel, sheet_name='Tareas')
             st.session_state.recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
@@ -738,6 +738,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
