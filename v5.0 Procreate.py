@@ -330,7 +330,7 @@ if archivo_excel:
                 else:
                         st.warning("⚠️ Advertencia: Columna 'IDRUBRO' no encontrada para ordenar.")
         
-                st.session_state.tareas_df['y_num'] = range(len(tareas_df))
+                st.session_state.tareas_df['y_num'] = range(len(st.session_state.tareas_df))
         
                 fig = go.Figure()
         
@@ -738,6 +738,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
