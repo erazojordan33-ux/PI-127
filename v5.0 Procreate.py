@@ -24,11 +24,9 @@ def calcular_fechas(df, st_session=None):
         df['DURACION'] = (df['FECHAFIN'] - df['FECHAINICIO']).dt.days.fillna(0).astype(int)
         df.loc[df['DURACION'] < 0, 'DURACION'] = 0
 
-
         inicio_rubro = df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
         fin_rubro = df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
         duracion_rubro = df.set_index('IDRUBRO')['DURACION'].to_dict()
-
 
         dependencias = defaultdict(list)
         pre_count = defaultdict(int)
@@ -49,7 +47,6 @@ def calcular_fechas(df, st_session=None):
                             pre_count[tarea_id] += 1
                         elif st_session: st_session.warning(f"⚠️ Predecesor ID {pre_id} en '{pre_entry}' para tarea {tarea_id} no encontrado.")
                     elif pre_entry != '' and st_session: st_session.warning(f"⚠️ Formato de predecesora '{pre_entry}' no reconocido para tarea {tarea_id}.")
-
 
         queue = deque([tid for tid in all_task_ids if pre_count[tid] == 0])
         inicio_calc = inicio_rubro.copy()
@@ -101,7 +98,6 @@ def calcular_fechas(df, st_session=None):
                  fin_calc[tarea_id] = pd.NaT
                  if st_session: st_session.warning(f"⚠️ No se pudo determinar la FECHA_INICIO para la tarea {tarea_id}. Verifique las predecesoras y fechas.")
 
-
             for hijo in dependencias.get(tarea_id, []):
                    pre_count[hijo] -= 1
                    if pre_count[hijo] == 0:
@@ -126,7 +122,6 @@ def calcular_fechas(df, st_session=None):
                           if pre_id in all_task_ids:
                               successor_map[pre_id].append((tarea_id, tipo_relacion, desfase))
                               predecesoras_map[tarea_id].append((pre_id, tipo_relacion, desfase))
-
 
         end_tasks_ids = [tid for tid in all_task_ids if tid not in successor_map or not successor_map[tid]]
         project_finish_date = df['FECHA_FIN_TEMPRANA'].max()
@@ -175,7 +170,6 @@ def calcular_fechas(df, st_session=None):
                 if u in all_task_ids and u not in visited:
                     queue.append(u)
 
-
         df['FECHA_INICIO_TARDE'] = df['IDRUBRO'].map(ls)
         df['FECHA_FIN_TARDE'] = df['IDRUBRO'].map(lf)
         df['FECHAINICIO'] = df.apply(lambda row: row['FECHA_INICIO_TEMPRANA'] if pd.isna(row['FECHAINICIO']) else row['FECHAINICIO'], axis=1)
@@ -192,7 +186,6 @@ def calcular_ruta_critica(df, st_session=None):
                   df[col] = pd.NaT # Add if missing
              if not pd.api.types.is_datetime64_any_dtype(df[col]):
                   df[col] = pd.to_datetime(df[col], errors='coerce')
-
 
         df['HOLGURA_TOTAL_TD'] = df['FECHA_FIN_TARDE'] - df['FECHA_FIN_TEMPRANA']
         df['HOLGURA_TOTAL'] = df['HOLGURA_TOTAL_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
@@ -216,7 +209,6 @@ def calcular_ruta_critica(df, st_session=None):
                           desfase = int(match.group(3)) if match.group(3) else 0
                           if pre_id in all_task_ids:
                               successor_map[pre_id].append((tarea_id, tipo_relacion, desfase))
-
 
         ff_dict = {}
         for tid in all_task_ids:
@@ -255,12 +247,10 @@ def calcular_ruta_critica(df, st_session=None):
                          if min_succ_start is None or succ_es_based_on_pred < min_succ_start:
                              min_succ_start = succ_es_based_on_pred
 
-
             if min_succ_start is not None and pd.notna(ef_current):
                 ff_dict[tid] = min_succ_start - ef_current
             else:
                 ff_dict[tid] = timedelta(days=0)
-
 
         df['HOLGURA_LIBRE_TD'] = df['IDRUBRO'].map(ff_dict)
         df['HOLGURA_LIBRE'] = df['HOLGURA_LIBRE_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
@@ -288,6 +278,7 @@ if archivo_excel:
             st.session_state.tareas_df['PREDECESORAS'] = st.session_state.tareas_df['PREDECESORAS'].fillna('').astype(str)
             st.session_state.tareas_df['DURACION'] = (st.session_state.tareas_df['FECHAFIN'] - st.session_state.tareas_df['FECHAINICIO']).dt.days.fillna(0).astype(int)
             st.session_state.tareas_df.loc[st.session_state.tareas_df['DURACION'] < 0, 'DURACION'] = 0
+            
             st.session_state.tareas_df = calcular_fechas(st.session_state.tareas_df, st)
             st.session_state.tareas_df = calcular_ruta_critica(st.session_state.tareas_df, st)
             st.session_state.tareas_df_last_calculated = st.session_state.tareas_df.copy()
@@ -296,9 +287,24 @@ if archivo_excel:
             st.error(f"Error al leer el archivo Excel. Asegúrese de que contiene las hojas 'Tareas', 'Recursos' y 'Dependencias' y que el formato es correcto: {e}")
             st.stop()
 
-
     with tab1:
         st.markdown("#### Datos Importados:")
+
+        st.subheader("📋 Tabla Tareas")
+        gb = GridOptionsBuilder.from_dataframe(st.session_state.tareas_df_original)
+        gb.configure_default_column(editable=True)
+        grid_options = gb.build()
+        custom_css = {
+                     ".ag-header": {  # clase del header completo
+                     "background-color": "#0D3B66",  # azul oscuro
+                     "color": "white",               # texto blanco
+                     "font-weight": "bold",
+                     "text-align": "center"
+                     }
+        }
+        tareas_df_original_grid_response = AgGrid(st.session_state.tareas_df_original, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css, key='tareas_df_original_grid_tab1')
+        st.session_state.tareas_df_original = pd.DataFrame(tareas_df_original_grid_response['data'])
+            
         st.subheader("📋 Tabla Recursos")
         gb = GridOptionsBuilder.from_dataframe(st.session_state.recursos_df)
         gb.configure_default_column(editable=True)
@@ -945,6 +951,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias para empezar.")
+
 
 
 
