@@ -377,14 +377,17 @@ if archivo_excel:
                 "background-color": "#FFDDC1",
                 "font-weight": "bold",
             },
-            ".ag-cell.critical-path": { # Fallback style for critical path cells
+            ".ag-cell.critical-path": {
                  "background-color": "#FFDDC1",
                  "font-weight": "bold",
             }
         }
 
-        grid_options['getRowClass'] = "data.RUTA_CRITICA === true ? 'ag-row-no-focus critical-path' : 'ag-row-no-focus'"
-
+        grid_options['getRowClass'] = """
+        function(params) {
+            return params.data.RUTA_CRITICA === true ? 'critical-path' : '';
+        }
+        """
 
         grid_response = AgGrid(
             df_display, # Display the formatted dataframe
@@ -951,6 +954,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias para empezar.")
+
 
 
 
