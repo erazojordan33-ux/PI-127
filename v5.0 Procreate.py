@@ -445,29 +445,10 @@ if archivo_excel:
 
                 st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica (Editable)")
 
-                gb = GridOptionsBuilder.from_dataframe(st.session_state.tareas_df)
-                gb.configure_default_column(editable=True)  # por defecto no editable
-                grid_options = gb.build()
-                custom_css = {
-                                         ".ag-header": {  # clase del header completo
-                                         "background-color": "#0D3B66",  # azul oscuro
-                                         "color": "white",               # texto blanco
-                                         "font-weight": "bold",
-                                         "text-align": "center"
-                                         }
-                }
-                
-                tareas_grid_response = AgGrid(
-                    st.session_state.tareas_df,
-                    gridOptions=grid_options,
-                    update_mode=GridUpdateMode.MODEL_CHANGED,
-                    custom_css=custom_css,
-                    key='tareasmod_grid_tab1'
-                )
+                st.dataframe(st.session_state.tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
+                                    'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',FECHAINICIO, FECHAFIN
+                                    'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']])
 
-                st.session_state.tareas_df_original = pd.DataFrame(tareas_grid_response['data'])
-
-                
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
                 st.session_state.dependencias_df['COSTO'] = st.session_state.dependencias_df['CANTIDAD'] * st.session_state.dependencias_df['TARIFA']
                 costos_por_can = st.session_state.dependencias_df.groupby('RUBRO', as_index=False)['COSTO'].sum()
@@ -898,6 +879,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
