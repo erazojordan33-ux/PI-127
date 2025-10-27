@@ -353,6 +353,27 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
     tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
     return tareas_df
 
+##3
+def calculo_predecesoras(df, fila_editada):
+
+    row = df.loc[fila_editada]
+
+    if row['RUTA_CRITICA']: 
+        criticas = df[(df['RUTA_CRITICA']==True) & (df.index != fila_editada)]
+        if not criticas.empty:
+            fila_predecesora = criticas.loc[criticas['FECHAFIN'].idxmin()]
+            nuevo_valor = f"{fila_predecesora['IDRUBRO']}CF"
+
+            if pd.isna(row['PREDECESORAS']) or row['PREDECESORAS'] == "":
+                df.at[fila_editada, 'PREDECESORAS'] = nuevo_valor
+            else:
+                df.at[fila_editada, 'PREDECESORAS'] += f", {nuevo_valor}"
+
+    else:  # si se desmarcó
+        df.at[fila_editada, 'PREDECESORAS'] = ""
+    return df
+
+
 # Definicion de variables y calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 if archivo_excel:
@@ -470,14 +491,18 @@ if archivo_excel:
                 prev = st.session_state.tareas_df_prev[columnas_editables]
                 now = tareas_editadas[columnas_editables]
         
-                cambios = now.ne(prev).any(axis=1)
-                filas_cambiadas = now[cambios]
+                cambios = now.ne(prev)
+                filas_cambiadas = cambios.any(axis=1)
 
-                if not filas_cambiadas.empty:
+                if filas_cambiadas.any():
 
-                    for idx, fila in filas_cambiadas.iterrows():
+                    for idx in filas_cambiadas.index:
                         for col in columnas_editables:
-                            st.session_state.tareas_df.at[idx, col] = fila[col]
+                            st.session_state.tareas_df.at[idx, col] = tareas_editadas.at[idx, col]
+                    filas_ruta_critica = cambios['RUTA_CRITICA']
+                    for idx in filas_ruta_critica.index:
+                        if filas_ruta_critica.at[idx]:
+                            st.session_state.tareas_df = calculo_predecesoras(st.session_state.tareas_df, idx)
 
                     st.session_state.tareas_df = calcular_fechas(st.session_state.tareas_df)
                     st.session_state.tareas_df = calculo_ruta_critica(st.session_state.tareas_df)
@@ -914,6 +939,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
