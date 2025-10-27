@@ -358,7 +358,9 @@ def calculo_predecesoras(df, fila_editada):
     row = df.loc[fila_editada]
 
     if row['RUTA_CRITICA']: 
-        criticas = df[(df['RUTA_CRITICA']==True) & (df.index != fila_editada)]
+        criticas = df[(df['RUTA_CRITICA'] == True) & 
+                      (df.index != fila_editada) & 
+                      (df['FECHAINICIO'] > row['FECHAINICIO'])]
         if not criticas.empty:
             fila_predecesora = criticas.loc[criticas['FECHAINICIO'].idxmin()]
             nuevo_valor = f"{row['IDRUBRO']}FC"
@@ -945,6 +947,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
