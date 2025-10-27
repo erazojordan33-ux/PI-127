@@ -455,27 +455,35 @@ if archivo_excel:
                     'DURACION','HOLGURA_TOTAL','RUTA_CRITICA'
                 ]
 
+                columnas_editables = ['PREDECESORAS', 'FECHAINICIO', 'FECHAFIN', 'RUTA_CRITICA']
+
                 tareas_editadas = st.data_editor(
                     st.session_state.tareas_df[cols],
                     key="tareas_editor",
-                    use_container_width=True
+                    use_container_width=True,
+                    column_config={col: {"editable": True} for col in columnas_editables}
                 )
 
-                df_prev = st.session_state.tareas_df_prev[cols]
-                df_now = tareas_editadas[cols]
+                st.session_state.tareas_df.reset_index(drop=True, inplace=True)
+                tareas_editadas.reset_index(drop=True, inplace=True)
+
+                prev = st.session_state.tareas_df_prev[columnas_editables]
+                now = tareas_editadas[columnas_editables]
         
-                cambios = df_now.ne(df_prev).any(axis=1)
-                filas_cambiadas = df_now[cambios]
+                cambios = now.ne(prev).any(axis=1)
+                filas_cambiadas = now[cambios]
 
                 if not filas_cambiadas.empty:
+
                     for idx, fila in filas_cambiadas.iterrows():
-                        st.session_state.tareas_df.at[idx, 'PREDECESORAS'] = fila['PREDECESORAS']
-                        st.session_state.tareas_df.at[idx, 'FECHAINICIO'] = fila['FECHAINICIO']
-                        st.session_state.tareas_df.at[idx, 'FECHAFIN'] = fila['FECHAFIN']
-                   
+                        for col in columnas_editables:
+                            st.session_state.tareas_df.at[idx, col] = fila[col]
+
                     st.session_state.tareas_df = calcular_fechas(st.session_state.tareas_df)
                     st.session_state.tareas_df = calculo_ruta_critica(st.session_state.tareas_df)
+
                     st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
+        
                     st.rerun()
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
@@ -908,6 +916,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
