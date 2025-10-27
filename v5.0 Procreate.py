@@ -384,6 +384,9 @@ if archivo_excel:
             st.error(f"Error al leer el archivo Excel. Asegúrese de que contiene las hojas 'Tareas', 'Recursos' y 'Dependencias' ")
             st.stop()
 
+        if "tareas_df_prev" not in st.session_state:
+                st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
+
 # Mostrar variables en la Pestaña 1___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
         with tab1:
@@ -445,9 +448,35 @@ if archivo_excel:
 
                 st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica (Editable)")
 
-                st.dataframe(st.session_state.tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
-                                    'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
-                                    'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']])
+                cols = [
+                    'IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
+                    'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
+                    'FECHA_INICIO_TARDE','FECHA_FIN_TARDE',
+                    'DURACION','HOLGURA_TOTAL','RUTA_CRITICA'
+                ]
+
+                tareas_editadas = st.data_editor(
+                    st.session_state.tareas_df[cols],
+                    key="tareas_editor",
+                    use_container_width=True
+                )
+
+                df_prev = st.session_state.tareas_df_prev[cols]
+                df_now = tareas_editadas[cols]
+        
+                cambios = df_now.ne(df_prev).any(axis=1)
+                filas_cambiadas = df_now[cambios]
+
+                if not filas_cambiadas.empty:
+                    for idx, fila in filas_cambiadas.iterrows():
+                        st.session_state.tareas_df.at[idx, 'PREDECESORAS'] = fila['PREDECESORAS']
+                        st.session_state.tareas_df.at[idx, 'FECHAINICIO'] = fila['FECHAINICIO']
+                        st.session_state.tareas_df.at[idx, 'FECHAFIN'] = fila['FECHAFIN']
+                   
+                    st.session_state.tareas_df = calcular_fechas(st.session_state.tareas_df)
+                    st.session_state.tareas_df = calculo_ruta_critica(st.session_state.tareas_df)
+                    st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
+                    st.rerun()
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
                 st.session_state.dependencias_df['COSTO'] = st.session_state.dependencias_df['CANTIDAD'] * st.session_state.dependencias_df['TARIFA']
@@ -879,6 +908,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
