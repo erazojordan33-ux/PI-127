@@ -365,9 +365,9 @@ def calculo_predecesoras(df, fila_editada):
 
             idx_predecesora = fila_predecesora.name
             if pd.isna(df.at[idx_predecesora, 'PREDECESORAS']) or df.at[idx_predecesora, 'PREDECESORAS'] == "":
-                df.at[fila_predecesora, 'PREDECESORAS'] = nuevo_valor
+                df.at[idx_predecesora, 'PREDECESORAS'] = nuevo_valor
             else:
-                df.at[fila_predecesora, 'PREDECESORAS'] += f", {nuevo_valor}"
+                df.at[idx_predecesora, 'PREDECESORAS'] += f", {nuevo_valor}"
 
     else:  # si se desmarcó
         df.at[fila_editada, 'PREDECESORAS'] = ""
@@ -945,6 +945,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
