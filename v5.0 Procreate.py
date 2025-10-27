@@ -294,9 +294,6 @@ if archivo_excel:
             dependencias_grid_response = AgGrid(st.session_state.dependencias_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css, key='dependencias_grid_tab1') # Add a unique key
             st.session_state.dependencias_df = pd.DataFrame(dependencias_grid_response['data'])
 
-
-    tareas_df = calcular_fechas(tareas_df)
-
     # _________________________________________________________________________________________________
     st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
     st.dataframe(tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
@@ -891,6 +888,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
