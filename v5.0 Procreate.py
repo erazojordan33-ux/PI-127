@@ -391,7 +391,7 @@ if archivo_excel:
 
             st.subheader("📋 Tabla Tareas")
             gb = GridOptionsBuilder.from_dataframe(st.session_state.tareas_df_original)
-            gb.configure_default_column(editable=True)
+            gb.configure_default_column(editable=False)
             grid_options = gb.build()
             custom_css = {
                          ".ag-header": {  # clase del header completo
@@ -442,10 +442,34 @@ if archivo_excel:
         
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
         with tab2:
-                st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
-                st.dataframe(st.session_state.tareas_df[['IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
-                                    'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
-                                    'FECHA_INICIO_TARDE','FECHA_FIN_TARDE','DURACION','HOLGURA_TOTAL','RUTA_CRITICA']])
+                from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+
+                tareas_df = st.session_state.tareas_df.copy()
+                
+                st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica (Editable)")
+                
+                # Configurar AgGrid
+                gb = GridOptionsBuilder.from_dataframe(tareas_df)
+                gb.configure_default_column(editable=False)  # por defecto no editable
+                gb.configure_column("PREDECESORAS", editable=True)
+                gb.configure_column("RUTA_CRITICA", editable=True)
+                gb.configure_selection(selection_mode="single", use_checkbox=True)
+                gb.configure_grid_options(domLayout='normal')
+                grid_options = gb.build()
+                
+                grid_response = AgGrid(
+                    tareas_df,
+                    gridOptions=grid_options,
+                    update_mode=GridUpdateMode.VALUE_CHANGED,
+                    allow_unsafe_jscode=True,
+                    enable_enterprise_modules=False,
+                    height=400,
+                )
+                
+                # Guardar cambios de vuelta en session_state
+                st.session_state.tareas_df.update(grid_response['data'])
+
+                
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
                 st.session_state.dependencias_df['COSTO'] = st.session_state.dependencias_df['CANTIDAD'] * st.session_state.dependencias_df['TARIFA']
                 costos_por_can = st.session_state.dependencias_df.groupby('RUBRO', as_index=False)['COSTO'].sum()
@@ -876,6 +900,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
