@@ -20,7 +20,6 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["Inicio","Calendario","Diagrama Gantt", 
 
 # Definir funciones de calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 ##1
-
 def calcular_fechas(df):
         df = df.copy()
         df.columns = df.columns.str.strip()
@@ -682,13 +681,15 @@ if archivo_excel:
                 ]
 
                 columnas_editables = ['PREDECESORAS', 'FECHAINICIO', 'FECHAFIN', 'RUTA_CRITICA']
+                column_config = {col: {"editable": (col in columnas_editables)} for col in cols}
 
                 tareas_editadas = st.data_editor(
                     st.session_state.tareas_df[cols],
                     key="tareas_editor",
                     use_container_width=True,
-                    column_config={col: {"editable": True} for col in columnas_editables}
+                    column_config=column_config
                 )
+
 
                 st.session_state.tareas_df.reset_index(drop=True, inplace=True)
                 tareas_editadas.reset_index(drop=True, inplace=True)
@@ -1231,6 +1232,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
