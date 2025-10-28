@@ -16,7 +16,7 @@ st.set_page_config(page_title="Gestión de Proyectos - Cronograma Valorado", lay
 st.title("📊 Gestión de Proyectos - Seguimiento y Control")
 
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
-tab1, tab2, tab3, tab4 = st.tabs(["Inicio", "Diagrama Gantt", "Recursos", "Presupuesto"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Inicio","Calendario","Diagrama Gantt", "Recursos", "Presupuesto"])
 
 # Definir funciones de calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 ##1
@@ -480,9 +480,63 @@ if archivo_excel:
             }
             dependencias_grid_response = AgGrid(st.session_state.dependencias_df, gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css, key='dependencias_grid_tab1') # Add a unique key
             st.session_state.dependencias_df = pd.DataFrame(dependencias_grid_response['data'])
-        
-# Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
+
+# Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
         with tab2:
+                st.header("Configuración de días laborables")
+                opcion_dias = st.radio(
+                        "Selecciona días no laborables por defecto:",
+                        options=["Sábados y Domingos", "Domingos", "Solo Sábados", "Personalizado"]
+                )
+                dias_no_laborables_personalizados = []
+                if opcion_dias == "Personalizado":
+                        dias_no_laborables_personalizados = st.date_input(
+                            "Selecciona los días no laborables",
+                            value=[],
+                            help="Puedes seleccionar varias fechas",
+                            key="dias_no_laborables_personalizados",
+                            max_dates=None  # permite seleccionar múltiples fechas
+                )
+                st.header("Horas laborables por día")
+                horas_por_dia = st.number_input(
+                        "Elige las horas de trabajo diarias",
+                        min_value=1,
+                        max_value=24,
+                        value=8,
+                        step=1,
+                        key="horas_por_dia"
+                )
+
+                st.header("Feriados personalizados")
+                if "feriados" not in st.session_state:
+                        st.session_state.feriados = pd.DataFrame(columns=["Descripción", "Fecha"])
+                
+                feriados_df = st.session_state.feriados.copy()
+                
+                feriados_df = st.data_editor(
+                        feriados_df,
+                        key="tabla_feriados",
+                        num_rows="dynamic",
+                        column_config={
+                            "Descripción": {"width": 200},
+                            "Fecha": {"width": 150}
+                        }
+                )
+                
+                st.session_state.feriados = feriados_df
+                st.session_state.calendario = {
+                        "dias_no_laborables": opcion_dias,
+                        "dias_personalizados": dias_no_laborables_personalizados,
+                        "horas_por_dia": horas_por_dia,
+                        "feriados": st.session_state.feriados.to_dict(orient="records")
+                }
+
+                st.success("✅ Configuración de calendario actualizada")
+                
+                
+# Mostrar variables en la Pestaña 3___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
+        with tab3:
 
                 st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
 
@@ -778,8 +832,8 @@ if archivo_excel:
                 
                 st.plotly_chart(fig, use_container_width=True)
 
-# Mostrar variables en la Pestaña 3___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
-        with tab3:
+# Mostrar variables en la Pestaña 4___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
+        with tab4:
                 st.session_state.tareas_df['FECHAINICIO'] = pd.to_datetime(st.session_state.tareas_df['FECHAINICIO'])
                 st.session_state.tareas_df['FECHAFIN'] = pd.to_datetime(st.session_state.tareas_df['FECHAFIN'])
                 
@@ -933,8 +987,8 @@ if archivo_excel:
                 st.plotly_chart(fig_resource_timeline, use_container_width=True)
 
 
-# Mostrar variables en la Pestaña 4___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
-        with tab4:
+# Mostrar variables en la Pestaña 5___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
+        with tab5:
                              
                     required_columns_and_types = {
                         'Fecha': 'datetime64[ns]',
@@ -1043,6 +1097,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
