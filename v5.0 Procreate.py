@@ -577,8 +577,9 @@ if archivo_excel:
                     fin_rango = pd.to_datetime(rango["fin"])
                     calendario_df.loc[(calendario_df["fecha"] >= inicio_rango) & (calendario_df["fecha"] <= fin_rango), "no_laborable"] = True
         
+                st.session_state.calendario = calendario_df.copy()
+                
                 # --- Línea de tiempo horizontal simple ---
-                calendario_df = st.session_state.calendario.copy()
                 fig = go.Figure()
                 
                 # Línea base para todo el proyecto
@@ -603,6 +604,7 @@ if archivo_excel:
                         hoverinfo='text',
                         text=f"{row['fecha'].strftime('%d/%m/%Y')} - No laborable"
                     ))
+
                 
                 # Quitar eje Y y ticks
                 fig.update_yaxes(visible=False)
@@ -1185,6 +1187,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
