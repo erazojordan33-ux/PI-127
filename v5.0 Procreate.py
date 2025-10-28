@@ -484,79 +484,74 @@ if archivo_excel:
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
         with tab2:
+
             st.subheader("Configuración de días laborables")
-            st.markdown("<hr>", unsafe_allow_html=True)  # línea separadora
-            
-            # --- Fechas de inicio y fin del proyecto ---
+            st.markdown("<hr>", unsafe_allow_html=True)
+        
+            # Fechas de inicio y fin del proyecto
             fecha_inicio_default = st.session_state.tareas_df['FECHAINICIO'].min()
             fecha_fin_default = st.session_state.tareas_df['FECHAFIN'].max()
-            
             col1, col2 = st.columns(2)
             with col1:
                 fecha_inicio_proyecto = st.date_input(
                     "Fecha de inicio del proyecto",
-                    value=fecha_inicio_default,
-                    key="fecha_inicio_proyecto"
+                    value=fecha_inicio_default
                 )
             with col2:
                 fecha_fin_proyecto = st.date_input(
                     "Fecha de fin del proyecto",
-                    value=fecha_fin_default,
-                    key="fecha_fin_proyecto"
+                    value=fecha_fin_default
                 )
             
             st.markdown("---")
-            
-            # --- Selección de días no laborables ---
             st.write("Indicar días no laborables")
             opciones_no_laborables = ["Sábados y Domingos", "Sábados", "Domingos", "24/6", "22/8", "Personalizado"]
-            
-            # Usamos multiselect para permitir escoger varias opciones al mismo tiempo
             dias_no_laborables_seleccionados = st.multiselect(
                 "Selecciona los días no laborables",
                 options=opciones_no_laborables,
                 default=["Sábados y Domingos"]
             )
-            
-            # Si "Personalizado" está seleccionado, mostramos el selector de fechas múltiples
-            dias_personalizados = []
+        
+            # Rangos personalizados
+            rangos_personalizados = []
             if "Personalizado" in dias_no_laborables_seleccionados:
-                dias_personalizados = st.date_input(
-                    "Selecciona tus días personalizados",
-                    value=[],
-                    help="Puedes seleccionar varias fechas",
-                    key="dias_no_laborables_personalizados"
-                )
+                st.write("Agregar rangos de días no laborables")
+                if "agregar_rango" not in st.session_state:
+                    st.session_state.agregar_rango = []
+                
+                add_rango = st.button("Agregar rango")
+                if add_rango:
+                    st.session_state.agregar_rango.append({"inicio": fecha_inicio_proyecto, "fin": fecha_inicio_proyecto})
+                
+                for idx, rango in enumerate(st.session_state.agregar_rango):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        rango_inicio = st.date_input(f"Rango {idx+1} inicio", value=rango["inicio"], key=f"inicio_{idx}")
+                    with col2:
+                        rango_fin = st.date_input(f"Rango {idx+1} fin", value=rango["fin"], key=f"fin_{idx}")
+                    st.session_state.agregar_rango[idx] = {"inicio": rango_inicio, "fin": rango_fin}
+                
+                rangos_personalizados = st.session_state.agregar_rango
             
             st.markdown("---")
-            
-            # --- Configuración de horas laborales por día ---
             st.write("Horas laborables por día")
-            horas_por_dia = st.number_input(
-                "Elige las horas de trabajo diarias",
-                min_value=1,
-                max_value=24,
-                value=8,
-                step=1,
-                key="horas_por_dia"
-            )
+            horas_por_dia = st.number_input("Elige las horas de trabajo diarias", min_value=1, max_value=24, value=8, step=1)
             
-            st.markdown("---")
-            
-            # --- Generar calendario visual de no laborables ---
+            # --- Generar calendario matriz tipo heatmap ---
             import pandas as pd
             import numpy as np
-            import calendar
             import plotly.express as px
+            import calendar
             
             if fecha_inicio_proyecto and fecha_fin_proyecto:
-                # Generar DataFrame con todas las fechas del proyecto
                 fechas_proyecto = pd.date_range(fecha_inicio_proyecto, fecha_fin_proyecto)
                 calendario_df = pd.DataFrame({"fecha": fechas_proyecto})
-                calendario_df["dia_semana"] = calendario_df["fecha"].dt.weekday  # 0=lunes ... 6=domingo
                 calendario_df["no_laborable"] = False
-                
-                # Marcar días no laborables según selección
+                calendario_df["dia_semana"] = calendario_df["fecha"].dt.weekday
+                calendario_df["mes"] = calendario_df["fecha"].dt.to_period('M')
+                calendario_df["dia"] = calendario_df["fecha"].dt.day
+        
+                # Opciones fijas
                 for opcion in dias_no_laborables_seleccionados:
                     if opcion == "Sábados y Domingos":
                         calendario_df.loc[calendario_df["dia_semana"].isin([5,6]), "no_laborable"] = True
@@ -565,29 +560,31 @@ if archivo_excel:
                     elif opcion == "Domingos":
                         calendario_df.loc[calendario_df["dia_semana"] == 6, "no_laborable"] = True
                     elif opcion == "24/6":
-                        calendario_df.loc[calendario_df["fecha"].dt.day == 24, "no_laborable"] = True
+                        # últimos 6 días de cada mes
+                        for m in calendario_df["mes"].unique():
+                            ultimos6 = calendario_df[calendario_df["mes"]==m].tail(6).index
+                            calendario_df.loc[ultimos6, "no_laborable"] = True
                     elif opcion == "22/8":
-                        calendario_df.loc[calendario_df["fecha"].dt.day == 22, "no_laborable"] = True
+                        # últimos 8 días de cada mes
+                        for m in calendario_df["mes"].unique():
+                            ultimos8 = calendario_df[calendario_df["mes"]==m].tail(8).index
+                            calendario_df.loc[ultimos8, "no_laborable"] = True
                 
-                # Días personalizados
-                if dias_personalizados:
-                    calendario_df.loc[calendario_df["fecha"].isin(dias_personalizados), "no_laborable"] = True
-                
-                # Guardar calendario en session_state
+                # Rangos personalizados
+                for rango in rangos_personalizados:
+                    calendario_df.loc[(calendario_df["fecha"] >= rango["inicio"]) & (calendario_df["fecha"] <= rango["fin"]), "no_laborable"] = True
+        
+                # Guardar calendario
                 st.session_state.calendario = calendario_df.copy()
                 
-                # Mostrar calendario visual simple (color: gris para no laborables)
+                # Heatmap mensual simple
                 calendario_df["color"] = np.where(calendario_df["no_laborable"], "No laborable", "Laborable")
-                fig_cal = px.scatter(
-                    calendario_df,
-                    x="fecha",
-                    y=np.ones(len(calendario_df)),  # para plot horizontal
-                    color="color",
-                    color_discrete_map={"Laborable":"lightgreen", "No laborable":"lightcoral"},
-                    labels={"x":"Fecha", "y":""}
+                fig_cal = px.imshow(
+                    calendario_df.pivot_table(index=calendario_df["fecha"].dt.week, columns=calendario_df["fecha"].dt.weekday, values="no_laborable", fill_value=False),
+                    labels=dict(x="Día de la semana", y="Semana", color="No laborable"),
+                    color_continuous_scale=["lightgreen","lightcoral"]
                 )
-                fig_cal.update_yaxes(visible=False)
-                fig_cal.update_layout(height=150, margin=dict(l=20,r=20,t=20,b=20), showlegend=True)
+                fig_cal.update_layout(height=250)
                 st.plotly_chart(fig_cal, use_container_width=True)
 
                 
@@ -1154,6 +1151,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
