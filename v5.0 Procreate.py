@@ -493,10 +493,6 @@ if archivo_excel:
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
         with tab2:
-            import pandas as pd
-            import plotly.graph_objects as go
-            from datetime import date, timedelta
-            import streamlit as st
 
             st.subheader("Configuración de días laborables")
             st.markdown("<hr>", unsafe_allow_html=True)
@@ -513,6 +509,9 @@ if archivo_excel:
                 fecha_fin_proyecto = st.date_input(
                     "Fecha de fin del proyecto", value=fecha_fin_default
                 )
+
+            st.session_state.fecha_inicio_proyecto = fecha_inicio_proyecto
+            st.session_state.fecha_fin_proyecto = fecha_fin_proyecto
         
             st.markdown("---")
             st.write("Indicar días no laborables")
@@ -1224,6 +1223,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
