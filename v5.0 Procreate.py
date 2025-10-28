@@ -668,8 +668,57 @@ if archivo_excel:
                         text=hover_text,
                         showlegend=False
                     ))
-
+                        #### LINEASSSSS
+                    nombre_tarea = row["RUBRO"]
+                    inicio = row["FECHAINICIO"]
+                    fin = row["FECHAFIN"]
+                    color_principal = "rgba(0, 123, 255, 1)"  # ajusta si usas colores dinámicos
                 
+                    # --- Barra principal ---
+                    fig.add_trace(go.Bar(
+                        x=[(fin - inicio).days],
+                        y=[nombre_tarea],
+                        base=inicio,
+                        orientation='h',
+                        marker=dict(color=color_principal),
+                        hovertemplate=(
+                            f"<b>{nombre_tarea}</b><br>"
+                            f"Inicio: {inicio}<br>"
+                            f"Fin: {fin}<extra></extra>"
+                        ),
+                        showlegend=False
+                    ))
+                
+                    # --- Barra delgada de rango (temprana - tarde) ---
+                    inicio_temp = row["FECHA_INICIO_TEMPRANA"]
+                    fin_tarde = row["FECHA_FIN_TARDE"]
+                    color_linea = "rgba(0, 123, 255, 0.4)"  # mismo color pero translúcido
+                
+                    fig.add_trace(go.Bar(
+                        x=[(fin_tarde - inicio_temp).days],
+                        y=[nombre_tarea],
+                        base=inicio_temp,
+                        orientation='h',
+                        marker=dict(color=color_linea),
+                        width=0.2,  # más delgada
+                        hoverinfo='skip',
+                        showlegend=False
+                    ))
+                
+                    # --- Marcadores verticales (inicio y fin del rango) ---
+                    fig.add_shape(
+                        type="line",
+                        x0=inicio_temp, y0=i - 0.4,
+                        x1=inicio_temp, y1=i + 0.4,
+                        line=dict(color=color_linea, width=2)
+                    )
+                    fig.add_shape(
+                        type="line",
+                        x0=fin_tarde, y0=i - 0.4,
+                        x1=fin_tarde, y1=i + 0.4,
+                        line=dict(color=color_linea, width=2)
+                    )
+
                 offset_days_horizontal = 5
                 color_no_critica_flecha = 'blue'
                 color_critica_flecha = 'red'
@@ -1020,6 +1069,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
