@@ -24,7 +24,6 @@ def calcular_fechas(df):
     df = df.copy()
     df.columns = df.columns.str.strip()
 
-    # 📌 Obtener calendario y fechas de proyecto
     calendario = st.session_state.calendario.copy()  # tabla con columnas ['fecha', 'no_laborable']
     fecha_inicio_proyecto = st.session_state.fecha_inicio_proyecto
     fecha_fin_proyecto = st.session_state.fecha_fin_proyecto
@@ -430,30 +429,10 @@ if archivo_excel:
             st.session_state.recursos_df = pd.read_excel(archivo_excel, sheet_name='Recursos')
             st.session_state.dependencias_df = pd.read_excel(archivo_excel, sheet_name='Dependencias')
             st.session_state.tareas_df = st.session_state.tareas_df_original.copy()
-
-            if 'TARIFA' in st.session_state.recursos_df.columns:
-                    st.session_state.recursos_df['TARIFA'] = pd.to_numeric(st.session_state.recursos_df['TARIFA'], errors='coerce').fillna(0)
-
-            for col in ['FECHAINICIO','FECHAFIN']:
-                st.session_state.tareas_df[col] = pd.to_datetime(st.session_state.tareas_df[col], errors='coerce')
-                st.session_state.tareas_df[col] = st.session_state.tareas_df[col].dt.strftime('%d/%m/%Y')
-        
-            for col in ['FECHAINICIO','FECHAFIN']:
-                st.session_state.tareas_df[col] = pd.to_datetime(st.session_state.tareas_df[col], dayfirst=True, errors='coerce')
-
-            st.session_state.tareas_df['DURACION'] = (st.session_state.tareas_df['FECHAFIN'] - st.session_state.tareas_df['FECHAINICIO']).dt.days
-            st.session_state.tareas_df.loc[st.session_state.tareas_df['DURACION'] < 0, 'DURACION'] = 0  # prevenir negativos
-            st.session_state.tareas_df['PREDECESORAS'] = st.session_state.tareas_df['PREDECESORAS'].fillna('').astype(str)
-
-            st.session_state.tareas_df=calcular_fechas(st.session_state.tareas_df)
-            st.session_state.tareas_df=calculo_ruta_critica(st.session_state.tareas_df)
-            
+          
         except:
             st.error(f"Error al leer el archivo Excel. Asegúrese de que contiene las hojas 'Tareas', 'Recursos' y 'Dependencias' ")
             st.stop()
-
-        if "tareas_df_prev" not in st.session_state:
-                st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
 
 # Mostrar variables en la Pestaña 1___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
@@ -654,7 +633,35 @@ if archivo_excel:
                 
                 st.plotly_chart(fig, use_container_width=True)
 
+# Definicion calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+        try:
+
+            if 'TARIFA' in st.session_state.recursos_df.columns:
+                    st.session_state.recursos_df['TARIFA'] = pd.to_numeric(st.session_state.recursos_df['TARIFA'], errors='coerce').fillna(0)
+
+            for col in ['FECHAINICIO','FECHAFIN']:
+                st.session_state.tareas_df[col] = pd.to_datetime(st.session_state.tareas_df[col], errors='coerce')
+                st.session_state.tareas_df[col] = st.session_state.tareas_df[col].dt.strftime('%d/%m/%Y')
         
+            for col in ['FECHAINICIO','FECHAFIN']:
+                st.session_state.tareas_df[col] = pd.to_datetime(st.session_state.tareas_df[col], dayfirst=True, errors='coerce')
+
+            st.session_state.tareas_df['DURACION'] = (st.session_state.tareas_df['FECHAFIN'] - st.session_state.tareas_df['FECHAINICIO']).dt.days
+            st.session_state.tareas_df.loc[st.session_state.tareas_df['DURACION'] < 0, 'DURACION'] = 0  # prevenir negativos
+            st.session_state.tareas_df['PREDECESORAS'] = st.session_state.tareas_df['PREDECESORAS'].fillna('').astype(str)
+
+            st.session_state.tareas_df=calcular_fechas(st.session_state.tareas_df)
+            st.session_state.tareas_df=calculo_ruta_critica(st.session_state.tareas_df)
+            
+        except:
+            st.error(f"Error al tratar datos. Asegúrese del contenido de la base ")
+            st.stop()
+
+        if "tareas_df_prev" not in st.session_state:
+                st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
+
+
+
 # Mostrar variables en la Pestaña 3___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
         with tab3:
 
@@ -1217,6 +1224,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
