@@ -577,59 +577,52 @@ if archivo_excel:
                     fin_rango = pd.to_datetime(rango["fin"])
                     calendario_df.loc[(calendario_df["fecha"] >= inicio_rango) & (calendario_df["fecha"] <= fin_rango), "no_laborable"] = True
         
-                # Guardar calendario en session_state
-        # --- Visualización tipo línea de tiempo del proyecto ---
+                # --- Línea de tiempo horizontal simple ---
                 calendario_df = st.session_state.calendario.copy()
                 fig = go.Figure()
                 
-                # Ajustar altura según cantidad de meses
-                meses = calendario_df["mes"].unique()
-                fig_height = max(200, len(meses) * 50)
+                # Línea base para todo el proyecto
+                fig.add_trace(go.Scatter(
+                    x=[calendario_df["fecha"].min(), calendario_df["fecha"].max()],
+                    y=[0, 0],  # eje Y fijo en 0
+                    mode='lines',
+                    line=dict(color='lightgreen', width=20),  # días laborables
+                    hoverinfo='skip',
+                    showlegend=False
+                ))
                 
-                for idx_mes, m in enumerate(meses):
-                    df_mes = calendario_df[calendario_df["mes"]==m].copy()
-                    y_pos = len(meses) - idx_mes  # para invertir el orden
+                # Resaltar los días no laborables
+                no_laborables = calendario_df[calendario_df["no_laborable"]]
+                for _, row in no_laborables.iterrows():
+                    fig.add_trace(go.Scatter(
+                        x=[row["fecha"], row["fecha"] + timedelta(days=1)],
+                        y=[0, 0],
+                        mode='lines',
+                        line=dict(color='red', width=20),
+                        showlegend=False,
+                        hoverinfo='text',
+                        text=f"{row['fecha'].strftime('%d/%m/%Y')} - No laborable"
+                    ))
                 
-                    # Dibujar cada día como barra delgada horizontal
-                    for _, row in df_mes.iterrows():
-                        color = "red" if row["no_laborable"] else "lightgreen"
-                        fig.add_trace(go.Scatter(
-                            x=[row["fecha"], row["fecha"] + timedelta(days=1)],
-                            y=[y_pos, y_pos],
-                            mode="lines",
-                            line=dict(color=color, width=10),  # ancho más grueso para visibilidad
-                            hoverinfo="text",
-                            text=f"{row['fecha'].strftime('%d/%m/%Y')} - {'No laborable' if row['no_laborable'] else 'Laborable'}",
-                            showlegend=False
-                        ))
-                
-                # Etiquetas de mes a la izquierda
-                fig.update_yaxes(
-                    tickvals=list(range(1, len(meses)+1)),
-                    ticktext=[str(m) for m in meses[::-1]],
-                    title_text="Mes",
-                    autorange='reversed'
-                )
+                # Quitar eje Y y ticks
+                fig.update_yaxes(visible=False)
                 fig.update_xaxes(
-                    title_text="Fecha",
+                    title="Fecha",
                     type="date",
                     showgrid=True,
                     gridcolor='rgba(128,128,128,0.2)'
                 )
                 
                 fig.update_layout(
-                    height=fig_height,
+                    height=100,
                     plot_bgcolor="white",
-                    margin=dict(l=80,r=20,t=20,b=20),
+                    margin=dict(l=20, r=20, t=20, b=20),
                     hovermode="closest"
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
 
-
-
-                
-                
+        
 # Mostrar variables en la Pestaña 3___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
         with tab3:
 
@@ -1192,6 +1185,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
