@@ -528,38 +528,32 @@ if archivo_excel:
                 
                 st.subheader("📊 Diagrama de Gantt - Ruta Crítica")
                 
-                from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
-
-                # Construir las opciones de la tabla
-                gb = GridOptionsBuilder.from_dataframe(st.session_state.tareas_df[cols])
-                gb.configure_default_column(editable=False)  # ❌ no editable
-                grid_options = gb.build()
-                
-                # CSS personalizado para encabezado azul oscuro
-                custom_css = {
-                    ".ag-header": {
-                        "background-color": "#0D3B66 !important",  # Azul oscuro
-                        "color": "white !important",               # Texto blanco
-                        "font-weight": "bold",
-                        "text-align": "center"
-                    },
-                    ".ag-row": {
-                        "font-size": "13px",
-                        "text-align": "center"
+                st.markdown(
+                    """
+                    <style>
+                    /* Encabezado azul oscuro con texto blanco */
+                    [data-testid="stDataFrame"] thead tr th {
+                        background-color: #0D3B66 !important;
+                        color: white !important;
+                        font-weight: bold !important;
+                        text-align: center !important;
                     }
-                }
+                
+                    /* Centrar texto en celdas */
+                    [data-testid="stDataFrame"] tbody td {
+                        text-align: center !important;
+                    }
+                    </style>
+                    """,
+                    unsafe_allow_html=True
+                )
                 
                 # Mostrar la tabla sin permitir edición
-                AgGrid(
+                st.data_editor(
                     st.session_state.tareas_df[cols],
-                    gridOptions=grid_options,
-                    update_mode=GridUpdateMode.NO_UPDATE,  # No reactividad
-                    custom_css=custom_css,
-                    theme="alpine",  # Tema base limpio
-                    key="tareas_grid_final",  # Clave única
-                    allow_unsafe_jscode=True,
-                    fit_columns_on_grid_load=True,
-                    enable_enterprise_modules=False
+                    key="tareas_editor_actualizada",
+                    use_container_width=True,
+                    disabled=True  # 🔒 hace que TODA la tabla sea no editable
                 )
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
@@ -992,6 +986,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
