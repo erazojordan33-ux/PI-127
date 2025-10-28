@@ -20,7 +20,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["Inicio","Calendario","Diagrama Gantt", 
 
 # Definir funciones de calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 ##1
-def calcular_fechas_respetando_calendario(df, calendario_df):
+def calcular_fechas(df, calendario_df):
     """
     Calcula FECHAINICIO y FECHAFIN ajustadas por predecesoras respetando el calendario de días laborables.
     - df: DataFrame con columnas obligatorias: IDRUBRO, FECHAINICIO, FECHAFIN, PREDECESORAS (opcional).
@@ -629,10 +629,6 @@ if archivo_excel:
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
         import calendar
-        import pandas as pd
-        import plotly.graph_objects as go
-        from datetime import timedelta
-        import streamlit as st
                 
         def plot_month_calendar(calendario_df: pd.DataFrame, year: int, month: int) -> go.Figure:
                     """
@@ -1400,6 +1396,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
