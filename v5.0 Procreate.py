@@ -692,18 +692,20 @@ if archivo_excel:
                                 hoverinfo='skip',
                                 showlegend=False
                             ))
-                    # --- Marcadores verticales (inicio y fin del rango) ---
+
                             fig.add_shape(
-                                type="line",
-                                x0=inicio_temp, y0=y_center - 0.3,
-                                x1=inicio_temp, y1=y_center + 0.3,
-                                line=dict(color=line_color, width=2)
+                                    type="line",
+                                    x0=inicio_temp, x1=inicio_temp,
+                                    y0=y_center - 0.15, y1=y_center + 0.15,
+                                    xref='x', yref='y',
+                                    line=dict(color=line_color, width=1)
                             )
                             fig.add_shape(
-                                type="line",
-                                x0=fin_tarde, y0=y_center - 0.3,
-                                x1=fin_tarde, y1=y_center + 0.3,
-                                line=dict(color=line_color, width=2)
+                                    type="line",
+                                    x0=fin_tarde, x1=fin_tarde,
+                                    y0=y_center - 0.15, y1=y_center + 0.15,
+                                    xref='x', yref='y',
+                                    line=dict(color=line_color, width=1)
                             )
                 offset_days_horizontal = 5
                 color_no_critica_flecha = 'blue'
@@ -1055,6 +1057,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
