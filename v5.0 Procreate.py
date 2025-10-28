@@ -23,9 +23,25 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["Inicio","Calendario","Diagrama Gantt", 
 def calcular_fechas(df):
         df = df.copy()
         df.columns = df.columns.str.strip()
+        
+        calendario = st.session_state.calendario.copy()  # tabla con columnas ['fecha', 'no_laborable']
+        fecha_inicio_proyecto = st.session_state.fecha_inicio_proyecto
+        fecha_fin_proyecto = st.session_state.fecha_fin_proyecto
+        
+            # Función auxiliar: sumar días laborables
+        def sumar_dias_laborables(inicio, duracion):
+                dias_sumados = 0
+                fecha = inicio
+                while dias_sumados < duracion:
+                    if fecha in calendario.index and not calendario.loc[fecha, "no_laborable"]:
+                        dias_sumados += 1
+                    fecha += timedelta(days=1)
+                return fecha - timedelta(days=1)  # último día laboral
+        
         inicio_rubro = df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
         fin_rubro = df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
         duracion_rubro = (df.set_index('IDRUBRO')['FECHAFIN'] - df.set_index('IDRUBRO')['FECHAINICIO']).dt.days.to_dict()
+        
         dependencias = defaultdict(list)
         pre_count = defaultdict(int)
         for _, row in df.iterrows():
@@ -51,9 +67,9 @@ def calcular_fechas(df):
             duracion = duracion_rubro[tarea_id]
             predecesoras_str = str(row['PREDECESORAS']).strip()
     
-            nueva_inicio = inicio_calc[tarea_id]
-            nueva_fin = fin_calc[tarea_id]
-    
+            nueva_inicio = max(inicio_calc[tarea_id], fecha_inicio_proyecto)
+            nueva_fin = sumar_dias_laborables(nueva_inicio, duracion)
+        
             if predecesoras_str not in ['nan','']:
                 pre_list = predecesoras_str.split(',')
                 for pre in pre_list:
@@ -83,6 +99,9 @@ def calcular_fechas(df):
                             else:
                                 st.warning(f"⚠️ Tipo de relación '{tipo}' no reconocido en '{pre}' para tarea {tarea_id}") 
 
+            nueva_inicio = max(nueva_inicio, fecha_inicio_proyecto)
+            nueva_fin = max(nueva_inicio, nueva_fin)
+                    
             inicio_calc[tarea_id] = nueva_inicio
             fin_calc[tarea_id] = nueva_fin
 
@@ -93,7 +112,11 @@ def calcular_fechas(df):
 
         df['FECHAINICIO'] = df['IDRUBRO'].map(inicio_calc)
         df['FECHAFIN'] = df['IDRUBRO'].map(fin_calc)
-    
+
+        nueva_fecha_fin = max(df['FECHAFIN'].max(), fecha_fin_proyecto)
+        if nueva_fecha_fin > fecha_fin_proyecto:
+                st.warning(f"⚠️ El proyecto se extiende hasta {nueva_fecha_fin.strftime('%d/%m/%Y')} por la duración de las tareas.")
+            
         return df
 
 ##2
@@ -1187,6 +1210,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
