@@ -675,7 +675,7 @@ if archivo_excel:
                 
                     fig.add_trace(go.Bar(
                         x=[(fin_tarde - inicio_temp).days],
-                        y=[nombre_tarea],
+                        y=ys,
                         base=inicio_temp,
                         orientation='h',
                         marker=dict(color=line_color),
@@ -1048,6 +1048,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
