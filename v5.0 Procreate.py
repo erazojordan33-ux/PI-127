@@ -528,19 +528,39 @@ if archivo_excel:
                 
                 st.subheader("📊 Diagrama de Gantt - Ruta Crítica")
                 
+                from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+
+                # Construir las opciones de la tabla
                 gb = GridOptionsBuilder.from_dataframe(st.session_state.tareas_df[cols])
-                gb.configure_default_column(editable=False)
+                gb.configure_default_column(editable=False)  # ❌ no editable
                 grid_options = gb.build()
+                
+                # CSS personalizado para encabezado azul oscuro
                 custom_css = {
-                           ".ag-header": {
-                           "background-color": "#0D3B66",
-                           "color": "white",
-                           "font-weight": "bold",
-                           "text-align": "center"
-                           }
+                    ".ag-header": {
+                        "background-color": "#0D3B66 !important",  # Azul oscuro
+                        "color": "white !important",               # Texto blanco
+                        "font-weight": "bold",
+                        "text-align": "center"
+                    },
+                    ".ag-row": {
+                        "font-size": "13px",
+                        "text-align": "center"
+                    }
                 }
-                mostrar_grid_response = AgGrid(st.session_state.tareas_df[cols], gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css, key='mostrar_grid_tab1') # Add a unique key
-                st.session_state.tareas_df[cols] = pd.DataFrame(mostrar_grid_response['data'])
+                
+                # Mostrar la tabla sin permitir edición
+                AgGrid(
+                    st.session_state.tareas_df[cols],
+                    gridOptions=grid_options,
+                    update_mode=GridUpdateMode.NO_UPDATE,  # No reactividad
+                    custom_css=custom_css,
+                    theme="alpine",  # Tema base limpio
+                    key="tareas_grid_final",  # Clave única
+                    allow_unsafe_jscode=True,
+                    fit_columns_on_grid_load=True,
+                    enable_enterprise_modules=False
+                )
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
                 st.session_state.dependencias_df['COSTO'] = st.session_state.dependencias_df['CANTIDAD'] * st.session_state.dependencias_df['TARIFA']
@@ -972,6 +992,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
