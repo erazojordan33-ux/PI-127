@@ -715,7 +715,19 @@ if archivo_excel:
                     plot_bgcolor='white',
                     hovermode='closest'
                 )
-                fig.update_traces(hoveron='fills+points')
+                fig.add_trace(go.Scatter(
+                    x=[start_date, end_date],
+                    y=[row['y_num'], row['y_num']],
+                    mode='lines',
+                    line=dict(color=line_color, width=line_width),
+                    showlegend=False,
+                    hoverinfo='text',
+                    text=hover_text,
+                    fill='toself',  # 🔹 crea una “superficie” entre los puntos
+                    fillcolor=line_color,  # 🔹 permite que toda la barra tenga hover
+                    opacity=0.8,  # 🔹 se ve como una barra sólida
+                ))
+
                 
                 st.plotly_chart(fig, use_container_width=True)
 
@@ -984,6 +996,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
