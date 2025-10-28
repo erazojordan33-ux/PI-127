@@ -578,31 +578,55 @@ if archivo_excel:
                     calendario_df.loc[(calendario_df["fecha"] >= inicio_rango) & (calendario_df["fecha"] <= fin_rango), "no_laborable"] = True
         
                 # Guardar calendario en session_state
-                st.session_state.calendario = calendario_df.copy()
-        
-                # --- Visualización tipo calendario mes a mes ---
+        # --- Visualización tipo línea de tiempo del proyecto ---
+                calendario_df = st.session_state.calendario.copy()
+                fig = go.Figure()
+                
+                # Ajustar altura según cantidad de meses
                 meses = calendario_df["mes"].unique()
-                for m in meses:
-                    st.write(f"### {m}")
+                fig_height = max(200, len(meses) * 50)
+                
+                for idx_mes, m in enumerate(meses):
                     df_mes = calendario_df[calendario_df["mes"]==m].copy()
-                    df_mes["color"] = df_mes["no_laborable"].apply(lambda x: "red" if x else "lightgreen")
-        
-                    fig = go.Figure()
-                    for idx, row in df_mes.iterrows():
+                    y_pos = len(meses) - idx_mes  # para invertir el orden
+                
+                    # Dibujar cada día como barra delgada horizontal
+                    for _, row in df_mes.iterrows():
+                        color = "red" if row["no_laborable"] else "lightgreen"
                         fig.add_trace(go.Scatter(
-                            x=[row["dia"]],
-                            y=[0],
-                            mode="markers+text",
-                            marker=dict(size=30, color=row["color"]),
-                            text=[row["dia"]],
-                            textposition="middle center",
+                            x=[row["fecha"], row["fecha"] + timedelta(days=1)],
+                            y=[y_pos, y_pos],
+                            mode="lines",
+                            line=dict(color=color, width=10),  # ancho más grueso para visibilidad
                             hoverinfo="text",
+                            text=f"{row['fecha'].strftime('%d/%m/%Y')} - {'No laborable' if row['no_laborable'] else 'Laborable'}",
                             showlegend=False
                         ))
-                    fig.update_yaxes(visible=False)
-                    fig.update_xaxes(title="Día del mes", tickmode="linear")
-                    fig.update_layout(height=80, plot_bgcolor="white", margin=dict(l=10,r=10,t=10,b=10))
-                    st.plotly_chart(fig, use_container_width=True)
+                
+                # Etiquetas de mes a la izquierda
+                fig.update_yaxes(
+                    tickvals=list(range(1, len(meses)+1)),
+                    ticktext=[str(m) for m in meses[::-1]],
+                    title_text="Mes",
+                    autorange='reversed'
+                )
+                fig.update_xaxes(
+                    title_text="Fecha",
+                    type="date",
+                    showgrid=True,
+                    gridcolor='rgba(128,128,128,0.2)'
+                )
+                
+                fig.update_layout(
+                    height=fig_height,
+                    plot_bgcolor="white",
+                    margin=dict(l=80,r=20,t=20,b=20),
+                    hovermode="closest"
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+
+
 
                 
                 
@@ -1168,6 +1192,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
