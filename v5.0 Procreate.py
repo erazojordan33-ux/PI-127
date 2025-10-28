@@ -618,7 +618,7 @@ if archivo_excel:
                                     st.warning(f"⚠️ Advertencia: Formato de predecesora '{pre_entry}' no reconocido para la tarea {tarea_id}. Ignorando.")
                 
                 shapes = []
-                color_banda = 'rgba(220, 220, 220, 0.6)'
+                color_banda = 'rgba(240, 240, 240, 0.1)'
                 for y_pos in range(len(st.session_state.tareas_df)):
                     if y_pos % 2 == 0:
                         shapes.append(dict(type="rect", xref="paper", yref="y", x0=0, x1=1, y0=y_pos - 0.5, y1=y_pos + 0.5, fillcolor=color_banda, layer="below", line_width=0))
@@ -1055,6 +1055,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
