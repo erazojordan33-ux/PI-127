@@ -673,31 +673,38 @@ if archivo_excel:
                     inicio_temp = row["FECHA_INICIO_TEMPRANA"]
                     fin_tarde = row["FECHA_FIN_TARDE"]
                 
-                    fig.add_trace(go.Bar(
-                        x=[(fin_tarde - inicio_temp).days],
-                        y=ys,
-                        base=inicio_temp,
-                        orientation='h',
-                        marker=dict(color=line_color),
-                        width=0.2,  # más delgada
-                        hoverinfo='skip',
-                        showlegend=False
-                    ))
-                
+                    if pd.notna(inicio_temp) and pd.notna(fin_tarde):
+                            # Línea delgada superpuesta (rango de flexibilidad)
+                            y_center = row['y_num']
+                            y0_linea = y_center - 0.05
+                            y1_linea = y_center + 0.05
+                        
+                            xs_linea = [inicio_temp, fin_tarde, fin_tarde, inicio_temp, inicio_temp]
+                            ys_linea = [y0_linea, y0_linea, y1_linea, y1_linea, y0_linea]
+                        
+                            fig.add_trace(go.Scatter(
+                                x=xs_linea,
+                                y=ys_linea,
+                                mode='lines',
+                                fill='toself',
+                                fillcolor=line_color.replace("1)", "0.4)"),  # más translúcido
+                                line=dict(color=line_color, width=1),
+                                hoverinfo='skip',
+                                showlegend=False
+                            ))
                     # --- Marcadores verticales (inicio y fin del rango) ---
-                    fig.add_shape(
-                        type="line",
-                        x0=inicio_temp, y0=i - 0.4,
-                        x1=inicio_temp, y1=i + 0.4,
-                        line=dict(color=line_color, width=2)
-                    )
-                    fig.add_shape(
-                        type="line",
-                        x0=fin_tarde, y0=i - 0.4,
-                        x1=fin_tarde, y1=i + 0.4,
-                        line=dict(color=line_color, width=2)
-                    )
-
+                            fig.add_shape(
+                                type="line",
+                                x0=inicio_temp, y0=y_center - 0.3,
+                                x1=inicio_temp, y1=y_center + 0.3,
+                                line=dict(color=line_color, width=2)
+                            )
+                            fig.add_shape(
+                                type="line",
+                                x0=fin_tarde, y0=y_center - 0.3,
+                                x1=fin_tarde, y1=y_center + 0.3,
+                                line=dict(color=line_color, width=2)
+                            )
                 offset_days_horizontal = 5
                 color_no_critica_flecha = 'blue'
                 color_critica_flecha = 'red'
@@ -1048,6 +1055,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
