@@ -484,24 +484,27 @@ if archivo_excel:
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
         with tab2:
+            import pandas as pd
+            import plotly.graph_objects as go
+            from datetime import date, timedelta
+            import streamlit as st
+
             st.subheader("Configuración de días laborables")
             st.markdown("<hr>", unsafe_allow_html=True)
         
-            # Fechas de inicio y fin del proyecto
+            # 1️⃣ Fechas de inicio y fin del proyecto
             fecha_inicio_default = st.session_state.tareas_df['FECHAINICIO'].min()
             fecha_fin_default = st.session_state.tareas_df['FECHAFIN'].max()
             col1, col2 = st.columns(2)
             with col1:
                 fecha_inicio_proyecto = st.date_input(
-                    "Fecha de inicio del proyecto",
-                    value=fecha_inicio_default
+                    "Fecha de inicio del proyecto", value=fecha_inicio_default
                 )
             with col2:
                 fecha_fin_proyecto = st.date_input(
-                    "Fecha de fin del proyecto",
-                    value=fecha_fin_default
+                    "Fecha de fin del proyecto", value=fecha_fin_default
                 )
-            
+        
             st.markdown("---")
             st.write("Indicar días no laborables")
             opciones_no_laborables = ["Sábados y Domingos", "Sábados", "Domingos", "24/6", "22/8", "Personalizado"]
@@ -511,42 +514,47 @@ if archivo_excel:
                 default=["Sábados y Domingos"]
             )
         
-            # Rangos personalizados múltiples
-            rangos_personalizados = []
+            # 2️⃣ Rangos personalizados múltiples
             if "Personalizado" in dias_no_laborables_seleccionados:
-                st.write("Agregar rangos de días no laborables")
-                if "agregar_rango" not in st.session_state:
-                    st.session_state.agregar_rango = []
+                st.write("Agregar/borrar rangos de días no laborables")
+                if "rangos_personalizados" not in st.session_state:
+                    st.session_state.rangos_personalizados = []
         
-                add_rango = st.button("Agregar rango")
-                if add_rango:
-                    st.session_state.agregar_rango.append({"inicio": fecha_inicio_proyecto, "fin": fecha_inicio_proyecto})
-                
-                for idx, rango in enumerate(st.session_state.agregar_rango):
-                    col1, col2 = st.columns(2)
+                # Botón para agregar rango
+                if st.button("Agregar rango"):
+                    st.session_state.rangos_personalizados.append({
+                        "inicio": fecha_inicio_proyecto,
+                        "fin": fecha_inicio_proyecto
+                    })
+        
+                # Mostrar rangos existentes con opción de borrar
+                for idx, rango in enumerate(st.session_state.rangos_personalizados):
+                    col1, col2, col3 = st.columns([3,3,1])
                     with col1:
-                        rango_inicio = st.date_input(f"Rango {idx+1} inicio", value=rango["inicio"], key=f"inicio_{idx}")
+                        inicio = st.date_input(f"Rango {idx+1} inicio", value=rango["inicio"], key=f"inicio_{idx}")
                     with col2:
-                        rango_fin = st.date_input(f"Rango {idx+1} fin", value=rango["fin"], key=f"fin_{idx}")
-                    st.session_state.agregar_rango[idx] = {"inicio": rango_inicio, "fin": rango_fin}
-                
-                rangos_personalizados = st.session_state.agregar_rango
+                        fin = st.date_input(f"Rango {idx+1} fin", value=rango["fin"], key=f"fin_{idx}")
+                    with col3:
+                        if st.button("❌", key=f"borrar_{idx}"):
+                            st.session_state.rangos_personalizados.pop(idx)
+                            st.experimental_rerun()
+                    st.session_state.rangos_personalizados[idx] = {"inicio": inicio, "fin": fin}
         
             st.markdown("---")
             st.write("Horas laborables por día")
-            horas_por_dia = st.number_input("Elige las horas de trabajo diarias", min_value=1, max_value=24, value=8, step=1)
+            horas_por_dia = st.number_input("Horas de trabajo diarias", min_value=1, max_value=24, value=8, step=1)
         
-            # --- Generar calendario tipo heatmap ---
+            # 3️⃣ Generar calendario visual
             if fecha_inicio_proyecto and fecha_fin_proyecto:
                 fechas_proyecto = pd.date_range(fecha_inicio_proyecto, fecha_fin_proyecto)
                 calendario_df = pd.DataFrame({"fecha": fechas_proyecto})
                 calendario_df["no_laborable"] = False
-                calendario_df["dia_semana"] = calendario_df["fecha"].dt.weekday  # 0=lunes, 6=domingo
+                calendario_df["dia_semana"] = calendario_df["fecha"].dt.weekday  # lunes=0, domingo=6
                 calendario_df["mes"] = calendario_df["fecha"].dt.to_period('M')
                 calendario_df["dia"] = calendario_df["fecha"].dt.day
                 calendario_df["semana"] = calendario_df["fecha"].dt.isocalendar().week
         
-                # Opciones fijas
+                # Días no laborables fijos
                 for opcion in dias_no_laborables_seleccionados:
                     if opcion == "Sábados y Domingos":
                         calendario_df.loc[calendario_df["dia_semana"].isin([5,6]), "no_laborable"] = True
@@ -562,29 +570,39 @@ if archivo_excel:
                         for m in calendario_df["mes"].unique():
                             ultimos8 = calendario_df[calendario_df["mes"]==m].tail(8).index
                             calendario_df.loc[ultimos8, "no_laborable"] = True
-
-                for rango in rangos_personalizados:
+        
+                # Rangos personalizados
+                for rango in st.session_state.get("rangos_personalizados", []):
                     inicio_rango = pd.to_datetime(rango["inicio"])
                     fin_rango = pd.to_datetime(rango["fin"])
                     calendario_df.loc[(calendario_df["fecha"] >= inicio_rango) & (calendario_df["fecha"] <= fin_rango), "no_laborable"] = True
-
+        
+                # Guardar calendario en session_state
                 st.session_state.calendario = calendario_df.copy()
-
-                pivot_cal = calendario_df.pivot_table(
-                    index="semana",
-                    columns="dia_semana",
-                    values="no_laborable",
-                    fill_value=False
-                )
-                fig_cal = px.imshow(
-                    pivot_cal,
-                    labels=dict(x="Día de la semana", y="Semana", color="No laborable"),
-                    color_continuous_scale=["lightgreen","lightcoral"],
-                    aspect="auto"
-                )
-                fig_cal.update_layout(height=250)
-                st.plotly_chart(fig_cal, use_container_width=True)
-
+        
+                # --- Visualización tipo calendario mes a mes ---
+                meses = calendario_df["mes"].unique()
+                for m in meses:
+                    st.write(f"### {m}")
+                    df_mes = calendario_df[calendario_df["mes"]==m].copy()
+                    df_mes["color"] = df_mes["no_laborable"].apply(lambda x: "red" if x else "lightgreen")
+        
+                    fig = go.Figure()
+                    for idx, row in df_mes.iterrows():
+                        fig.add_trace(go.Scatter(
+                            x=[row["dia"]],
+                            y=[0],
+                            mode="markers+text",
+                            marker=dict(size=30, color=row["color"]),
+                            text=[row["dia"]],
+                            textposition="middle center",
+                            hoverinfo="text",
+                            showlegend=False
+                        ))
+                    fig.update_yaxes(visible=False)
+                    fig.update_xaxes(title="Día del mes", tickmode="linear")
+                    fig.update_layout(height=80, plot_bgcolor="white", margin=dict(l=10,r=10,t=10,b=10))
+                    st.plotly_chart(fig, use_container_width=True)
 
                 
                 
@@ -1150,6 +1168,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
