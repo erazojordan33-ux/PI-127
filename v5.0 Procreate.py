@@ -463,6 +463,77 @@ if archivo_excel:
 
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
+import calendar
+import pandas as pd
+import plotly.graph_objects as go
+from datetime import timedelta
+import streamlit as st
+
+def plot_month_calendar(calendario_df: pd.DataFrame, year: int, month: int) -> go.Figure:
+    """
+    Dibuja un calendario mensual tipo cuadrícula (lun-dom) con colores
+    para días laborables / no laborables usando plotly.go.Table.
+    calendario_df debe tener columna 'fecha' (datetime) y 'no_laborable' (bool).
+    """
+    # Asegurar que 'fecha' es datetimelike y sin hora
+    df = calendario_df.copy()
+    df["fecha"] = pd.to_datetime(df["fecha"]).dt.normalize()
+    cal = calendar.monthcalendar(year, month)  # lista de semanas (listas)
+    weekday_names = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
+    # Construir filas (semanas) de valores, colores y textos hover
+    table_rows = []
+    fill_rows = []
+
+    for week in cal:
+        row_vals = []
+        row_colors = []
+        for day in week:
+            if day == 0:
+                row_vals.append("") 
+                row_colors.append("white")
+            else:
+                fecha = pd.Timestamp(year, month, day)
+                sel = df[df["fecha"] == fecha]
+                is_no = sel["no_laborable"].any() if not sel.empty else False
+                row_vals.append(str(day))
+                # Colores: rojo para no laborable, verde para laborable
+                row_colors.append("#ffb3b3" if is_no else "#d4f7d4")
+        table_rows.append(row_vals)
+        fill_rows.append(row_colors)
+
+    # Transponer rows->columns porque go.Table espera columnas en 'cells.values'
+    if len(table_rows) == 0:
+        # mes vacío (no debería pasar), crear matriz vacía de 6 semanas x 7 días
+        table_rows = [[""]*7 for _ in range(6)]
+        fill_rows = [["white"]*7 for _ in range(6)]
+
+    table_cols = list(map(list, zip(*table_rows)))
+    fill_cols = list(map(list, zip(*fill_rows)))
+
+    # Construir la tabla con colores por celda
+    fig = go.Figure(data=[go.Table(
+        header=dict(values=weekday_names, align='center', fill_color="#f2f2f2"),
+        cells=dict(values=table_cols,
+                   fill_color=fill_cols,
+                   align='center',
+                   height=55,
+                   font=dict(size=14))
+    )])
+
+    fig.update_layout(height=400, margin=dict(t=20, b=20, l=20, r=20), paper_bgcolor="white")
+    return fig
+
+
+# -----------------------
+# Inserta este bloque después de generar 'calendario_df' y guardar en st.session_state.calendario
+# -----------------------
+
+# (Este fragmento asume que más arriba ya generaste 'calendario_df' y lo asignaste:)
+# st.session_state.calendario = calendario_df.copy()
+
+# Mostrar calendario mensual usando la función anterior
+
         with tab2:
 
             st.subheader("Configuración de días laborables")
@@ -558,50 +629,29 @@ if archivo_excel:
         
                 st.session_state.calendario = calendario_df.copy()
                 
-                # --- Línea de tiempo horizontal simple ---
-                fig = go.Figure()
+                if "calendario" in st.session_state and not st.session_state.calendario.empty:
+                    calendario_df = st.session_state.calendario.copy()
+                    # Valores por defecto basados en fechas del proyecto si existen
+                    fecha_min = calendario_df["fecha"].min()
+                    fecha_max = calendario_df["fecha"].max()
+                    default_year = int(fecha_min.year) if pd.notna(fecha_min) else pd.Timestamp.now().year
+                    default_month = int(fecha_min.month) if pd.notna(fecha_min) else pd.Timestamp.now().month
                 
-                # Línea base para todo el proyecto
-                fig.add_trace(go.Scatter(
-                    x=[calendario_df["fecha"].min(), calendario_df["fecha"].max()],
-                    y=[0, 0],  # eje Y fijo en 0
-                    mode='lines',
-                    line=dict(color='lightgreen', width=20),  # días laborables
-                    hoverinfo='skip',
-                    showlegend=False
-                ))
+                    st.markdown("---")
+                    st.subheader("Vista mensual del calendario")
+                    col_a, col_b = st.columns([1,2])
+                    with col_a:
+                        year = st.number_input("Año", min_value=1900, max_value=3000, value=default_year, step=1)
+                    with col_b:
+                        month = st.selectbox("Mes", list(range(1,13)), index=default_month-1,
+                                             format_func=lambda m: calendar.month_name[m].capitalize())
                 
-                # Resaltar los días no laborables
-                no_laborables = calendario_df[calendario_df["no_laborable"]]
-                for _, row in no_laborables.iterrows():
-                    fig.add_trace(go.Scatter(
-                        x=[row["fecha"], row["fecha"] + timedelta(days=1)],
-                        y=[0, 0],
-                        mode='lines',
-                        line=dict(color='red', width=20),
-                        showlegend=False,
-                        hoverinfo='text',
-                        text=f"{row['fecha'].strftime('%d/%m/%Y')} - No laborable"
-                    ))
-
+                    # Renderizar figura
+                    fig_month = plot_month_calendar(calendario_df, year, month)
+                    st.plotly_chart(fig_month, use_container_width=True)
                 
-                # Quitar eje Y y ticks
-                fig.update_yaxes(visible=False)
-                fig.update_xaxes(
-                    title="Fecha",
-                    type="date",
-                    showgrid=True,
-                    gridcolor='rgba(128,128,128,0.2)'
-                )
-                
-                fig.update_layout(
-                    height=100,
-                    plot_bgcolor="white",
-                    margin=dict(l=20, r=20, t=20, b=20),
-                    hovermode="closest"
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("El calendario aún no está generado. Asegúrate de tener fechas válidas para el proyecto.")
 
 # Definicion calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
         try:
@@ -1195,6 +1245,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
