@@ -484,55 +484,112 @@ if archivo_excel:
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
         with tab2:
-                st.header("Configuración de días laborables")
-                opcion_dias = st.radio(
-                        "Selecciona días no laborables por defecto:",
-                        options=["Sábados y Domingos", "Domingos", "Solo Sábados", "Personalizado"]
+            st.subheader("Configuración de días laborables")
+            st.markdown("<hr>", unsafe_allow_html=True)  # línea separadora
+            
+            # --- Fechas de inicio y fin del proyecto ---
+            fecha_inicio_default = st.session_state.tareas_df['FECHAINICIO'].min()
+            fecha_fin_default = st.session_state.tareas_df['FECHAFIN'].max()
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                fecha_inicio_proyecto = st.date_input(
+                    "Fecha de inicio del proyecto",
+                    value=fecha_inicio_default,
+                    key="fecha_inicio_proyecto"
                 )
-                dias_no_laborables_personalizados = []
-                if opcion_dias == "Personalizado":
-                    dias_no_laborables_personalizados = st.date_input(
-                        "Selecciona los días no laborables",
-                        value=[],  # lista vacía inicial
-                        help="Puedes seleccionar varias fechas",
-                        key="dias_no_laborables_personalizados"
+            with col2:
+                fecha_fin_proyecto = st.date_input(
+                    "Fecha de fin del proyecto",
+                    value=fecha_fin_default,
+                    key="fecha_fin_proyecto"
                 )
-
-                st.header("Horas laborables por día")
-                horas_por_dia = st.number_input(
-                        "Elige las horas de trabajo diarias",
-                        min_value=1,
-                        max_value=24,
-                        value=8,
-                        step=1,
-                        key="horas_por_dia"
+            
+            st.markdown("---")
+            
+            # --- Selección de días no laborables ---
+            st.write("Indicar días no laborables")
+            opciones_no_laborables = ["Sábados y Domingos", "Sábados", "Domingos", "24/6", "22/8", "Personalizado"]
+            
+            # Usamos multiselect para permitir escoger varias opciones al mismo tiempo
+            dias_no_laborables_seleccionados = st.multiselect(
+                "Selecciona los días no laborables",
+                options=opciones_no_laborables,
+                default=["Sábados y Domingos"]
+            )
+            
+            # Si "Personalizado" está seleccionado, mostramos el selector de fechas múltiples
+            dias_personalizados = []
+            if "Personalizado" in dias_no_laborables_seleccionados:
+                dias_personalizados = st.date_input(
+                    "Selecciona tus días personalizados",
+                    value=[],
+                    help="Puedes seleccionar varias fechas",
+                    key="dias_no_laborables_personalizados"
                 )
-
-                st.header("Feriados personalizados")
-                if "feriados" not in st.session_state:
-                        st.session_state.feriados = pd.DataFrame(columns=["Descripción", "Fecha"])
+            
+            st.markdown("---")
+            
+            # --- Configuración de horas laborales por día ---
+            st.write("Horas laborables por día")
+            horas_por_dia = st.number_input(
+                "Elige las horas de trabajo diarias",
+                min_value=1,
+                max_value=24,
+                value=8,
+                step=1,
+                key="horas_por_dia"
+            )
+            
+            st.markdown("---")
+            
+            # --- Generar calendario visual de no laborables ---
+            import pandas as pd
+            import numpy as np
+            import calendar
+            import plotly.express as px
+            
+            if fecha_inicio_proyecto and fecha_fin_proyecto:
+                # Generar DataFrame con todas las fechas del proyecto
+                fechas_proyecto = pd.date_range(fecha_inicio_proyecto, fecha_fin_proyecto)
+                calendario_df = pd.DataFrame({"fecha": fechas_proyecto})
+                calendario_df["dia_semana"] = calendario_df["fecha"].dt.weekday  # 0=lunes ... 6=domingo
+                calendario_df["no_laborable"] = False
                 
-                feriados_df = st.session_state.feriados.copy()
+                # Marcar días no laborables según selección
+                for opcion in dias_no_laborables_seleccionados:
+                    if opcion == "Sábados y Domingos":
+                        calendario_df.loc[calendario_df["dia_semana"].isin([5,6]), "no_laborable"] = True
+                    elif opcion == "Sábados":
+                        calendario_df.loc[calendario_df["dia_semana"] == 5, "no_laborable"] = True
+                    elif opcion == "Domingos":
+                        calendario_df.loc[calendario_df["dia_semana"] == 6, "no_laborable"] = True
+                    elif opcion == "24/6":
+                        calendario_df.loc[calendario_df["fecha"].dt.day == 24, "no_laborable"] = True
+                    elif opcion == "22/8":
+                        calendario_df.loc[calendario_df["fecha"].dt.day == 22, "no_laborable"] = True
                 
-                feriados_df = st.data_editor(
-                        feriados_df,
-                        key="tabla_feriados",
-                        num_rows="dynamic",
-                        column_config={
-                            "Descripción": {"width": 200},
-                            "Fecha": {"width": 150}
-                        }
+                # Días personalizados
+                if dias_personalizados:
+                    calendario_df.loc[calendario_df["fecha"].isin(dias_personalizados), "no_laborable"] = True
+                
+                # Guardar calendario en session_state
+                st.session_state.calendario = calendario_df.copy()
+                
+                # Mostrar calendario visual simple (color: gris para no laborables)
+                calendario_df["color"] = np.where(calendario_df["no_laborable"], "No laborable", "Laborable")
+                fig_cal = px.scatter(
+                    calendario_df,
+                    x="fecha",
+                    y=np.ones(len(calendario_df)),  # para plot horizontal
+                    color="color",
+                    color_discrete_map={"Laborable":"lightgreen", "No laborable":"lightcoral"},
+                    labels={"x":"Fecha", "y":""}
                 )
-                
-                st.session_state.feriados = feriados_df
-                st.session_state.calendario = {
-                        "dias_no_laborables": opcion_dias,
-                        "dias_personalizados": dias_no_laborables_personalizados,
-                        "horas_por_dia": horas_por_dia,
-                        "feriados": st.session_state.feriados.to_dict(orient="records")
-                }
+                fig_cal.update_yaxes(visible=False)
+                fig_cal.update_layout(height=150, margin=dict(l=20,r=20,t=20,b=20), showlegend=True)
+                st.plotly_chart(fig_cal, use_container_width=True)
 
-                st.success("✅ Configuración de calendario actualizada")
                 
                 
 # Mostrar variables en la Pestaña 3___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
@@ -1097,6 +1154,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
