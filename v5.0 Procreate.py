@@ -628,25 +628,47 @@ if archivo_excel:
                 
                 for i, row in st.session_state.tareas_df.iterrows():
                     line_color = color_critica_barra if row.get('RUTA_CRITICA', False) else color_no_critica_barra
-                    line_width = 12
                     start_date = row[fecha_inicio_col]
                     end_date = row[fecha_fin_col]
                     if pd.isna(start_date) or pd.isna(end_date):
-                         st.warning(f"⚠️ Advertencia: Fechas inválidas para la tarea {row['RUBRO']} (ID {row['IDRUBRO']}). No se dibujará la barra.")
-                         continue
+                        st.warning(f"⚠️ Advertencia: Fechas inválidas para la tarea {row['RUBRO']} (ID {row['IDRUBRO']}). No se dibujará la barra.")
+                        continue
+                
                     try:
                         valor_costo = float(row.get(cost_column_name, 0))
                         costo_formateado = f"S/ {valor_costo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                     except Exception:
                         costo_formateado = "S/ 0,00"
+                
                     hover_text = (f"📌 <b>Rubro:</b> {row['RUBRO']}<br>"
                                   f"🗓️ <b>Capítulo:</b> {row['CAPÍTULO']}<br>"
-                                  f"📅 <b>Inicio</b> {start_date.strftime('%d/%m/%Y')}<br>"
+                                  f"📅 <b>Inicio:</b> {start_date.strftime('%d/%m/%Y')}<br>"
                                   f"🏁 <b>Fin:</b> {end_date.strftime('%d/%m/%Y')}<br>"
                                   f"⏱️ <b>Duración:</b> {(end_date - start_date).days} días<br>"
                                   f"⏳ <b>Holgura Total:</b> {row.get('HOLGURA_TOTAL', 'N/A')} días<br>"
                                   f"💰 <b>Costo:</b> {costo_formateado}")
-                    fig.add_trace(go.Scatter(x=[start_date, end_date], y=[row['y_num'], row['y_num']], mode='lines', line=dict(color=line_color, width=line_width), showlegend=False, hoverinfo='text', text=hover_text))
+                
+                    # 🔹 Rectángulo relleno con hover completo
+                    half_height = 0.35  # controla el grosor vertical de la barra
+                    y_center = row['y_num']
+                    y0 = y_center - half_height
+                    y1 = y_center + half_height
+                
+                    xs = [start_date, end_date, end_date, start_date, start_date]
+                    ys = [y0, y0, y1, y1, y0]
+                
+                    fig.add_trace(go.Scatter(
+                        x=xs,
+                        y=ys,
+                        mode='lines',
+                        fill='toself',
+                        fillcolor=line_color,
+                        line=dict(color=line_color, width=1),
+                        hoverinfo='text',
+                        text=hover_text,
+                        showlegend=False
+                    ))
+
                 
                 offset_days_horizontal = 5
                 color_no_critica_flecha = 'blue'
@@ -706,27 +728,29 @@ if archivo_excel:
                     else: y_ticktext_styled.append("")
                 
                 fig.update_layout(
-                    xaxis=dict(title='Fechas', side='top', dtick='M1', tickangle=-90, showgrid=True, gridcolor='rgba(128,128,128,0.3)', gridwidth=0.5),
+                    xaxis=dict(
+                        title='Fechas',
+                        side='top',  # 🔼 eje X arriba
+                        dtick='M1',
+                        tickangle=-90,
+                        showgrid=True,
+                        gridcolor='rgba(128,128,128,0.3)',
+                        gridwidth=0.5
+                    ),
                     yaxis_title='Rubro',
-                    yaxis=dict(autorange='reversed', tickvals=st.session_state.tareas_df['y_num'], ticktext=y_ticktext_styled, tickfont=dict(size=10), showgrid=False),
+                    yaxis=dict(
+                        autorange='reversed',
+                        tickvals=st.session_state.tareas_df['y_num'],
+                        ticktext=y_ticktext_styled,
+                        tickfont=dict(size=10),
+                        showgrid=False
+                    ),
                     shapes=shapes,
                     height=max(600, len(st.session_state.tareas_df)*25),
                     showlegend=False,
                     plot_bgcolor='white',
                     hovermode='closest'
                 )
-                fig.add_trace(go.Scatter(
-                    x=[start_date, end_date],
-                    y=[row['y_num'], row['y_num']],
-                    mode='lines',
-                    line=dict(color=line_color, width=line_width),
-                    showlegend=False,
-                    hoverinfo='text',
-                    text=hover_text,
-                    fill='toself',  # 🔹 crea una “superficie” entre los puntos
-                    fillcolor=line_color,  # 🔹 permite que toda la barra tenga hover
-                    opacity=0.8,  # 🔹 se ve como una barra sólida
-                ))
 
                 
                 st.plotly_chart(fig, use_container_width=True)
@@ -996,6 +1020,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
