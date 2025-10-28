@@ -562,15 +562,14 @@ if archivo_excel:
                         for m in calendario_df["mes"].unique():
                             ultimos8 = calendario_df[calendario_df["mes"]==m].tail(8).index
                             calendario_df.loc[ultimos8, "no_laborable"] = True
-        
-                # Rangos personalizados
+
                 for rango in rangos_personalizados:
-                    calendario_df.loc[(calendario_df["fecha"] >= rango["inicio"]) & (calendario_df["fecha"] <= rango["fin"]), "no_laborable"] = True
-        
-                # Guardar calendario en session_state
+                    inicio_rango = pd.to_datetime(rango["inicio"])
+                    fin_rango = pd.to_datetime(rango["fin"])
+                    calendario_df.loc[(calendario_df["fecha"] >= inicio_rango) & (calendario_df["fecha"] <= fin_rango), "no_laborable"] = True
+
                 st.session_state.calendario = calendario_df.copy()
-        
-                # Crear heatmap
+
                 pivot_cal = calendario_df.pivot_table(
                     index="semana",
                     columns="dia_semana",
@@ -1151,6 +1150,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
