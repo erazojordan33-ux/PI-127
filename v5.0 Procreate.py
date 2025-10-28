@@ -672,7 +672,6 @@ if archivo_excel:
         with tab3:
 
                 st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
-
                 cols = [
                     'IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
                     'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
@@ -689,7 +688,6 @@ if archivo_excel:
                     use_container_width=True,
                     column_config=column_config
                 )
-
 
                 st.session_state.tareas_df.reset_index(drop=True, inplace=True)
                 tareas_editadas.reset_index(drop=True, inplace=True)
@@ -1232,6 +1230,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
