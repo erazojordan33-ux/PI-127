@@ -21,225 +21,80 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["Inicio","Calendario","Diagrama Gantt", 
 # Definir funciones de calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 ##1
 def calcular_fechas(df):
-    import re
-    import pandas as pd
-    from collections import defaultdict, deque
-    from datetime import timedelta
-    import streamlit as st
+        df = df.copy()
+        df.columns = df.columns.str.strip()
+        inicio_rubro = df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
+        fin_rubro = df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
+        duracion_rubro = (df.set_index('IDRUBRO')['FECHAFIN'] - df.set_index('IDRUBRO')['FECHAINICIO']).dt.days.to_dict()
+        dependencias = defaultdict(list)
+        pre_count = defaultdict(int)
+        for _, row in df.iterrows():
+            tarea_id = row['IDRUBRO']
+            predecesoras_str = str(row['PREDECESORAS']).strip()
+            if predecesoras_str not in ['nan','']:
+                pre_list = predecesoras_str.split(',')
+                for pre in pre_list:
+                    pre = pre.strip()
+                    match = re.match(r'(\d+)', pre)
+                    if match:
+                        pre_id = int(match.group(1))
+                        dependencias[pre_id].append(tarea_id)
+                        pre_count[tarea_id] += 1
 
-    df = df.copy()
-    df.columns = df.columns.str.strip()
+        queue = deque([tid for tid in df['IDRUBRO'] if pre_count[tid] == 0])
+        inicio_calc = inicio_rubro.copy()
+        fin_calc = fin_rubro.copy()
 
-    # --- Preparar calendario: asegurar índice datetime y normalizado ---
-    calendario = st.session_state.calendario.copy()
-    calendario['fecha'] = pd.to_datetime(calendario['fecha'], errors='coerce').dt.normalize()
-    # Si no existe la columna no_laborable, crearla por seguridad
-    if 'no_laborable' not in calendario.columns:
-        calendario['no_laborable'] = False
-    calendario = calendario.set_index('fecha')
-    # Asegurar booleano
-    calendario['no_laborable'] = calendario['no_laborable'].astype(bool)
+        while queue:
+            tarea_id = queue.popleft()
+            row = df[df['IDRUBRO']==tarea_id].iloc[0]
+            duracion = duracion_rubro[tarea_id]
+            predecesoras_str = str(row['PREDECESORAS']).strip()
+    
+            nueva_inicio = inicio_calc[tarea_id]
+            nueva_fin = fin_calc[tarea_id]
+    
+            if predecesoras_str not in ['nan','']:
+                pre_list = predecesoras_str.split(',')
+                for pre in pre_list:
+                    pre = pre.strip()
+                    match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre)
+                    if match:
+                        pre_id = int(match.group(1))
+                        tipo = match.group(2).upper() if match.group(2) else 'FC'
+                        desfase = int(match.group(3)) if match.group(3) else 0
+    
+                        if pre_id in inicio_calc and pre_id in fin_calc:
+                            inicio_pre = inicio_calc[pre_id]
+                            fin_pre = fin_calc[pre_id]
 
-    fecha_inicio_proyecto = pd.to_datetime(st.session_state.fecha_inicio_proyecto).normalize()
-    fecha_fin_proyecto = pd.to_datetime(st.session_state.fecha_fin_proyecto).normalize()
+                            if tipo == 'CC':
+                                nueva_inicio = inicio_pre + timedelta(days=desfase)
+                                nueva_fin = nueva_inicio + timedelta(days=duracion)
+                            elif tipo == 'FC':
+                                nueva_inicio = fin_pre + timedelta(days=desfase)
+                                nueva_fin = nueva_inicio + timedelta(days=duracion)
+                            elif tipo == 'CF':
+                                nueva_fin = inicio_pre + timedelta(days=desfase)
+                                nueva_inicio = nueva_fin - timedelta(days=duracion)
+                            elif tipo == 'FF':
+                                nueva_fin = fin_pre + timedelta(days=desfase)
+                                nueva_inicio = nueva_fin - timedelta(days=duracion)
+                            else:
+                                st.warning(f"⚠️ Tipo de relación '{tipo}' no reconocido en '{pre}' para tarea {tarea_id}") 
 
-    # Función auxiliar: sumar días laborables
-    def sumar_dias_laborables(inicio, duracion):
-        """
-        - inicio: datetime-like
-        - duracion: int
-        Comportamiento:
-        - Si duracion <= 0: devuelve el primer día laborable >= inicio.
-        - Si duracion >= 1: devuelve la fecha del N-ésimo día laborable contado desde inicio (incluyendo inicio si es laborable).
-        """
-        fecha = pd.to_datetime(inicio, errors='coerce')
-        if pd.isna(fecha):
-            fecha = fecha_inicio_proyecto
-        fecha = fecha.normalize()
+            inicio_calc[tarea_id] = nueva_inicio
+            fin_calc[tarea_id] = nueva_fin
 
-        # Buscar primer día laborable (cuando duracion <= 0)
-        if duracion <= 0:
-            intento = 0
-            while True:
-                # si la fecha está en el índice y NO es no_laborable -> es laborable
-                if fecha in calendario.index and not calendario.at[fecha, 'no_laborable']:
-                    return fecha
-                # si la fecha no está en el índice, considerarla laborable salvo que exista fila específica que diga lo contrario
-                if fecha not in calendario.index:
-                    return fecha
-                fecha += timedelta(days=1)
-                intento += 1
-                if intento > 10000:
-                    # fallback para evitar loop infinito
-                    return fecha
+            for hijo in dependencias[tarea_id]:
+                pre_count[hijo] -= 1
+                if pre_count[hijo] == 0:
+                    queue.append(hijo)
 
-        # Contar duracion >= 1 días laborables
-        dias_sumados = 0
-        intento = 0
-        while dias_sumados < duracion:
-            if fecha in calendario.index:
-                if not calendario.at[fecha, 'no_laborable']:
-                    dias_sumados += 1
-                    if dias_sumados == duracion:
-                        return fecha
-            else:
-                # Si no hay fila en calendario para esa fecha, consideramos por defecto como laborable
-                dias_sumados += 1
-                if dias_sumados == duracion:
-                    return fecha
-            fecha += timedelta(days=1)
-            intento += 1
-            if intento > 100000:
-                # fallback para evitar loop infinito
-                return fecha - timedelta(days=1)
-        # por seguridad
-        return fecha - timedelta(days=1)
-
-    # Normalizar columnas de fechas en df
-    for col in ['FECHAINICIO', 'FECHAFIN']:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce').dt.normalize()
-        else:
-            df[col] = pd.NaT
-
-    # Calcular duraciones (inclusivas). Si FECHA falta, dejar 1 por defecto.
-    dur_series = (df['FECHAFIN'] - df['FECHAINICIO']).dt.days
-    # Interpretamos duración como inclusiva: dur = days_diff + 1, con mínimo 1
-    dur_series = dur_series.fillna(0).astype(int) + 1
-    dur_series[dur_series < 1] = 1
-
-    # Diccionarios iniciales (asegurando datetimes normalizados)
-    inicio_rubro = df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
-    inicio_rubro = {k: (pd.to_datetime(v).normalize() if not pd.isna(v) else fecha_inicio_proyecto) for k, v in inicio_rubro.items()}
-
-    fin_rubro = df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
-    fin_rubro = {k: (pd.to_datetime(v).normalize() if not pd.isna(v) else fecha_inicio_proyecto) for k, v in fin_rubro.items()}
-
-    duracion_rubro = df.set_index('IDRUBRO').index.to_series().to_dict()  # placeholder
-    # Construir duracion_rubro desde dur_series
-    duracion_rubro = (df.set_index('IDRUBRO').index).to_series()  # not used, rebuild properly
-    duracion_rubro = (df.set_index('IDRUBRO').index).to_series().to_dict()  # temporary, replace below
-
-    # Better build duracion_rubro directly:
-    duracion_rubro = (df.set_index('IDRUBRO').apply(
-        lambda r: max(1, int(((r['FECHAFIN'] - r['FECHAINICIO']).days if pd.notna(r['FECHAINICIO']) and pd.notna(r['FECHAFIN']) else 0) + 1)),
-        axis=1
-    ).to_dict())
-
-    # Dependencias (grafo)
-    dependencias = defaultdict(list)
-    pre_count = defaultdict(int)
-    for _, row in df.iterrows():
-        tarea_id = row['IDRUBRO']
-        predecesoras_raw = row.get('PREDECESORAS', '')
-        predecesoras_str = '' if pd.isna(predecesoras_raw) else str(predecesoras_raw).strip()
-        if predecesoras_str and predecesoras_str.lower() != 'nan':
-            pre_list = [p for p in re.split('[,;]', predecesoras_str) if p.strip() != '']
-            for pre in pre_list:
-                pre = pre.strip()
-                match = re.match(r'(\d+)', pre)
-                if match:
-                    pre_id = int(match.group(1))
-                    dependencias[pre_id].append(tarea_id)
-                    pre_count[tarea_id] += 1
-
-    # Cola inicial: tareas sin predecesoras
-    queue = deque([int(tid) for tid in df['IDRUBRO'] if pre_count.get(int(tid), 0) == 0])
-
-    inicio_calc = inicio_rubro.copy()
-    fin_calc = fin_rubro.copy()
-
-    # Asegurar que todas las tareas tengan una entrada inicial válida
-    for tid in df['IDRUBRO']:
-        if tid not in inicio_calc or pd.isna(inicio_calc[tid]):
-            inicio_calc[tid] = fecha_inicio_proyecto
-        if tid not in fin_calc or pd.isna(fin_calc[tid]):
-            fin_calc[tid] = inicio_calc[tid]
-
-    # ⚡ Calcular fechas en orden topológico (Kahn)
-    while queue:
-        tarea_id = queue.popleft()
-        # Seleccionar fila
-        row = df[df['IDRUBRO'] == tarea_id].iloc[0]
-        duracion = duracion_rubro.get(tarea_id, 1)
-        predecesoras_raw = row.get('PREDECESORAS', '')
-        predecesoras_str = '' if pd.isna(predecesoras_raw) else str(predecesoras_raw).strip()
-
-        # Ajustar fecha de inicio mínima según inicio proyecto y dato inicial
-        nueva_inicio = pd.to_datetime(inicio_calc.get(tarea_id, fecha_inicio_proyecto)).normalize()
-        nueva_inicio = max(nueva_inicio, fecha_inicio_proyecto)
-        nueva_fin = sumar_dias_laborables(nueva_inicio, duracion)
-
-        if predecesoras_str and predecesoras_str.lower() != 'nan':
-            pre_list = [p for p in re.split('[,;]', predecesoras_str) if p.strip() != '']
-            for pre in pre_list:
-                pre = pre.strip()
-                # Regex: id, opcional tipo de relación (2 letras), opcional desfase (+/-N)
-                match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*d[ií]as?)?', pre)
-                if match:
-                    pre_id = int(match.group(1))
-                    tipo = match.group(2).upper() if match.group(2) else 'FC'
-                    desfase = int(match.group(3)) if match.group(3) else 0
-
-                    if pre_id in inicio_calc and pre_id in fin_calc:
-                        inicio_pre = pd.to_datetime(inicio_calc[pre_id]).normalize()
-                        fin_pre = pd.to_datetime(fin_calc[pre_id]).normalize()
-
-                        if tipo == 'CC':
-                            # Comienzo a Comienzo: nueva_inicio >= inicio_pre + desfase (primer día laborable)
-                            candidate = sumar_dias_laborables(inicio_pre + timedelta(days=desfase), duracion=0)
-                            # A partir de candidate, mantener la duración
-                            nueva_inicio = max(nueva_inicio, candidate)
-                            nueva_fin = sumar_dias_laborables(nueva_inicio, duracion)
-                        elif tipo == 'FC':
-                            # Fin a Comienzo: nueva_inicio >= fin_pre + desfase
-                            candidate = sumar_dias_laborables(fin_pre + timedelta(days=desfase), duracion=0)
-                            nueva_inicio = max(nueva_inicio, candidate)
-                            nueva_fin = sumar_dias_laborables(nueva_inicio, duracion)
-                        elif tipo == 'CF':
-                            # Comienzo a Fin: nueva_fin = inicio_pre + desfase (primer día laborable), nueva_inicio = nueva_fin - duracion + 1
-                            candidate_fin = sumar_dias_laborables(inicio_pre + timedelta(days=desfase), duracion=0)
-                            candidate_inicio = sumar_dias_laborables(candidate_fin - timedelta(days=duracion-1), duracion=0)
-                            nueva_fin = max(nueva_fin, candidate_fin)
-                            nueva_inicio = min(nueva_inicio, candidate_inicio)  # preserve earlier start if needed
-                        elif tipo == 'FF':
-                            # Fin a Fin: nueva_fin = fin_pre + desfase (primer día laborable), nueva_inicio = nueva_fin - duracion + 1
-                            candidate_fin = sumar_dias_laborables(fin_pre + timedelta(days=desfase), duracion=0)
-                            candidate_inicio = sumar_dias_laborables(candidate_fin - timedelta(days=duracion-1), duracion=0)
-                            nueva_fin = max(nueva_fin, candidate_fin)
-                            nueva_inicio = min(nueva_inicio, candidate_inicio)
-                        else:
-                            st.warning(f"⚠️ Tipo de relación '{tipo}' no reconocido en '{pre}' para tarea {tarea_id}")
-
-        # Asegurar límites del proyecto
-        nueva_inicio = max(nueva_inicio, fecha_inicio_proyecto)
-        nueva_fin = max(nueva_inicio, nueva_fin)
-        if nueva_fin > fecha_fin_proyecto:
-            # no forzamos recorte; solo avisamos después
-            pass
-
-        inicio_calc[tarea_id] = nueva_inicio
-        fin_calc[tarea_id] = nueva_fin
-
-        # Reducir contador de predecesoras de los hijos
-        for hijo in dependencias.get(tarea_id, []):
-            pre_count[hijo] -= 1
-            if pre_count[hijo] == 0:
-                queue.append(hijo)
-
-    # Mapear resultados al dataframe
-    df['FECHAINICIO'] = df['IDRUBRO'].map(lambda x: inicio_calc.get(x, pd.NaT))
-    df['FECHAFIN'] = df['IDRUBRO'].map(lambda x: fin_calc.get(x, pd.NaT))
-
-    # ⚠️ Ajuste final si hay tareas que superan fecha_fin_proyecto
-    max_fin = pd.to_datetime(df['FECHAFIN']).max()
-    if pd.notna(max_fin) and max_fin > fecha_fin_proyecto:
-        try:
-            st.warning(f"⚠️ El proyecto se extiende hasta {max_fin.strftime('%d/%m/%Y')} por la duración de las tareas.")
-        except Exception:
-            st.warning("⚠️ El proyecto se extiende más allá de la fecha fin configurada por la duración de las tareas.")
-
-    return df
+        df['FECHAINICIO'] = df['IDRUBRO'].map(inicio_calc)
+        df['FECHAFIN'] = df['IDRUBRO'].map(fin_calc)
+    
+        return df 
 
 ##2
 def calculo_ruta_critica(tareas_df=None, archivo=None):
@@ -1340,6 +1195,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
