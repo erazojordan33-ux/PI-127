@@ -491,13 +491,13 @@ if archivo_excel:
                 )
                 dias_no_laborables_personalizados = []
                 if opcion_dias == "Personalizado":
-                        dias_no_laborables_personalizados = st.date_input(
-                            "Selecciona los días no laborables",
-                            value=[],
-                            help="Puedes seleccionar varias fechas",
-                            key="dias_no_laborables_personalizados",
-                            max_dates=None  # permite seleccionar múltiples fechas
+                    dias_no_laborables_personalizados = st.date_input(
+                        "Selecciona los días no laborables",
+                        value=[],  # lista vacía inicial
+                        help="Puedes seleccionar varias fechas",
+                        key="dias_no_laborables_personalizados"
                 )
+
                 st.header("Horas laborables por día")
                 horas_por_dia = st.number_input(
                         "Elige las horas de trabajo diarias",
@@ -1097,6 +1097,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
