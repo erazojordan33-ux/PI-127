@@ -540,7 +540,7 @@ if archivo_excel:
                            }
                 }
                 mostrar_grid_response = AgGrid(st.session_state.tareas_df[cols], gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css, key='mostrar_grid_tab1') # Add a unique key
-                st.session_state.recursos_df = pd.DataFrame(mostrar_grid_response['data'])
+                st.session_state.tareas_df[cols] = pd.DataFrame(mostrar_grid_response['data'])
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
                 st.session_state.dependencias_df['COSTO'] = st.session_state.dependencias_df['CANTIDAD'] * st.session_state.dependencias_df['TARIFA']
@@ -972,6 +972,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
