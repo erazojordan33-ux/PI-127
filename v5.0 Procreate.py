@@ -484,7 +484,7 @@ if archivo_excel:
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
         with tab2:
 
-                st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica (Editable)")
+                st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
 
                 cols = [
                     'IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
@@ -526,12 +526,21 @@ if archivo_excel:
 
                     st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
                 
-                st.data_editor(
-                    st.session_state.tareas_df[cols],
-                    key="tareas_editor_actualizada",  # distinto key para forzar actualización
-                    use_container_width=True,
-                    column_config={col: {"editable": True} for col in columnas_editables}
-                )
+                st.subheader("📊 Diagrama de Gantt - Ruta Crítica")
+                
+                gb = GridOptionsBuilder.from_dataframe(st.session_state.tareas_df[cols])
+                gb.configure_default_column(editable=False)
+                grid_options = gb.build()
+                custom_css = {
+                           ".ag-header": {
+                           "background-color": "#0D3B66",
+                           "color": "white",
+                           "font-weight": "bold",
+                           "text-align": "center"
+                           }
+                }
+                mostrar_grid_response = AgGrid(st.session_state.tareas_df[cols], gridOptions=grid_options, update_mode=GridUpdateMode.MODEL_CHANGED,custom_css=custom_css, key='mostrar_grid_tab1') # Add a unique key
+                st.session_state.recursos_df = pd.DataFrame(mostrar_grid_response['data'])
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
                 st.session_state.dependencias_df['COSTO'] = st.session_state.dependencias_df['CANTIDAD'] * st.session_state.dependencias_df['TARIFA']
@@ -541,7 +550,7 @@ if archivo_excel:
                 costos_por_can['RUBRO'] = costos_por_can['RUBRO'].str.strip()
                 st.session_state.tareas_df = st.session_state.tareas_df.merge(costos_por_can[['RUBRO', 'COSTO_TOTAL']], on='RUBRO', how='left')
     
-                st.subheader("📊 Diagrama de Gantt - Ruta Crítica")
+                
                 cost_column_name = None
                 if 'COSTO_TOTAL_RUBRO' in st.session_state.tareas_df.columns:
                         cost_column_name = 'COSTO_TOTAL_RUBRO'
@@ -963,6 +972,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
