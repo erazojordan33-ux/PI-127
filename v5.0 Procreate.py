@@ -548,12 +548,11 @@ if archivo_excel:
                     unsafe_allow_html=True
                 )
                 
-                # Mostrar la tabla sin permitir edición
                 st.data_editor(
                     st.session_state.tareas_df[cols],
                     key="tareas_editor_actualizada",
                     use_container_width=True,
-                    disabled=True  # 🔒 hace que TODA la tabla sea no editable
+                    disabled=True 
                 )
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
@@ -585,9 +584,7 @@ if archivo_excel:
                         st.warning("⚠️ Advertencia: Columna 'IDRUBRO' no encontrada para ordenar.")
         
                 st.session_state.tareas_df['y_num'] = range(len(st.session_state.tareas_df))
-        
                 fig = go.Figure()
-        
                 fecha_inicio_col = 'FECHAINICIO'
                 fecha_fin_col = 'FECHAFIN'
                 if fecha_inicio_col not in st.session_state.tareas_df.columns or fecha_fin_col not in st.session_state.tareas_df.columns:
@@ -709,8 +706,7 @@ if archivo_excel:
                     else: y_ticktext_styled.append("")
                 
                 fig.update_layout(
-                    xaxis=dict(title='Fechas', side='bottom', dtick='M1', tickangle=-90, showgrid=True, gridcolor='rgba(128,128,128,0.3)', gridwidth=0.5),
-                    xaxis2=dict(title='Fechas', overlaying='x', side='top', dtick='M1', tickangle=90, showgrid=True, gridcolor='rgba(128,128,128,0.3)', gridwidth=0.5),
+                    xaxis=dict(title='Fechas', side='top', dtick='M1', tickangle=-90, showgrid=True, gridcolor='rgba(128,128,128,0.3)', gridwidth=0.5),
                     yaxis_title='Rubro',
                     yaxis=dict(autorange='reversed', tickvals=st.session_state.tareas_df['y_num'], ticktext=y_ticktext_styled, tickfont=dict(size=10), showgrid=False),
                     shapes=shapes,
@@ -719,6 +715,8 @@ if archivo_excel:
                     plot_bgcolor='white',
                     hovermode='closest'
                 )
+                fig.update_traces(hoveron='fills+points')
+                
                 st.plotly_chart(fig, use_container_width=True)
 
 # Mostrar variables en la Pestaña 3___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
@@ -986,6 +984,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
