@@ -822,12 +822,11 @@ if archivo_excel:
             st.session_state.tareas_df['PREDECESORAS'] = st.session_state.tareas_df['PREDECESORAS'].fillna('').astype(str)
 
 
-            
         except:
             st.error(f"Error al tratar datos. Asegúrese del contenido de la base ")
             st.stop()
         
-        st.session_state.tareas_df=calcular_fechas(st.session_state.tareas_df,calendario_df)
+        st.session_state.tareas_df=calcular_fechas(st.session_state.tareas_df,st.session_state.calendario)
         st.session_state.tareas_df=calculo_ruta_critica(st.session_state.tareas_df)
 
         if "tareas_df_prev" not in st.session_state:
@@ -1397,6 +1396,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
