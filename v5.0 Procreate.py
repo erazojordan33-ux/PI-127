@@ -463,76 +463,66 @@ if archivo_excel:
 
 # Mostrar variables en la Pestaña 2___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
-import calendar
-import pandas as pd
-import plotly.graph_objects as go
-from datetime import timedelta
-import streamlit as st
-
-def plot_month_calendar(calendario_df: pd.DataFrame, year: int, month: int) -> go.Figure:
-    """
-    Dibuja un calendario mensual tipo cuadrícula (lun-dom) con colores
-    para días laborables / no laborables usando plotly.go.Table.
-    calendario_df debe tener columna 'fecha' (datetime) y 'no_laborable' (bool).
-    """
-    # Asegurar que 'fecha' es datetimelike y sin hora
-    df = calendario_df.copy()
-    df["fecha"] = pd.to_datetime(df["fecha"]).dt.normalize()
-    cal = calendar.monthcalendar(year, month)  # lista de semanas (listas)
-    weekday_names = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
-
-    # Construir filas (semanas) de valores, colores y textos hover
-    table_rows = []
-    fill_rows = []
-
-    for week in cal:
-        row_vals = []
-        row_colors = []
-        for day in week:
-            if day == 0:
-                row_vals.append("") 
-                row_colors.append("white")
-            else:
-                fecha = pd.Timestamp(year, month, day)
-                sel = df[df["fecha"] == fecha]
-                is_no = sel["no_laborable"].any() if not sel.empty else False
-                row_vals.append(str(day))
-                # Colores: rojo para no laborable, verde para laborable
-                row_colors.append("#ffb3b3" if is_no else "#d4f7d4")
-        table_rows.append(row_vals)
-        fill_rows.append(row_colors)
-
-    # Transponer rows->columns porque go.Table espera columnas en 'cells.values'
-    if len(table_rows) == 0:
-        # mes vacío (no debería pasar), crear matriz vacía de 6 semanas x 7 días
-        table_rows = [[""]*7 for _ in range(6)]
-        fill_rows = [["white"]*7 for _ in range(6)]
-
-    table_cols = list(map(list, zip(*table_rows)))
-    fill_cols = list(map(list, zip(*fill_rows)))
-
-    # Construir la tabla con colores por celda
-    fig = go.Figure(data=[go.Table(
-        header=dict(values=weekday_names, align='center', fill_color="#f2f2f2"),
-        cells=dict(values=table_cols,
-                   fill_color=fill_cols,
-                   align='center',
-                   height=55,
-                   font=dict(size=14))
-    )])
-
-    fig.update_layout(height=400, margin=dict(t=20, b=20, l=20, r=20), paper_bgcolor="white")
-    return fig
-
-
-# -----------------------
-# Inserta este bloque después de generar 'calendario_df' y guardar en st.session_state.calendario
-# -----------------------
-
-# (Este fragmento asume que más arriba ya generaste 'calendario_df' y lo asignaste:)
-# st.session_state.calendario = calendario_df.copy()
-
-# Mostrar calendario mensual usando la función anterior
+        import calendar
+        import pandas as pd
+        import plotly.graph_objects as go
+        from datetime import timedelta
+        import streamlit as st
+                
+        def plot_month_calendar(calendario_df: pd.DataFrame, year: int, month: int) -> go.Figure:
+                    """
+                    Dibuja un calendario mensual tipo cuadrícula (lun-dom) con colores
+                    para días laborables / no laborables usando plotly.go.Table.
+                    calendario_df debe tener columna 'fecha' (datetime) y 'no_laborable' (bool).
+                    """
+                    # Asegurar que 'fecha' es datetimelike y sin hora
+                    df = calendario_df.copy()
+                    df["fecha"] = pd.to_datetime(df["fecha"]).dt.normalize()
+                    cal = calendar.monthcalendar(year, month)  # lista de semanas (listas)
+                    weekday_names = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+                
+                    # Construir filas (semanas) de valores, colores y textos hover
+                    table_rows = []
+                    fill_rows = []
+                
+                    for week in cal:
+                        row_vals = []
+                        row_colors = []
+                        for day in week:
+                            if day == 0:
+                                row_vals.append("") 
+                                row_colors.append("white")
+                            else:
+                                fecha = pd.Timestamp(year, month, day)
+                                sel = df[df["fecha"] == fecha]
+                                is_no = sel["no_laborable"].any() if not sel.empty else False
+                                row_vals.append(str(day))
+                                # Colores: rojo para no laborable, verde para laborable
+                                row_colors.append("#ffb3b3" if is_no else "#d4f7d4")
+                        table_rows.append(row_vals)
+                        fill_rows.append(row_colors)
+                
+                    # Transponer rows->columns porque go.Table espera columnas en 'cells.values'
+                    if len(table_rows) == 0:
+                        # mes vacío (no debería pasar), crear matriz vacía de 6 semanas x 7 días
+                        table_rows = [[""]*7 for _ in range(6)]
+                        fill_rows = [["white"]*7 for _ in range(6)]
+                
+                    table_cols = list(map(list, zip(*table_rows)))
+                    fill_cols = list(map(list, zip(*fill_rows)))
+                
+                    # Construir la tabla con colores por celda
+                    fig = go.Figure(data=[go.Table(
+                        header=dict(values=weekday_names, align='center', fill_color="#f2f2f2"),
+                        cells=dict(values=table_cols,
+                                   fill_color=fill_cols,
+                                   align='center',
+                                   height=55,
+                                   font=dict(size=14))
+                    )])
+                
+                    fig.update_layout(height=400, margin=dict(t=20, b=20, l=20, r=20), paper_bgcolor="white")
+                    return fig
 
         with tab2:
 
@@ -1245,6 +1235,7 @@ def plot_month_calendar(calendario_df: pd.DataFrame, year: int, month: int) -> g
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
