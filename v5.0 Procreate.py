@@ -821,9 +821,8 @@ if archivo_excel:
             st.session_state.tareas_df.loc[st.session_state.tareas_df['DURACION'] < 0, 'DURACION'] = 0  # prevenir negativos
             st.session_state.tareas_df['PREDECESORAS'] = st.session_state.tareas_df['PREDECESORAS'].fillna('').astype(str)
 
-            st.session_state.tareas_df=calcular_fechas(st.session_state.tareas_df,st.session_state.calendario)
+            st.session_state.tareas_df=calcular_fechas(st.session_state.tareas_df)
             st.session_state.tareas_df=calculo_ruta_critica(st.session_state.tareas_df)
-
             
         except:
             st.error(f"Error al tratar datos. Asegúrese del contenido de la base ")
@@ -1396,6 +1395,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
