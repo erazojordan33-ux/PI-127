@@ -132,13 +132,15 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
 
     for tid in initial_tasks_ids:
          task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
+         duration = duracion_dict.get(tid, 0)
+         if not isinstance(duration, (int, float)):
+                duration = 0
          if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
-            es[tid] = task_row.iloc[0]['FECHAINICIO']
-            duration = duracion_dict.get(tid, 0)
-            if not isinstance(duration, (int, float)): duration = 0
-            ef[tid] = es[tid] + timedelta(days=duration)
+                es[tid] = task_row.iloc[0]['FECHAINICIO']
          else:
-             st.warning(f"⚠️ Advertencia: Tarea ID {tid} no encontrada o FECHAINICIO inválida para inicializar ES/EF.")
+                es[tid] = st.session_state.fecha_inicio_proyecto  # 👈 FECHA GLOBAL DEFINIDA POR TI
+        
+         ef[tid] = es[tid] + timedelta(days=duration)
 
     queue = deque(initial_tasks_ids)
     processed_forward = set(initial_tasks_ids)
@@ -369,9 +371,7 @@ def calculo_predecesoras(df, fila_editada):
                 df.at[idx_predecesora, 'PREDECESORAS'] = nuevo_valor
             else:
                 df.at[idx_predecesora, 'PREDECESORAS'] += f", {nuevo_valor}"
-
     else: 
-
             id_a_eliminar = str(row['IDRUBRO'])
             for idx, pre_row in df.iterrows():
                 predecesoras = pre_row['PREDECESORAS']
@@ -1265,6 +1265,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
