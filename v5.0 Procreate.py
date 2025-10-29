@@ -723,21 +723,24 @@ if archivo_excel:
 
                 st.session_state.tareas_df.reset_index(drop=True, inplace=True)
                 tareas_editadas.reset_index(drop=True, inplace=True)
+                st.session_state.tareas_df_prev.reset_index(drop=True, inplace=True)
 
-                prev = st.session_state.tareas_df_prev[columnas_editables]
-                now = tareas_editadas[columnas_editables]
+                columnas_validas = [c for c in columnas_editables if c in st.session_state.tareas_df_prev.columns and c in tareas_editadas.columns]
+                
+                prev = st.session_state.tareas_df_prev[columnas_validas]
+                now = tareas_editadas[columnas_validas]
         
                 cambios = now.ne(prev)
                 filas_cambiadas = cambios.any(axis=1)
 
                 if filas_cambiadas.any():
-
                     for idx in filas_cambiadas.index:
-                        for col in columnas_editables:
+                        for col in columnas_validas:
                             st.session_state.tareas_df.at[idx, col] = tareas_editadas.at[idx, col]
-                    filas_ruta_critica = cambios['RUTA_CRITICA']
-                    for idx in filas_ruta_critica.index:
-                        if filas_ruta_critica.at[idx]:
+                                
+                     if 'RUTA_CRITICA' in cambios.columns:
+                        filas_ruta_critica = cambios['RUTA_CRITICA']
+                        for idx in filas_ruta_critica[filas_ruta_critica].index:
                             st.session_state.tareas_df = calculo_predecesoras(st.session_state.tareas_df, idx)
 
                     st.session_state.tareas_df = calcular_fechas(st.session_state.tareas_df)
@@ -1262,6 +1265,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
