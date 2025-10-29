@@ -738,7 +738,7 @@ if archivo_excel:
                         for col in columnas_validas:
                             st.session_state.tareas_df.at[idx, col] = tareas_editadas.at[idx, col]
                                 
-                     if 'RUTA_CRITICA' in cambios.columns:
+                    if 'RUTA_CRITICA' in cambios.columns:
                         filas_ruta_critica = cambios['RUTA_CRITICA']
                         for idx in filas_ruta_critica[filas_ruta_critica].index:
                             st.session_state.tareas_df = calculo_predecesoras(st.session_state.tareas_df, idx)
@@ -1265,6 +1265,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
