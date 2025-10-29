@@ -640,25 +640,52 @@ if archivo_excel:
 
 # Definicion calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
         try:
+                if 'TARIFA' in st.session_state.recursos_df.columns:
+                        st.session_state.recursos_df['TARIFA'] = pd.to_numeric(st.session_state.recursos_df['TARIFA'], errors='coerce').fillna(0)
 
-            if 'TARIFA' in st.session_state.recursos_df.columns:
-                    st.session_state.recursos_df['TARIFA'] = pd.to_numeric(st.session_state.recursos_df['TARIFA'], errors='coerce').fillna(0)
-
-            for col in ['FECHAINICIO','FECHAFIN']:
-                st.session_state.tareas_df[col] = pd.to_datetime(st.session_state.tareas_df[col], errors='coerce')
-                st.session_state.tareas_df[col] = st.session_state.tareas_df[col].dt.strftime('%d/%m/%Y')
+                for col in ['FECHAINICIO','FECHAFIN']:
+                        st.session_state.tareas_df[col] = pd.to_datetime(st.session_state.tareas_df[col], errors='coerce')
+                        st.session_state.tareas_df[col] = st.session_state.tareas_df[col].dt.strftime('%d/%m/%Y')
         
-            for col in ['FECHAINICIO','FECHAFIN']:
-                st.session_state.tareas_df[col] = pd.to_datetime(st.session_state.tareas_df[col], dayfirst=True, errors='coerce')
+                for col in ['FECHAINICIO','FECHAFIN']:
+                        st.session_state.tareas_df[col] = pd.to_datetime(st.session_state.tareas_df[col], dayfirst=True, errors='coerce')
 
-            st.session_state.tareas_df['DURACION'] = (st.session_state.tareas_df['FECHAFIN'] - st.session_state.tareas_df['FECHAINICIO']).dt.days
-            st.session_state.tareas_df.loc[st.session_state.tareas_df['DURACION'] < 0, 'DURACION'] = 0  # prevenir negativos
-            st.session_state.tareas_df['PREDECESORAS'] = st.session_state.tareas_df['PREDECESORAS'].fillna('').astype(str)
+                st.session_state.tareas_df['DURACION'] = (st.session_state.tareas_df['FECHAFIN'] - st.session_state.tareas_df['FECHAINICIO']).dt.days
+                st.session_state.tareas_df.loc[st.session_state.tareas_df['DURACION'] < 0, 'DURACION'] = 0  # prevenir negativos
+                st.session_state.tareas_df['PREDECESORAS'] = st.session_state.tareas_df['PREDECESORAS'].fillna('').astype(str)
 
+                tareas_df = st.session_state.tareas_df.copy()
+                calendario_df = st.session_state.calendario.copy()
 
+                tareas_df['FECHAINICIO'] = pd.to_datetime(tareas_df['FECHAINICIO'], errors='coerce')
+                tareas_df['FECHAFIN'] = pd.to_datetime(tareas_df['FECHAFIN'], errors='coerce')
+                calendario_df['fecha'] = pd.to_datetime(calendario_df['fecha'], errors='coerce')
+
+                no_laborables = set(calendario_df.loc[calendario_df['no_laborable'] == True, 'fecha'].dt.date)
+                
+                def calcular_duracion_efectiva(row):
+                        if pd.isna(row['FECHAINICIO']) or pd.isna(row['FECHAFIN']):
+                                return None
+                        rango_fechas = pd.date_range(start=row['FECHAINICIO'], end=row['FECHAFIN'], freq='D')
+                        dias_no_lab = sum(fecha.date() in no_laborables for fecha in rango_fechas)
+                        duracion_total = len(rango_fechas)
+                        duracion_efectiva = duracion_total - dias_no_lab
+                        return duracion_efectiva
+                
+                tareas_df['DURACION_EFECTIVA'] = tareas_df.apply(calcular_duracion_efectiva, axis=1)
+
+                tareas_df['RENDIMIENTO'] = tareas_df.apply(
+                        lambda x: x['CANTIDAD_RUBRO'] / x['DURACION_EFECTIVA']
+                        if pd.notna(x['CANTIDAD_RUBRO']) and pd.notna(x['DURACION_EFECTIVA']) and x['DURACION_EFECTIVA'] != 0
+                        else None,
+                        axis=1
+                )
+                
+                st.session_state.tareas_df = tareas_df
+                
         except:
-            st.error(f"Error al tratar datos. Asegúrese del contenido de la base ")
-            st.stop()
+                st.error(f"Error al tratar datos. Asegúrese del contenido de la base ")
+                st.stop()
         
         st.session_state.tareas_df=calcular_fechas(st.session_state.tareas_df)
         st.session_state.tareas_df=calculo_ruta_critica(st.session_state.tareas_df)
@@ -672,6 +699,11 @@ if archivo_excel:
         with tab3:
 
                 st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
+                cols1 = [
+                    'IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
+                    'DURACION_EFECTIVA','RENDIMIENTO','RUTA_CRITICA'
+                ]
+
                 cols = [
                     'IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
                     'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
@@ -680,10 +712,10 @@ if archivo_excel:
                 ]
 
                 columnas_editables = ['PREDECESORAS', 'FECHAINICIO', 'FECHAFIN', 'RUTA_CRITICA']
-                column_config = {col: {"editable": (col in columnas_editables)} for col in cols}
+                column_config = {col: {"editable": (col in columnas_editables)} for col in cols1}
 
                 tareas_editadas = st.data_editor(
-                    st.session_state.tareas_df[cols],
+                    st.session_state.tareas_df[cols1],
                     key="tareas_editor",
                     use_container_width=True,
                     column_config=column_config
@@ -1230,6 +1262,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
