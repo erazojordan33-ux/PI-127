@@ -98,6 +98,38 @@ def calcular_fechas(df):
 ##2
 def calculo_ruta_critica(tareas_df=None, archivo=None):
 
+    fecha_inicio_proyecto = st.session_state.get("fecha_inicio_proyecto", None)
+    if fecha_inicio_proyecto is not None:
+            # 🔹 Crear la fila del hito "Comienzo del Proyecto"
+            fila_inicio = pd.DataFrame([{
+                "IDRUBRO": 0,
+                "RUBRO": "Comienzo del Proyecto",
+                "PREDECESORAS": "",
+                "FECHAINICIO": fecha_inicio_proyecto,
+                "FECHAFIN": fecha_inicio_proyecto,
+                "DURACION": 0,
+                "UNIDAD_RUBRO": "",
+                "RENDIMIENTO": "",
+                "HOLGURA_TOTAL": 0,
+                "RUTA_CRITICA": ""
+            }])
+        
+            # 🔹 Concatenar al inicio de la tabla
+            tareas_df = pd.concat([fila_inicio, tareas_df], ignore_index=True)
+        
+            # 🔹 Forzar tipo correcto de IDRUBRO
+            tareas_df["IDRUBRO"] = tareas_df["IDRUBRO"].astype(int)
+        
+            # 🔹 Reasignar las tareas sin predecesoras para que dependan del hito
+            tareas_df.loc[
+                (tareas_df["IDRUBRO"] != 0) & 
+                ((tareas_df["PREDECESORAS"].isna()) | (tareas_df["PREDECESORAS"].astype(str).str.strip() == "")),
+                "PREDECESORAS"
+            ] = "0FC"  # 👈 Dependen del hito con relación Fin-Comienzo (FC)
+    else:
+            st.error("❌ No se ha definido la fecha de inicio del proyecto antes de calcular la ruta crítica.")
+
+
     tareas_df.columns = tareas_df.columns.str.strip()
     duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
     dependencias = defaultdict(list)
@@ -780,8 +812,7 @@ if archivo_excel:
                 st.session_state.tareas_df['RUBRO'] = st.session_state.tareas_df['RUBRO'].str.strip()
                 costos_por_can['RUBRO'] = costos_por_can['RUBRO'].str.strip()
                 st.session_state.tareas_df = st.session_state.tareas_df.merge(costos_por_can[['RUBRO', 'COSTO_TOTAL']], on='RUBRO', how='left')
-    
-                
+
                 cost_column_name = None
                 if 'COSTO_TOTAL_RUBRO' in st.session_state.tareas_df.columns:
                         cost_column_name = 'COSTO_TOTAL_RUBRO'
@@ -1261,6 +1292,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
