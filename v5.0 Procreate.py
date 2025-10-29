@@ -715,7 +715,7 @@ if archivo_excel:
                 column_config = {col: {"editable": (col in columnas_editables)} for col in cols1}
                 
                 tareas_editadas = st.data_editor(
-                    tareas_mostrar[cols1],
+                    st.session_state.tareas_df[cols1],
                     key="tareas_editor",
                     use_container_width=True,
                     column_config=column_config
@@ -1262,6 +1262,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
