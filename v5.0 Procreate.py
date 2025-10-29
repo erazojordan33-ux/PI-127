@@ -708,14 +708,31 @@ if archivo_excel:
                     'IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
                     'FECHA_INICIO_TEMPRANA','FECHA_FIN_TEMPRANA',
                     'FECHA_INICIO_TARDE','FECHA_FIN_TARDE',
-                    'DURACION','HOLGURA_TOTAL','RUTA_CRITICA'
+                    'DURACION_EFECTIVA','HOLGURA_TOTAL','RUTA_CRITICA'
                 ]
 
                 columnas_editables = ['PREDECESORAS', 'FECHAINICIO', 'FECHAFIN', 'RUTA_CRITICA']
                 column_config = {col: {"editable": (col in columnas_editables)} for col in cols1}
 
+                column_config["RENDIMIENTO"] = st.column_config.NumberColumn(
+                    "Rendimiento",
+                    help="Rendimiento efectivo por día de trabajo",
+                    format="%.4f",  # 4 decimales
+                )
+
+                tareas_mostrar = st.session_state.tareas_df.copy()
+                
+                tareas_mostrar["RENDIMIENTO_FORMAT"] = tareas_mostrar.apply(
+                    lambda x: f"{x['RENDIMIENTO']:.4f} {x['UNIDAD_RUBRO']}/día"
+                    if pd.notna(x["RENDIMIENTO"]) and pd.notna(x["UNIDAD_RUBRO"])
+                    else "",
+                    axis=1
+                )
+                
+                cols1_mostrar = [c if c != "RENDIMIENTO" else "RENDIMIENTO_FORMAT" for c in cols1]
+                
                 tareas_editadas = st.data_editor(
-                    st.session_state.tareas_df[cols1],
+                    tareas_mostrar[cols1_mostrar],
                     key="tareas_editor",
                     use_container_width=True,
                     column_config=column_config
@@ -1262,6 +1279,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
