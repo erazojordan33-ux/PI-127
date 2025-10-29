@@ -135,10 +135,8 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
          duration = duracion_dict.get(tid, 0)
          if not isinstance(duration, (int, float)):
                 duration = 0
-         if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
-                es[tid] = task_row.iloc[0]['FECHAINICIO']
-         else:
-                es[tid] = st.session_state.fecha_inicio_proyecto  # 👈 FECHA GLOBAL DEFINIDA POR TI
+
+         es[tid] = st.session_state.fecha_inicio_proyecto
         
          ef[tid] = es[tid] + timedelta(days=duration)
 
@@ -1263,6 +1261,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
