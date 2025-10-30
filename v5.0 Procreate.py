@@ -766,6 +766,13 @@ if archivo_excel:
         
         st.session_state.tareas_df=calculo_ruta_critica(st.session_state.tareas_df)
 
+        if all(col in st.session_state.tareas_df.columns for col in ["FECHA_INICIO_TEMPRANA", "FECHA_FIN_TEMPRANA"]):
+            st.session_state.tareas_df["FECHAINICIO"] = st.session_state.tareas_df["FECHA_INICIO_TEMPRANA"]
+            st.session_state.tareas_df["FECHAFIN"] = st.session_state.tareas_df["FECHA_FIN_TEMPRANA"]
+        else:
+            st.warning("⚠️ No se encontraron las columnas FECHA_INICIO_TEMPRANA o FECHA_FIN_TEMPRANA en el DataFrame.")
+                
+
         if "tareas_df_prev" not in st.session_state:
                 st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
 
@@ -820,6 +827,11 @@ if archivo_excel:
                             st.session_state.tareas_df = calculo_predecesoras(st.session_state.tareas_df, idx)
 
                     st.session_state.tareas_df = calculo_ruta_critica(st.session_state.tareas_df)
+                    if all(col in st.session_state.tareas_df.columns for col in ["FECHA_INICIO_TEMPRANA", "FECHA_FIN_TEMPRANA"]):
+                            st.session_state.tareas_df["FECHAINICIO"] = st.session_state.tareas_df["FECHA_INICIO_TEMPRANA"]
+                            st.session_state.tareas_df["FECHAFIN"] = st.session_state.tareas_df["FECHA_FIN_TEMPRANA"]
+                    else:
+                            st.warning("⚠️ No se encontraron las columnas FECHA_INICIO_TEMPRANA o FECHA_FIN_TEMPRANA en el DataFrame.")
 
                     st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
                 
@@ -882,8 +894,8 @@ if archivo_excel:
                 st.session_state.tareas_df['y_num'] = range(len(st.session_state.tareas_df))
                 
                 fig = go.Figure()
-                fecha_inicio_col = 'FECHA_INICIO_TEMPRANO'
-                fecha_fin_col = 'FECHA_FIN_TEMPRANO'
+                fecha_inicio_col = 'FECHAINICIO'
+                fecha_fin_col = 'FECHAFIN'
                 if fecha_inicio_col not in st.session_state.tareas_df.columns or fecha_fin_col not in st.session_state.tareas_df.columns:
                      st.warning("❌ Error: No se encontraron columnas de fechas de inicio/fin necesarias para dibujar el Gantt.")
                 
@@ -1340,6 +1352,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
