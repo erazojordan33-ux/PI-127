@@ -99,7 +99,6 @@ def calcular_fechas(df):
 def calculo_ruta_critica(tareas_df=None, archivo=None):
 
     fecha_inicio_proyecto = st.session_state.get("fecha_inicio_proyecto", None)
-    fecha_inicio_proyecto = datetime.strptime(fecha_inicio_proyecto_str, "%d/%m/%Y").date()
 
     if fecha_inicio_proyecto is not None:
             # 🔹 Verificar si ya existe una fila con IDRUBRO = 0 y RUBRO = "Comienzo del Proyecto"
@@ -1340,6 +1339,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
