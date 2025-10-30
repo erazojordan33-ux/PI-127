@@ -880,9 +880,10 @@ if archivo_excel:
                         st.warning("⚠️ Advertencia: Columna 'IDRUBRO' no encontrada para ordenar.")
         
                 st.session_state.tareas_df['y_num'] = range(len(st.session_state.tareas_df))
+                
                 fig = go.Figure()
-                fecha_inicio_col = 'FECHAINICIO'
-                fecha_fin_col = 'FECHAFIN'
+                fecha_inicio_col = 'FECHA_INICIO_TEMPRANO'
+                fecha_fin_col = 'FECHA_FIN_TEMPRANO'
                 if fecha_inicio_col not in st.session_state.tareas_df.columns or fecha_fin_col not in st.session_state.tareas_df.columns:
                      st.warning("❌ Error: No se encontraron columnas de fechas de inicio/fin necesarias para dibujar el Gantt.")
                 
@@ -1339,6 +1340,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
