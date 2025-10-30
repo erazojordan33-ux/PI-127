@@ -99,35 +99,46 @@ def calcular_fechas(df):
 def calculo_ruta_critica(tareas_df=None, archivo=None):
 
     fecha_inicio_proyecto = st.session_state.get("fecha_inicio_proyecto", None)
+        
     if fecha_inicio_proyecto is not None:
-            # 🔹 Crear la fila del hito "Comienzo del Proyecto"
-            fila_inicio = pd.DataFrame([{
-                "IDRUBRO": 0,
-                "RUBRO": "Comienzo del Proyecto",
-                "PREDECESORAS": "",
-                "FECHAINICIO": fecha_inicio_proyecto,
-                "FECHAFIN": fecha_inicio_proyecto,
-                "DURACION": 0,
-                "UNIDAD_RUBRO": "",
-                "RENDIMIENTO": "",
-                "HOLGURA_TOTAL": 0,
-                "RUTA_CRITICA": ""
-            }])
+            # 🔹 Verificar si ya existe una fila con IDRUBRO = 0 y RUBRO = "Comienzo del Proyecto"
+            existe_inicio = (
+                not tareas_df[
+                    (tareas_df["IDRUBRO"] == 0) &
+                    (tareas_df["RUBRO"].astype(str).str.lower() == "comienzo del proyecto")
+                ].empty
+            )
         
-            # 🔹 Concatenar al inicio de la tabla
-            tareas_df = pd.concat([fila_inicio, tareas_df], ignore_index=True)
+            if not existe_inicio:
+                # 🔹 Crear la fila del hito "Comienzo del Proyecto"
+                fila_inicio = pd.DataFrame([{
+                    "IDRUBRO": 0,
+                    "RUBRO": "Comienzo del Proyecto",
+                    "PREDECESORAS": "",
+                    "FECHAINICIO": fecha_inicio_proyecto,
+                    "FECHAFIN": fecha_inicio_proyecto,
+                    "DURACION": 0,
+                    "UNIDAD_RUBRO": "",
+                    "RENDIMIENTO": "",
+                    "HOLGURA_TOTAL": 0,
+                    "RUTA_CRITICA": ""
+                }])
         
-            # 🔹 Forzar tipo correcto de IDRUBRO
-            tareas_df["IDRUBRO"] = tareas_df["IDRUBRO"].astype(int)
+                # 🔹 Concatenar al inicio de la tabla
+                tareas_df = pd.concat([fila_inicio, tareas_df], ignore_index=True)
         
-            # 🔹 Reasignar las tareas sin predecesoras para que dependan del hito
-            tareas_df.loc[
-                (tareas_df["IDRUBRO"] != 0) & 
-                ((tareas_df["PREDECESORAS"].isna()) | (tareas_df["PREDECESORAS"].astype(str).str.strip() == "")),
-                "PREDECESORAS"
-            ] = "0FC"  # 👈 Dependen del hito con relación Fin-Comienzo (FC)
+                # 🔹 Forzar tipo correcto de IDRUBRO
+                tareas_df["IDRUBRO"] = tareas_df["IDRUBRO"].astype(int)
+        
+                # 🔹 Reasignar las tareas sin predecesoras para que dependan del hito
+                tareas_df.loc[
+                    (tareas_df["IDRUBRO"] != 0) &
+                    ((tareas_df["PREDECESORAS"].isna()) | (tareas_df["PREDECESORAS"].astype(str).str.strip() == "")),
+                    "PREDECESORAS"
+                ] = "0FC"  # 👈 Dependen del hito con relación Fin-Comienzo (FC)
     else:
             st.error("❌ No se ha definido la fecha de inicio del proyecto antes de calcular la ruta crítica.")
+
 
 
     tareas_df.columns = tareas_df.columns.str.strip()
