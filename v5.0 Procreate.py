@@ -99,7 +99,7 @@ def calcular_fechas(df):
 def calculo_ruta_critica(tareas_df=None, archivo=None):
 
     fecha_inicio_proyecto = st.session_state.get("fecha_inicio_proyecto", None)
-
+        
     if fecha_inicio_proyecto is not None:
             # 🔹 Verificar si ya existe una fila con IDRUBRO = 0 y RUBRO = "Comienzo del Proyecto"
             existe_inicio = (
@@ -108,7 +108,7 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                     (tareas_df["RUBRO"].astype(str).str.lower() == "comienzo del proyecto")
                 ].empty
             )
-
+        
             if not existe_inicio:
                 # 🔹 Crear la fila del hito "Comienzo del Proyecto"
                 fila_inicio = pd.DataFrame([{
@@ -123,13 +123,13 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                     "HOLGURA_TOTAL": 0,
                     "RUTA_CRITICA": ""
                 }])
-
+        
                 # 🔹 Concatenar al inicio de la tabla
                 tareas_df = pd.concat([fila_inicio, tareas_df], ignore_index=True)
-
+        
                 # 🔹 Forzar tipo correcto de IDRUBRO
                 tareas_df["IDRUBRO"] = tareas_df["IDRUBRO"].astype(int)
-
+        
                 # 🔹 Reasignar las tareas sin predecesoras para que dependan del hito
                 tareas_df.loc[
                     (tareas_df["IDRUBRO"] != 0) &
@@ -138,15 +138,18 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                 ] = "0FC"  # 👈 Dependen del hito con relación Fin-Comienzo (FC)
     else:
             st.error("❌ No se ha definido la fecha de inicio del proyecto antes de calcular la ruta crítica.")
-            return tareas_df # Return original or empty df if no start date
 
     tareas_df.columns = tareas_df.columns.str.strip()
     duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
-    dependencias = defaultdict(list) # Successors map: pre_id -> list of suc_id
-    predecesoras_map = defaultdict(list) # Predecessors map: suc_id -> list of (pre_id, type, lag)
+    dependencias = defaultdict(list)
+    predecesoras_map = defaultdict(list)
     all_task_ids = set(tareas_df['IDRUBRO'].tolist())
-
-    # Build dependency maps
+    es = {} 
+    ef = {} 
+    ls = {} 
+    lf = {} 
+    tf = {} 
+    ff = {} 
     for _, row in tareas_df.iterrows():
         tarea_id = row['IDRUBRO']
         predecesoras_str = str(row['PREDECESORAS']).strip()
@@ -166,87 +169,72 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                 elif pre_entry != '':
                     st.warning(f"Formato de predecesora '{pre_entry}' no reconocido para tarea {tarea_id}.")
 
-    # Forward Pass (Early Start/Early Finish)
-    es = {}
-    ef = {}
+    initial_tasks_ids = [tid for tid in all_task_ids if tid not in predecesoras_map]
+
+    for tid in initial_tasks_ids:
+         task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
+         duration = duracion_dict.get(tid, 0)
+         if not isinstance(duration, (int, float)):
+                duration = 0
+
+         es[tid] = st.session_state.fecha_inicio_proyecto
+        
+         ef[tid] = es[tid] + timedelta(days=duration)
+
+    queue = deque(initial_tasks_ids)
+    processed_forward = set(initial_tasks_ids)
+
+    predecessor_process_count = defaultdict(int)
     in_degree = {tid: len(predecesoras_map.get(tid, [])) for tid in all_task_ids}
     queue = deque([tid for tid in all_task_ids if in_degree[tid] == 0])
-    processed_forward = set(queue)
+    processed_forward = set(queue)   
+        
+    for tid in queue:
+        task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
+        if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
+            es[tid] = task_row.iloc[0]['FECHAINICIO']
+            duration = duracion_dict.get(tid, 0)
+            if not isinstance(duration, (int, float)): duration = 0
+            ef[tid] = es[tid] + timedelta(days=duration)
+        else:
+            st.warning(f"⚠️ Advertencia: Tarea ID {tid} (0 in-degree) no encontrada o FECHAINICIO inválida para inicializar ES/EF.")
 
-    # Initialize tasks with no predecessors or with defined start dates
-    for tid in all_task_ids:
-         task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
-         if not task_row.empty:
-             # If a task has no predecessors and no initial date, default to project start date
-             if tid in queue and pd.isna(task_row.iloc[0]['FECHAINICIO']):
-                 es[tid] = fecha_inicio_proyecto
-             elif pd.notna(task_row.iloc[0]['FECHAINICIO']):
-                  es[tid] = task_row.iloc[0]['FECHAINICIO']
-             else:
-                 # If a task has predecessors but no initial date, it will be calculated
-                 continue
-
-             duration = duracion_dict.get(tid, 0)
-             if not isinstance(duration, (int, float)): duration = 0
-             if tid in es: # Ensure es[tid] is set before calculating ef
-                 ef[tid] = es[tid] + timedelta(days=duration)
-
-
-    queue = deque([tid for tid in all_task_ids if tid in es]) # Start BFS with tasks that have initial ES
-
+            processed_forward.discard(tid) 
+            if tid in es: del es[tid]
+            if tid in ef: del ef[tid]
+                    
     while queue:
         u = queue.popleft() # Current task being processed
-
         for v in dependencias.get(u, []):
-            potential_es_v = None
-            duration_v = duracion_dict.get(v, 0)
-            if not isinstance(duration_v, (int, float)): duration_v = 0
+            for pre_id_v, tipo_v, desfase_v in predecesoras_map.get(v, []):
+                if pre_id_v == u: 
+                    potential_es_v = None
+                    duration_v = duracion_dict.get(v, 0)
+                    if not isinstance(duration_v, (int, float)): duration_v = 0
+    
+                    if u in ef and u in es:
+                        if tipo_v == 'CC': 
+                            potential_es_v = es[u] + timedelta(days=desfase_v)
+                        elif tipo_v == 'FC':
+                            potential_es_v = ef[u] + timedelta(days=desfase_v)
+                        elif tipo_v == 'CF': 
+                             potential_es_v = (es[u] + timedelta(days=desfase_v)) - timedelta(days=duration_v)
+                        elif tipo_v == 'FF': 
+                             potential_es_v = (ef[u] + timedelta(days=desfase_v)) - timedelta(days=duration_v)
+                        else:
+                             st.warning(f"⚠️ Tipo de relación '{tipo_v}' no reconocido para calcular ES de tarea {v} basada en {u}. Usando lógica FC por defecto.")
+                             potential_es_v = ef[u] + timedelta(days=desfase_v) 
 
-            # Find the dependency from u to v to get type and lag
-            dependency_uv = None
-            for pre_id, type_rel, lag in predecesoras_map.get(v, []):
-                if pre_id == u:
-                    dependency_uv = (type_rel, lag)
-                    break
+                        if v not in es or (potential_es_v is not None and potential_es_v > es[v]):
+                            es[v] = potential_es_v
 
-            if dependency_uv and u in es and u in ef:
-                type_rel_uv, desfase_uv = dependency_uv
-
-                if type_rel_uv == 'CC':
-                    potential_es_v = es[u] + timedelta(days=desfase_uv)
-                elif type_rel_uv == 'FC':
-                    potential_es_v = ef[u] + timedelta(days=desfase_uv)
-                elif type_rel_uv == 'CF':
-                     # Task v cannot finish before u starts + lag. So v's ES is u's ES + lag - duration_v
-                     # Ensure es[u] is not NaT
-                     if pd.notna(es[u]):
-                         potential_ef_v = es[u] + timedelta(days=desfase_uv)
-                         potential_es_v = potential_ef_v - timedelta(days=duration_v)
-                     else:
-                          st.warning(f"⚠️ Advertencia: ES de predecesor {u} es NaT. No se pudo calcular potential_es_v para tarea {v} con relación CF.")
-
-                elif type_rel_uv == 'FF':
-                     # Task v cannot finish before u finishes + lag. So v's ES is u's EF + lag - duration_v
-                     # Ensure ef[u] is not NaT
-                     if pd.notna(ef[u]):
-                         potential_ef_v = ef[u] + timedelta(days=desfase_uv)
-                         potential_es_v = potential_ef_v - timedelta(days=duration_v)
-                     else:
-                          st.warning(f"⚠️ Advertencia: EF de predecesor {u} es NaT. No se pudo calcular potential_es_v para tarea {v} con relación FF.")
-                else:
-                     st.warning(f"⚠️ Tipo de relación '{type_rel_uv}' no reconocido para calcular ES de tarea {v} basada en {u}. Usando lógica FC por defecto.")
-                     # Ensure ef[u] is not NaT
-                     if pd.notna(ef[u]):
-                         potential_es_v = ef[u] + timedelta(days=desfase_uv)
-                     else:
-                         st.warning(f"⚠️ Advertencia: EF de predecesor {u} es NaT. No se pudo calcular potential_es_v para tarea {v} con lógica FC por defecto.")
-
-
-                # Add check for None/NaT before comparison
-                if potential_es_v is not None and pd.notna(potential_es_v):
-                    if v not in es or (es[v] is not None and pd.notna(es[v]) and potential_es_v > es[v]):
-                        es[v] = potential_es_v
-                        ef[v] = es[v] + timedelta(days=duration_v)
+                        if v in es: 
+                            duration_v_calc = duracion_dict.get(v, 0)
+                            if not isinstance(duration_v_calc, (int, float)): duration_v_calc = 0
+                            ef[v] = es[v] + timedelta(days=duration_v_calc)
+    
+                    else:
+                        st.warning(f"⚠️ Advertencia: ES/EF no calculados para predecesor ID {u} al procesar sucesor ID {v}. Saltando cálculo de ES/EF para v basado en u.")
 
             in_degree[v] -= 1
 
@@ -254,229 +242,155 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                  queue.append(v)
                  processed_forward.add(v)
 
-
     unprocessed_forward = all_task_ids - processed_forward
     if unprocessed_forward:
-        st.warning(f"⚠️ Advertencia: Las siguientes tareas no fueron procesadas en el pase hacia adelante (posible ciclo o grafo desconectado, o no inicializadas): {unprocessed_forward}")
-         # Attempt to initialize ES/EF for unprocessed tasks if they have a start date
+        st.warning(f"⚠️ Advertencia: Las siguientes tareas no fueron procesadas en el pase hacia adelante (posible ciclo o grafo desconectado): {unprocessed_forward}")
+
         for tid in unprocessed_forward:
-            task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
-            if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
-                es[tid] = task_row.iloc[0]['FECHAINICIO']
-                duration = duracion_dict.get(tid, 0)
-                if not isinstance(duration, (int, float)): duration = 0
-                if tid in es: # Ensure es[tid] is set before calculating ef
-                    ef[tid] = es[tid] + timedelta(days=duration)
-                processed_forward.add(tid) # Mark as processed if initialized
-            else:
-                 st.warning(f"❌ Error: Tarea no procesada {tid} no encontrada o FECHAINICIO inválida. No se pudo inicializar ES/EF.")
-
-
-    # Backward Pass (Late Start/Late Finish)
-    ls = {}
-    lf = {}
+             if tid not in es:
+                 task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
+                 if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
+                     es[tid] = task_row.iloc[0]['FECHAINICIO']
+                     duration = duracion_dict.get(tid, 0)
+                     if not isinstance(duration, (int, float)): duration = 0
+                     ef[tid] = es[tid] + timedelta(days=duration)
+                 else:
+                     st.warning(f"❌ Error: Tarea no procesada {tid} no encontrada o FECHAINICIO inválida. No se pudo inicializar ES/EF.")
+    
     end_tasks_ids = [tid for tid in all_task_ids if tid not in dependencias]
 
     project_finish_date = None
-    if ef:
-        # Project finish date is the maximum Early Finish of all tasks processed forward
-        valid_ef_dates = [ef[tid] for tid in processed_forward if tid in ef and pd.notna(ef[tid])]
-        if valid_ef_dates:
-            project_finish_date = max(valid_ef_dates, default=fecha_inicio_proyecto)
-        else:
-             st.warning("❌ Error: No se encontraron fechas de Finalización Temprana (EF) válidas. No se puede determinar la fecha de fin del proyecto. Usando fecha de inicio.")
-             project_finish_date = fecha_inicio_proyecto
-
+    if ef: 
+        project_finish_date = max(ef.values())
     else:
-        st.warning("❌ Error: No se calculó ninguna Fecha de Finalización Temprana (EF) en el pase hacia adelante. No se puede determinar la fecha de fin del proyecto. Usando fecha de inicio.")
-        project_finish_date = fecha_inicio_proyecto
+        st.warning("❌ Error: No se calculó ninguna Fecha de Finalización Temprana (EF) en el pase hacia adelante. No se puede determinar la fecha de fin del proyecto.")
 
+        raise ValueError("No EF calculated in forward pass.")
 
-    # Initialize LF for end tasks
-    for tid in all_task_ids:
-        if tid in ef and pd.notna(ef[tid]): # Only initialize for tasks that have a calculated and valid EF
-            if tid in end_tasks_ids:
-                 lf[tid] = project_finish_date
-            else:
-                 # Initialize LF for non-end tasks to project finish date or their own EF
-                 # This will be updated in the backward pass
-                 lf[tid] = project_finish_date # Or maybe ef[tid] as a starting point? Let's use project finish date
-
+    for tid in end_tasks_ids:
+        if tid in ef:
+            lf[tid] = project_finish_date
             duration = duracion_dict.get(tid, 0)
             if not isinstance(duration, (int, float)): duration = 0
-            if tid in lf and pd.notna(lf[tid]): # Ensure lf[tid] is set and valid before calculating ls
-                ls[tid] = lf[tid] - timedelta(days=duration)
-        elif tid in es and pd.notna(es[tid]):
-             # If EF was not calculated or is NaT but ES is valid, initialize LF/LS based on ES/duration
-             duration = duracion_dict.get(tid, 0)
-             if not isinstance(duration, (int, float)): duration = 0
-             lf[tid] = es[tid] + timedelta(days=duration)
-             ls[tid] = es[tid]
-             st.warning(f"⚠️ Advertencia: EF no calculado o es NaT para tarea {tid}. Inicializando LF/LS basado en ES.")
+            ls[tid] = lf[tid] - timedelta(days=duration)
         else:
-             st.warning(f"⚠️ Advertencia: ES/EF no calculados o son NaT para tarea {tid}. No se pudo inicializar LF/LS.")
+            if tid in ef:
+                 lf[tid] = ef[tid] # Assume LF = EF if not processed fully forward
+                 duration = duracion_dict.get(tid, 0)
+                 if not isinstance(duration, (int, float)): duration = 0
+                 ls[tid] = lf[tid] - timedelta(days=duration)
+                 st.warning(f"⚠️ Advertencia: Tarea final ID {tid} no procesada completamente hacia adelante. Inicializando LF/LS basado en su EF.")
+            else:
+                st.warning(f"⚠️ Advertencia: Tarea final ID {tid} no encontrada en EF. No se puede inicializar LF/LS.")
 
+    queue_backward = deque(end_tasks_ids)
+    processed_backward = set(end_tasks_ids)
 
-    queue_backward = deque(tid for tid in all_task_ids if tid in lf and pd.notna(lf[tid])) # Start BFS backward with tasks that have initial and valid LF
-    processed_backward = set(queue_backward)
+    successor_process_count = defaultdict(int)
 
-    # Need a map from successor to its predecessors with relationship details
     successor_details_map = defaultdict(list)
     for suc_id, pre_list in predecesoras_map.items():
         for pre_id, type_rel, lag in pre_list:
             successor_details_map[pre_id].append((suc_id, type_rel, lag))
 
-
-    out_degree_backward = {tid: len(successor_details_map.get(tid, [])) for tid in all_task_ids}
-    # Start with tasks that have no successors (in terms of backward pass) and have a valid LF
-    queue_backward = deque([tid for tid in all_task_ids if out_degree_backward[tid] == 0 and tid in lf and pd.notna(lf[tid])])
-
-
     while queue_backward:
-        v = queue_backward.popleft() # Current task being processed (successor in forward pass)
+        v = queue_backward.popleft()
 
-        for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []): # Iterate through predecessors of v (u)
+        for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []):
             potential_lf_u = None
-            duration_u = duracion_dict.get(u, 0)
-            if not isinstance(duration_u, (int, float)): duration_u = 0
-
-            if v in ls and pd.notna(ls[v]) and v in lf and pd.notna(lf[v]): # Ensure LS and LF of successor are valid
-                if tipo_relacion_uv == 'CC':
-                    # u cannot start after v starts - lag. So u's LF is v's LS - lag + duration_u
-                    potential_ls_u = ls[v] - timedelta(days=desfase_uv)
-                    potential_lf_u = potential_ls_u + timedelta(days=duration_u)
-                elif tipo_relacion_uv == 'FC':
-                     # u cannot finish after v starts - lag. So u's LF is v's LS - lag
-                     potential_lf_u = ls[v] - timedelta(days=desfase_uv)
+            if v in ls and v in lf:
+                if tipo_relacion_uv == 'CC': 
+                    potential_lf_u = (ls[v] - timedelta(days=desfase_uv)) + timedelta(days=duracion_dict.get(u, 0))
+                elif tipo_relacion_uv == 'FC': 
+                     potential_lf_u = ls[v] - timedelta(days=desfase_uv)    
                 elif tipo_relacion_uv == 'CF':
-                     # u cannot start after v finishes - lag. So u's LF is v's LF - lag + duration_u
-                     potential_ls_u = lf[v] - timedelta(days=desfase_uv)
-                     potential_lf_u = potential_ls_u + timedelta(days=duration_u)
-                elif tipo_relacion_uv == 'FF':
-                     # u cannot finish after v finishes - lag. So u's LF is v's LF - lag
+                     potential_lf_u = (lf[v] - timedelta(days=desfase_uv)) + timedelta(days=duracion_dict.get(u, 0))
+                elif tipo_relacion_uv == 'FF': 
                      potential_lf_u = lf[v] - timedelta(days=desfase_uv)
                 else:
                     st.warning(f"⚠️ Tipo de relación '{tipo_relacion_uv}' no reconocido para calcular LF de tarea {u} basada en {v}. Usando lógica FC por defecto.")
                     potential_lf_u = ls[v] - timedelta(days=desfase_uv)
 
-                # Add check for None/NaT before comparison
-                if potential_lf_u is not None and pd.notna(potential_lf_u):
-                    if u not in lf or (lf[u] is not None and pd.notna(lf[u]) and potential_lf_u < lf[u]):
-                        lf[u] = potential_lf_u
-                        ls[u] = lf[u] - timedelta(days=duration_u)
-
+                if u not in lf or (potential_lf_u is not None and potential_lf_u < lf[u]):
+                    lf[u] = potential_lf_u
+                    duration_u = duracion_dict.get(u, 0)
+                    if not isinstance(duration_u, (int, float)): duration = 0
+                    ls[u] = lf[u] - timedelta(days=duration_u)
+    
             else:
-                 st.warning(f"⚠️ Advertencia: LS/LF no calculados o son NaT para sucesora ID {v} al procesar predecesora ID {u}. Saltando cálculo de LF/LS para u basado en v.")
+                 st.warning(f"⚠️ Advertencia: LS/LF no calculados para sucesora ID {v} al procesar predecesora ID {u}. Saltando cálculo de LF/LS para u basado en v.")
+    
+            total_successors_of_u = len(dependencias.get(u, []))
+            successor_process_count[u] += 1
 
-            # Decrement the count of successors of u that have been processed in the backward pass
-            # We need a counter per task for its processed successors in the backward pass
-            if u in lf and pd.notna(lf[u]): # Only count if u has been initialized in the backward pass with a valid LF
-                 successor_process_count = getattr(u, '_successor_process_count', defaultdict(int))
-                 successor_process_count[v] += 1
-                 setattr(u, '_successor_process_count', successor_process_count)
-
-                 # Check if all successors of u (in the backward pass context) have been processed
-                 all_successors_processed = True
-                 for suc_id_of_u, _, _ in successor_details_map.get(u, []):
-                     if successor_process_count[suc_id_of_u] == 0:
-                         all_successors_processed = False
-                         break
-
-                 if all_successors_processed and u not in processed_backward:
-                      queue_backward.append(u)
-                      processed_backward.add(u)
-            else:
-                 st.warning(f"⚠️ Advertencia: Tarea {u} no inicializada o LF es NaT en el pase hacia atrás. No se puede procesar sucesor {v}.")
-
-
+            if successor_process_count[u] == total_successors_of_u and u not in processed_backward:
+                 queue_backward.append(u)
+                 processed_backward.add(u)
+    
     unprocessed_backward = all_task_ids - processed_backward
     if unprocessed_backward:
         st.warning(f"⚠️ Advertencia: Las siguientes tareas no fueron procesadas en el pase hacia atrás (posible ciclo o problema en el grafo/inicialización): {unprocessed_backward}")
 
-        # Attempt to initialize LF/LS for unprocessed tasks if they have ES/EF
         for tid in unprocessed_backward:
-            if tid in es and pd.notna(es[tid]) and tid in ef and pd.notna(ef[tid]):
+            if tid in es and tid in ef:
                 lf[tid] = ef[tid]
                 ls[tid] = es[tid]
                 st.warning(f"Inicializando LF/LS para tarea no procesada hacia atrás {tid} con sus fechas tempranas.")
             else:
-                st.warning(f"❌ Error: Tarea no procesada hacia atrás {tid} no encontrada en ES/EF válidos. No se pudo inicializar LF/LS.")
-
-
-    # Calculate Total Float and Free Float
-    tf = {}
-    ff = {}
+                st.warning(f"❌ Error: Tarea no procesada hacia atrás {tid} no encontrada en ES/EF. No se pudo inicializar LF/LS.")
 
     for tid in all_task_ids:
-        if tid in ef and pd.notna(ef[tid]) and tid in lf and pd.notna(lf[tid]):
+        if tid in ef and tid in lf:
             tf[tid] = lf[tid] - ef[tid]
             if tf[tid].total_seconds() < -1e-9:
-                 tf[tid] = timedelta(days=0) # Ensure non-negative float
-
-            # Calculate Free Float
+                 tf[tid] = timedelta(days=0)
             min_successor_es = None
-            if tid in dependencias: # Only calculate FF for tasks with successors
-                for suc_id in dependencias.get(tid, []):
-                     # Find the dependency from tid to suc_id
-                     dependency_ts = None
-                     for pre_id, type_rel, lag in predecesoras_map.get(suc_id, []):
-                         if pre_id == tid:
-                             dependency_ts = (type_rel, lag)
-                             break
-
-                     if dependency_ts and tid in es and pd.notna(es[tid]) and tid in ef and pd.notna(ef[tid]):
-                         type_rel_ts, desfase_ts = dependency_ts
+            for suc_id in dependencias.get(tid, []):
+                 for pre_id_suc, tipo_suc, desfase_suc in predecesoras_map.get(suc_id, []):
+                     if pre_id_suc == tid: 
                          required_start_suc = None
-
-                         if type_rel_ts == 'CC':
-                              required_start_suc = es[tid] + timedelta(days=desfase_ts)
-                         elif type_rel_ts == 'FC':
-                              required_start_suc = ef[tid] + timedelta(days=desfase_ts)
-                         elif type_rel_ts == 'CF':
-                              duration_suc = duracion_dict.get(suc_id, 0)
-                              if not isinstance(duration_suc, (int, float)): duration_suc = 0
-                              required_start_suc = (es[tid] + timedelta(days=desfase_ts)) - timedelta(days=duration_suc)
-                         elif type_rel_ts == 'FF':
-                              duration_suc = duracion_dict.get(suc_id, 0)
-                              if not isinstance(duration_suc, (int, float)): duration_suc = 0
-                              required_start_suc = (ef[tid] + timedelta(days=desfase_ts)) - timedelta(days=duration_suc)
-                         else:
-                              st.warning(f"⚠️ Tipo de relación '{type_rel_ts}' no reconocido al calcular FF para tarea {tid} basada en sucesor {suc_id}. Usando lógica FC por defecto.")
-                              required_start_suc = ef[tid] + timedelta(days=desfase_ts)
-
-                         if required_start_suc is not None and pd.notna(required_start_suc):
-                             if min_successor_es is None or (min_successor_es is not None and pd.notna(min_successor_es) and required_start_suc < min_successor_es):
-                                 min_successor_es = required_start_suc
-
-            if min_successor_es is not None and pd.notna(min_successor_es) and tid in ef and pd.notna(ef[tid]):
+                         if tid in es and tid in ef: 
+                             if tipo_suc == 'CC':
+                                  required_start_suc = es[tid] + timedelta(days=desfase_suc)
+                             elif tipo_suc == 'FC': 
+                                  required_start_suc = ef[tid] + timedelta(days=desfase_suc)
+                             elif tipo_suc == 'CF': 
+                                  duration_suc = duracion_dict.get(suc_id, 0)
+                                  if not isinstance(duration_suc, (int, float)): duration_suc = 0
+                                  required_start_suc = (es[tid] + timedelta(days=desfase_suc)) - timedelta(days=duration_suc)
+                             elif tipo_suc == 'FF':
+                                  duration_suc = duracion_dict.get(suc_id, 0)
+                                  if not isinstance(duration_suc, (int, float)): duration_suc = 0
+                                  required_start_suc = (ef[tid] + timedelta(days=desfase_suc)) - timedelta(days=duration_suc)
+                             else:
+                                  st.warning(f"⚠️ Tipo de relación '{tipo_suc}' no reconocido al calcular FF para tarea {tid} basada en sucesor {suc_id}. Usando lógica FC por defecto.")
+                                  required_start_suc = ef[tid] + timedelta(days=desfase_suc)
+                             if required_start_suc is not None:
+                                 if min_successor_es is None or required_start_suc < min_successor_es:
+                                     min_successor_es = required_start_suc
+                             break 
+    
+            if min_successor_es is not None and tid in ef:
                  ff[tid] = min_successor_es - ef[tid]
                  if ff[tid].total_seconds() < -1e-9:
-                      ff[tid] = timedelta(days=0) # Ensure non-negative float
+                      ff[tid] = timedelta(days=0)
             else:
-                 ff[tid] = timedelta(days=0) # Tasks with no successors or invalid dates have 0 FF
+                 ff[tid] = timedelta(days=0)
         else:
-            tf[tid] = pd.NA
-            ff[tid] = pd.NA
-
-    # Update DataFrame with calculated dates and floats
+            tf[tid] = pd.NA 
+            ff[tid] = pd.NA 
+            
     tareas_df['FECHA_INICIO_TEMPRANA'] = tareas_df['IDRUBRO'].map(es)
     tareas_df['FECHA_FIN_TEMPRANA'] = tareas_df['IDRUBRO'].map(ef)
     tareas_df['FECHA_INICIO_TARDE'] = tareas_df['IDRUBRO'].map(ls)
     tareas_df['FECHA_FIN_TARDE'] = tareas_df['IDRUBRO'].map(lf)
     tareas_df['HOLGURA_TOTAL_TD'] = tareas_df['IDRUBRO'].map(tf)
     tareas_df['HOLGURA_LIBRE_TD'] = tareas_df['IDRUBRO'].map(ff)
-
-    # Convert Timedelta to days (handling potential NaT/NaTType)
-    tareas_df['HOLGURA_TOTAL'] = tareas_df['HOLGURA_TOTAL_TD'].apply(lambda x: x.days if pd.notna(x) and isinstance(x, timedelta) else (0 if isinstance(x, timedelta) and x.total_seconds() == 0 else pd.NA))
-    tareas_df['HOLGURA_LIBRE'] = tareas_df['HOLGURA_LIBRE_TD'].apply(lambda x: x.days if pd.notna(x) and isinstance(x, timedelta) else (0 if isinstance(x, timedelta) and x.total_seconds() == 0 else pd.NA))
-
-
-    # Determine Critical Path
-    tolerance_days = 1e-9 # Use a small tolerance for floating point comparisons
-    tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: pd.notna(x) and isinstance(x, (int, float)) and abs(x) < tolerance_days)
-
+    tareas_df['HOLGURA_TOTAL'] = tareas_df['HOLGURA_TOTAL_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
+    tareas_df['HOLGURA_LIBRE'] = tareas_df['HOLGURA_LIBRE_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
+    tolerance_days = 1e-9
+    tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
     return tareas_df
-
 ##3
 def calculo_predecesoras(df, fila_editada):
 
@@ -1386,6 +1300,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
