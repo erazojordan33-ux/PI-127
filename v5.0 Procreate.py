@@ -276,10 +276,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
     project_finish_date = max(ef.values())
     end_tasks_ids = [tid for tid, fecha in ef.items() if fecha == project_finish_date]
 
-    if debug:
-        print("Tareas finales reales (end_tasks_ids):", end_tasks_ids)
-        print("Fecha fin proyecto:", project_finish_date)
-
     # Inicializar LF/LS de las tareas finales
     lf.update({tid: project_finish_date for tid in end_tasks_ids})
     for tid in end_tasks_ids:
@@ -287,8 +283,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
         if not isinstance(duration, (int, float)): duration = 0
         ls[tid] = lf[tid] - timedelta(days=duration)
 
-
-    # Cola backward
     queue_backward = deque(end_tasks_ids)
     processed_backward = set(end_tasks_ids)
 
@@ -305,7 +299,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
             duration_u = duracion_dict.get(u, 0)
             if not isinstance(duration_u, (int, float)): duration_u = 0
 
-            # Calcular candidato LF según tipo de relación
             if tipo_relacion_uv == 'FC':
                 candidate_lf = ls[v] - timedelta(days=desfase_uv)
                 candidate_ls = candidate_lf - timedelta(days=duration_u)
@@ -324,7 +317,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
             else:
                 candidate_lf = ls[v] + timedelta(days=desfase_uv)
 
-            # LF(u) = mínimo de todos los candidatos de sus sucesoras
             if u not in lf:
                 lf[u] = candidate_lf
             else:
@@ -335,8 +327,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
             else:
                 ls[u] = min(ls[u], candidate_ls)
 
-
-            # Añadir u a la cola si no se ha procesado aún
             if u not in processed_backward:
                 queue_backward.append(u)
                 processed_backward.add(u)
@@ -348,7 +338,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
     for tid in tasks_without_successors:
         print(f"- {tid}")
 
-    # Asignar LF y LS iniciales a las tareas sin sucesoras
     for tid in tasks_without_successors:
         duration = duracion_dict.get(tid, 0)
         if not isinstance(duration, (int, float)):
@@ -357,17 +346,14 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
         ls[tid] = lf[tid] - timedelta(days=duration)
         print(f"Tarea: {tid} | Duración: {duration} | LF: {lf[tid]} | LS: {ls[tid]}")
 
-    # 🔁 Backward Pass especial
     while queue_special_backward:
         v = queue_special_backward.popleft()
 
-        # Iterar sobre predecesoras de v
         for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []):
             duration_u = duracion_dict.get(u, 0)
             if not isinstance(duration_u, (int, float)):
                 duration_u = 0
 
-            # Calcular LF y LS candidatos según tipo de relación
             if tipo_relacion_uv == 'FC':
                 candidate_lf = ls[v] - timedelta(days=desfase_uv)
                 candidate_ls = candidate_lf - timedelta(days=duration_u)
@@ -384,7 +370,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                 candidate_lf = ls[v] + timedelta(days=desfase_uv)
                 candidate_ls = candidate_lf - timedelta(days=duration_u)
 
-            # ✅ Control CPM: si ya existe LF[u], se queda con el menor (más restrictivo)
             if u in lf:
                 if candidate_lf < lf[u]:
                     lf[u] = candidate_lf
@@ -393,13 +378,10 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                 lf[u] = candidate_lf
                 ls[u] = candidate_ls
 
-            # ⚠️ Control de límite del proyecto
             if lf[u] > project_finish_date:
-                print(f"⚠️ {u} excede el fin del proyecto ({lf[u]}). Corrigiendo y recalculando hacia adelante...")
                 lf[u] = project_finish_date
                 ls[u] = lf[u] - timedelta(days=duration_u)
 
-                # 🔁 Forward correctivo solo para LF/LS
                 queue_forward = deque([u])
                 processed_forward = set()
 
@@ -414,7 +396,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                         if not isinstance(dur_succ, (int, float)):
                             dur_succ = 0
 
-                        # Recalcular según tipo de relación
                         if tipo_relacion_xs == 'FC':
                             lf[succ] = min(lf.get(succ, lf[x] + timedelta(days=desfase_xs)), lf[x] + timedelta(days=desfase_xs))
                             ls[succ] = lf[succ] - timedelta(days=dur_succ)
@@ -434,16 +415,12 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                             ls[succ] = lf[succ] - timedelta(days=dur_succ)
                             queue_forward.append(succ)
 
-                # 🔚 Fin del forward correctivo
 
-            # Añadir a la cola si no se ha procesado
             if u not in processed_special_backward:
                 queue_special_backward.append(u)
                 processed_special_backward.add(u)
 
-    # Debug
     if debug:
-        print("Tareas sin sucesoras (no entran en backward pass normal):", tasks_without_successors)
         unprocessed_backward = all_task_ids - processed_backward
         if unprocessed_backward:
             print("⚠️ Tareas no procesadas backward:", unprocessed_backward)
@@ -1422,6 +1399,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
