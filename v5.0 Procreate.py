@@ -1082,21 +1082,7 @@ if archivo_excel:
                         ajuste_vertical = 0.2
                         y_pre_ajustado = y_pre - ajuste_vertical     # sale más abajo
                         y_suc_ajustado = y_suc + ajuste_vertical     # llega más arriba
-                        
-                        # 🔹 Ajuste vertical visual
-                        ajuste_vertical = 0.2
-                        y_pre_ajustado = y_pre - ajuste_vertical     # sale un poco más abajo
-                        y_suc_ajustado = y_suc + ajuste_vertical     # llega un poco más arriba
-                        
-                        # 🔹 Marcador de salida (círculo)
-                        fig.add_trace(go.Scattergl(
-                            x=[origin_x],
-                            y=[y_pre_ajustado],
-                            mode='markers',
-                            marker=dict(symbol='circle', size=6, color=arrow_color),  # más pequeño
-                            hoverinfo='none',
-                            showlegend=False
-                        ))
+
                         
                         # 🔹 Construcción de la línea
                         points_x = [origin_x]; points_y = [y_pre_ajustado]
@@ -1460,6 +1446,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
