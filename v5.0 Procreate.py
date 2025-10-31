@@ -1077,13 +1077,11 @@ if archivo_excel:
                         if tipo_relacion == 'CC': connection_x = x_suc_inicio; arrow_symbol='triangle-right'
                         elif tipo_relacion == 'CF': connection_x = x_suc_fin; arrow_symbol='triangle-left'
                         elif tipo_relacion == 'FF': connection_x = x_suc_fin; arrow_symbol='triangle-left'
-                        fig.add_trace(go.Scattergl(x=[origin_x], y=[y_pre], mode='markers', marker=dict(symbol='circle', size=8, color=arrow_color), hoverinfo='none', showlegend=False))
-                        # 🔹 Ajuste vertical visual
+                       
                         ajuste_vertical = 0.2
                         y_pre_ajustado = y_pre - ajuste_vertical     # sale más abajo
                         y_suc_ajustado = y_suc + ajuste_vertical     # llega más arriba
 
-                        
                         # 🔹 Construcción de la línea
                         points_x = [origin_x]; points_y = [y_pre_ajustado]
                         if tipo_relacion in ['CC','FC']:
@@ -1446,6 +1444,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
