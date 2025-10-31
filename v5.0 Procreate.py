@@ -1078,14 +1078,20 @@ if archivo_excel:
                         elif tipo_relacion == 'CF': connection_x = x_suc_fin; arrow_symbol='triangle-left'
                         elif tipo_relacion == 'FF': connection_x = x_suc_fin; arrow_symbol='triangle-left'
                         fig.add_trace(go.Scattergl(x=[origin_x], y=[y_pre], mode='markers', marker=dict(symbol='circle', size=8, color=arrow_color), hoverinfo='none', showlegend=False))
-                        points_x = [origin_x]; points_y = [y_pre]
+                        # 🔹 Ajuste vertical visual
+                        ajuste_vertical = 0.2
+                        y_pre_ajustado = y_pre - ajuste_vertical     # sale más abajo
+                        y_suc_ajustado = y_suc + ajuste_vertical     # llega más arriba
+                        
+                        points_x = [origin_x]; points_y = [y_pre_ajustado]
+                        
                         if tipo_relacion in ['CC','FC']:
-                            elbow1_x = origin_x - timedelta(days=offset_days_horizontal); elbow1_y = y_pre
-                            elbow2_x = elbow1_x; elbow2_y = y_suc
-                            points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc]
+                            elbow1_x = origin_x - timedelta(days=offset_days_horizontal); elbow1_y = y_pre_ajustado
+                            elbow2_x = elbow1_x; elbow2_y = y_suc_ajustado
+                            points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc_ajustado]
                         elif tipo_relacion in ['CF','FF']:
-                            elbow1_x = origin_x; elbow1_y = y_suc
-                            points_x += [elbow1_x, connection_x]; points_y += [elbow1_y, y_suc]
+                            elbow1_x = origin_x; elbow1_y = y_suc_ajustado
+                            points_x += [elbow1_x, connection_x]; points_y += [elbow1_y, y_suc_ajustado]
                         else: continue
                         fig.add_trace(go.Scatter(x=points_x, y=points_y, mode='lines', line=line_style, hoverinfo='none', showlegend=False))
                         fig.add_trace(go.Scattergl(x=[connection_x], y=[y_suc], mode='markers', marker=dict(symbol=arrow_symbol, size=10, color=arrow_color), hoverinfo='none', showlegend=False))
@@ -1403,6 +1409,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
