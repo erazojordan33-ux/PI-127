@@ -1123,7 +1123,7 @@ if archivo_excel:
                     hovermode='closest'
                 )
 
-                for i, tarea in enumerate(df['RUBRO'].unique()):
+                for i, tarea in enumerate(df['IDRUBRO'].unique()):
                     if i % 2 == 0:
                         fig.add_shape(
                             type="rect",
@@ -1403,6 +1403,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
