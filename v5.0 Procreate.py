@@ -1083,8 +1083,23 @@ if archivo_excel:
                         y_pre_ajustado = y_pre - ajuste_vertical     # sale más abajo
                         y_suc_ajustado = y_suc + ajuste_vertical     # llega más arriba
                         
-                        points_x = [origin_x]; points_y = [y_pre_ajustado]
+                        # 🔹 Ajuste vertical visual
+                        ajuste_vertical = 0.2
+                        y_pre_ajustado = y_pre - ajuste_vertical     # sale un poco más abajo
+                        y_suc_ajustado = y_suc + ajuste_vertical     # llega un poco más arriba
                         
+                        # 🔹 Marcador de salida (círculo)
+                        fig.add_trace(go.Scattergl(
+                            x=[origin_x],
+                            y=[y_pre_ajustado],
+                            mode='markers',
+                            marker=dict(symbol='circle', size=6, color=arrow_color),  # más pequeño
+                            hoverinfo='none',
+                            showlegend=False
+                        ))
+                        
+                        # 🔹 Construcción de la línea
+                        points_x = [origin_x]; points_y = [y_pre_ajustado]
                         if tipo_relacion in ['CC','FC']:
                             elbow1_x = origin_x - timedelta(days=offset_days_horizontal); elbow1_y = y_pre_ajustado
                             elbow2_x = elbow1_x; elbow2_y = y_suc_ajustado
@@ -1092,9 +1107,29 @@ if archivo_excel:
                         elif tipo_relacion in ['CF','FF']:
                             elbow1_x = origin_x; elbow1_y = y_suc_ajustado
                             points_x += [elbow1_x, connection_x]; points_y += [elbow1_y, y_suc_ajustado]
-                        else: continue
-                        fig.add_trace(go.Scatter(x=points_x, y=points_y, mode='lines', line=line_style, hoverinfo='none', showlegend=False))
-                        fig.add_trace(go.Scattergl(x=[connection_x], y=[y_suc], mode='markers', marker=dict(symbol=arrow_symbol, size=10, color=arrow_color), hoverinfo='none', showlegend=False))
+                        else:
+                            continue
+                        
+                        # 🔹 Línea continua (no discontinua)
+                        fig.add_trace(go.Scatter(
+                            x=points_x,
+                            y=points_y,
+                            mode='lines',
+                            line=dict(color=arrow_color, width=1),  # línea continua
+                            hoverinfo='none',
+                            showlegend=False
+                        ))
+                        
+                        # 🔹 Marcador de llegada (flecha)
+                        fig.add_trace(go.Scattergl(
+                            x=[connection_x],
+                            y=[y_suc_ajustado],
+                            mode='markers',
+                            marker=dict(symbol=arrow_symbol, size=6, color=arrow_color),  # más pequeño
+                            hoverinfo='none',
+                            showlegend=False
+                        ))
+
                 
                 y_ticktext_styled = []
                 for y_pos in range(len(st.session_state.tareas_df)):
@@ -1409,6 +1444,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
