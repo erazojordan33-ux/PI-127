@@ -1120,15 +1120,31 @@ if archivo_excel:
                             showlegend=False
                         ))
                         
-                        # 🔹 Marcador de llegada (flecha)
-                        fig.add_trace(go.Scattergl(
-                            x=[connection_x],
-                            y=[y_suc_ajustado],
-                            mode='markers',
-                            marker=dict(symbol=arrow_symbol, size=6, color=arrow_color),  # más pequeño
-                            hoverinfo='none',
-                            showlegend=False
-                        ))
+                        # Marcador de salida (círculo) — lo colocamos ligeramente desplazado en X para que no tape la barra
+                        circle_x = origin_x
+                        circle_y = y_pre_ajustado
+                        if not (pd.isna(circle_x) or pd.isna(circle_y)):
+                            fig.add_trace(go.Scattergl(
+                                x=[circle_x],
+                                y=[circle_y],
+                                mode='markers',
+                                marker=dict(symbol='circle', size=6, color=arrow_color, line=dict(width=0)),
+                                hoverinfo='none',
+                                showlegend=False
+                            ))
+                        
+                        # Marcador de llegada (triángulo) — un poco más grande para destacar llegada
+                        triangle_x = connection_x
+                        triangle_y = y_suc_ajustado
+                        if not (pd.isna(triangle_x) or pd.isna(triangle_y)):
+                            fig.add_trace(go.Scattergl(
+                                x=[triangle_x],
+                                y=[triangle_y],
+                                mode='markers',
+                                marker=dict(symbol=arrow_symbol, size=8, color=arrow_color, line=dict(width=0)),
+                                hoverinfo='none',
+                                showlegend=False
+                            ))
 
                 
                 y_ticktext_styled = []
@@ -1444,6 +1460,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
