@@ -818,8 +818,6 @@ if archivo_excel:
         if "tareas_df_prev" not in st.session_state:
                 st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
 
-
-
 # Mostrar variables en la Pestaña 3___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
         with tab3:
 
@@ -1020,7 +1018,6 @@ if archivo_excel:
                         showlegend=False
                     ))
                         #### LINEASSSSS
-
                     inicio_temp = row["FECHA_INICIO_TEMPRANA"]
                     fin_tarde = row["FECHA_FIN_TARDE"]
                 
@@ -1126,7 +1123,19 @@ if archivo_excel:
                     hovermode='closest'
                 )
 
-                
+                for i, tarea in enumerate(df['RUBRO'].unique()):
+                    if i % 2 == 0:
+                        fig.add_shape(
+                            type="rect",
+                            x0=df['FECHAINICIO'].min(),  # desde el inicio
+                            x1=df['FECHAFIN'].max(),     # hasta el fin
+                            y0=i - 0.5,
+                            y1=i + 0.5,
+                            fillcolor="rgba(240,240,240,0.05)",  # gris muy suave
+                            line_width=0,
+                            layer="below"  # debajo de las barras
+                        )
+
                 st.plotly_chart(fig, use_container_width=True)
 
 # Mostrar variables en la Pestaña 4___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
@@ -1394,6 +1403,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
