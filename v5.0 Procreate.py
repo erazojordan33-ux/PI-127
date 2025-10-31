@@ -1127,8 +1127,8 @@ if archivo_excel:
                     if i % 2 == 0:
                         fig.add_shape(
                             type="rect",
-                            x0=df['FECHAINICIO'].min(),  # desde el inicio
-                            x1=df['FECHAFIN'].max(),     # hasta el fin
+                            x0=st.session_state.tareas_df['FECHAINICIO'].min(),  # desde el inicio
+                            x1=st.session_state.tareas_df['FECHAFIN'].max(),     # hasta el fin
                             y0=i - 0.5,
                             y1=i + 0.5,
                             fillcolor="rgba(240,240,240,0.05)",  # gris muy suave
@@ -1403,6 +1403,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
