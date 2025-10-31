@@ -1131,7 +1131,7 @@ if archivo_excel:
                             x1=st.session_state.tareas_df['FECHAFIN'].max(),     # hasta el fin
                             y0=i - 0.5,
                             y1=i + 0.5,
-                            fillcolor="rgba(240,240,240,0.05)",  # gris muy suave
+                            fillcolor="rgba(240,240,240,0.15)",  # gris muy suave
                             line_width=0,
                             layer="below"  # debajo de las barras
                         )
@@ -1403,6 +1403,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
