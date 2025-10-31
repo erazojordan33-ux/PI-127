@@ -1059,7 +1059,7 @@ if archivo_excel:
                         y_suc = suc_row_df.iloc[0]['y_num']
                         suc_is_critical = is_critical_dict.get(suc_id, False)
                         arrow_color = color_critica_flecha if pre_is_critical and suc_is_critical else color_no_critica_flecha
-                        line_style = dict(color=arrow_color, width=1, dash='dash')
+                        line_style = dict(color=arrow_color, width=0.5)
                         x_suc_inicio = inicio_rubro_calc.get(suc_id)
                         x_suc_fin = fin_rubro_calc.get(suc_id)
                         if pd.isna(x_suc_inicio) or pd.isna(x_suc_fin): continue
@@ -1131,7 +1131,7 @@ if archivo_excel:
                             x1=st.session_state.tareas_df['FECHAFIN'].max(),     # hasta el fin
                             y0=i - 0.5,
                             y1=i + 0.5,
-                            fillcolor="rgba(240,240,240,0.15)",  # gris muy suave
+                            fillcolor="rgba(240,240,240,0.25)",  # gris muy suave
                             line_width=0,
                             layer="below"  # debajo de las barras
                         )
@@ -1403,6 +1403,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
