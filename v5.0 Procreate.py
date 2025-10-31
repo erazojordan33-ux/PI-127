@@ -419,11 +419,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
             if u not in processed_special_backward:
                 queue_special_backward.append(u)
                 processed_special_backward.add(u)
-
-    if debug:
-        unprocessed_backward = all_task_ids - processed_backward
-        if unprocessed_backward:
-            print("⚠️ Tareas no procesadas backward:", unprocessed_backward)
                 
     for tid in all_task_ids:
         if tid in ef and tid in lf:
@@ -1399,6 +1394,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
