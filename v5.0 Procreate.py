@@ -1093,11 +1093,11 @@ if archivo_excel:
 
                         elif tipo_relacion in ['CF','FF']:
                                 if origin_x <= connection_x:
-                                        elbow1_x = origin_x + timedelta(days=offset_days_horizontal) ; elbow1_y = y_pre_ajustado
+                                        elbow1_x = connection_x + timedelta(days=offset_days_horizontal) ; elbow1_y = y_pre_ajustado
                                         elbow2_x = elbow1_x; elbow2_y = y_suc_ajustado
                                         points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc_ajustado]
                                 else:
-                                        elbow1_x = connection_x  + timedelta(days=offset_days_horizontal); elbow1_y = y_pre_ajustado
+                                        elbow1_x =  origin_x + timedelta(days=offset_days_horizontal); elbow1_y = y_pre_ajustado
                                         elbow2_x = elbow1_x; elbow2_y = y_suc_ajustado
                                         points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc_ajustado]
                         else:
@@ -1453,6 +1453,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
