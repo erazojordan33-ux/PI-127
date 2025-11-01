@@ -1015,26 +1015,29 @@ if archivo_excel:
                         text=hover_text,
                         showlegend=False
                     ))
-                        #### LINEASSSSS
                     inicio_temp = row["FECHA_INICIO_TEMPRANA"]
                     fin_tarde = row["FECHA_FIN_TARDE"]
-                
-                    if pd.notna(inicio_temp) and pd.notna(fin_tarde):
-                            # Línea delgada superpuesta (rango de flexibilidad)
-                            y_center = row['y_num']
-                            y0_linea = y_center - 0.05
-                            y1_linea = y_center + 0.05
                         
-                            xs_linea = [inicio_temp, fin_tarde, fin_tarde, inicio_temp, inicio_temp]
-                            ys_linea = [y0_linea, y0_linea, y1_linea, y1_linea, y0_linea]
+                    if pd.notna(inicio_temp) and pd.notna(fin_tarde):
+                            # Barra translúcida (rango de flexibilidad)
+                            y_center = row['y_num']
+                            half_height_flex = 0.35  # mismo grosor que la barra principal
+                            y0_flex = y_center - half_height_flex
+                            y1_flex = y_center + half_height_flex
+                        
+                            xs_flex = [inicio_temp, fin_tarde, fin_tarde, inicio_temp, inicio_temp]
+                            ys_flex = [y0_flex, y0_flex, y1_flex, y1_flex, y0_flex]
+                        
+                            # Color más suave (reduce saturación / más claro)
+                            fill_color_soft = line_color.replace("rgb(", "rgba(").replace(")", ", 0.3)") if "rgb(" in line_color else "rgba(173,216,230,0.3)"
                         
                             fig.add_trace(go.Scatter(
-                                x=xs_linea,
-                                y=ys_linea,
+                                x=xs_flex,
+                                y=ys_flex,
                                 mode='lines',
                                 fill='toself',
-                                fillcolor=line_color.replace("1)", "0.4)"),  # más translúcido
-                                line=dict(color=line_color, width=1),
+                                fillcolor=fill_color_soft,
+                                line=dict(color=fill_color_soft, width=0.5),
                                 hoverinfo='skip',
                                 showlegend=False
                             ))
@@ -1453,6 +1456,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
