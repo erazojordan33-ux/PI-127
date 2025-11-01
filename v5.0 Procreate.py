@@ -820,7 +820,6 @@ if archivo_excel:
 
 # Mostrar variables en la Pestaña 3___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
         with tab3:
-
                 st.subheader("📋 Tareas con Fechas Calculadas y Ruta Crítica")
                 cols1 = [
                     'IDRUBRO','RUBRO','PREDECESORAS','FECHAINICIO','FECHAFIN',
@@ -996,8 +995,7 @@ if archivo_excel:
                                   f"⏱️ <b>Duración:</b> {(end_date - start_date).days} días<br>"
                                   f"⏳ <b>Holgura Total:</b> {row.get('HOLGURA_TOTAL', 'N/A')} días<br>"
                                   f"💰 <b>Costo:</b> {costo_formateado}")
-                
-                    # 🔹 Rectángulo relleno con hover completo
+
                     half_height = 0.35  # controla el grosor vertical de la barra
                     y_center = row['y_num']
                     y0 = y_center - half_height
@@ -1082,17 +1080,73 @@ if archivo_excel:
                         y_pre_ajustado = y_pre - ajuste_vertical     # sale más abajo
                         y_suc_ajustado = y_suc + ajuste_vertical     # llega más arriba
 
-                        # 🔹 Construcción de la línea
+                        # --- Inicio bloque reemplazado: lógica de codos mejorada ---
+                        # Asegurarnos de tener el desfase (lag) de la relación si existe
+                        desfase_rel = 0
+                        for pre_id_suc, type_suc, desfase_suc in predecesoras_map_details.get(suc_id, []):
+                            if pre_id_suc == pre_id:
+                                tipo_relacion = type_suc.upper() if type_suc else 'FC'
+                                desfase_rel = int(desfase_suc) if desfase_suc is not None else 0
+                                break
+                        
+                        # Fechas relevantes
+                        pre_start = x_pre_inicio
+                        pre_end = x_pre_fin
+                        suc_start = x_suc_inicio
+                        suc_end = x_suc_fin
+                        
+                        # Variables auxiliares de offset total horizontal (offset base + desfase de la relación)
+                        offset_total = offset_days_horizontal + abs(desfase_rel)
+                        
+                        # Construcción de los puntos según tipo de relación y comparaciones entre fechas
                         points_x = [origin_x]; points_y = [y_pre_ajustado]
-                        if tipo_relacion in ['CC','FC']:
-                            elbow1_x = origin_x - timedelta(days=offset_days_horizontal); elbow1_y = y_pre_ajustado
-                            elbow2_x = elbow1_x; elbow2_y = y_suc_ajustado
-                            points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc_ajustado]
-                        elif tipo_relacion in ['CF','FF']:
-                            elbow1_x = origin_x; elbow1_y = y_suc_ajustado
-                            points_x += [elbow1_x, connection_x]; points_y += [elbow1_y, y_suc_ajustado]
+                        
+                        if tipo_relacion in ['CC', 'FC']:
+                            # Comparar inicio de pre contra inicio de suc (conexión en inicio)
+                            # Si el inicio de pre es menor o igual --> primero ir a la derecha; si es mayor --> ir a la izquierda
+                            referencia_pre = pre_start
+                            referencia_suc = suc_start  # para CC/FC la conexión es al inicio del sucesor
+                        
+                            if referencia_pre <= referencia_suc:
+                                # Ir a la derecha (offset_total), bajar/ subir vertical y luego conectar por la derecha
+                                elbow1_x = origin_x + timedelta(days=offset_total)
+                                elbow1_y = y_pre_ajustado
+                                elbow2_x = elbow1_x
+                                elbow2_y = y_suc_ajustado
+                                points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc_ajustado]
+                            else:
+                                # Ir a la izquierda (offset_total), bajar/subir vertical y luego conectar (hacia la derecha si connection_x > elbow)
+                                elbow1_x = origin_x - timedelta(days=offset_total)
+                                elbow1_y = y_pre_ajustado
+                                elbow2_x = elbow1_x
+                                elbow2_y = y_suc_ajustado
+                                points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc_ajustado]
+                        
+                        elif tipo_relacion in ['CF', 'FF']:
+                            # Para CF/FF comparamos fin de la pre con fin de la suc (conexión en fin para algunos casos)
+                            referencia_pre = pre_end
+                            referencia_suc = suc_end  # para CF/FF normalmente la conexión puede ser al fin
+                        
+                            if referencia_pre > referencia_suc:
+                                # Si fin(pre) > fin(suc) -> vamos primero a la derecha con offset_days_horizontal (no sumar desfase_rel aquí
+                                # según tu especificación) y luego bajamos/subimos y conectamos.
+                                elbow1_x = origin_x + timedelta(days=offset_days_horizontal)
+                                elbow1_y = y_suc_ajustado
+                                # puntos: origin -> elbow derecho -> vertical -> conexión
+                                points_x += [elbow1_x, connection_x]; points_y += [elbow1_y, y_suc_ajustado]
+                            else:
+                                # Si fin(pre) <= fin(suc) -> vamos a la derecha hasta offset_total (incluyendo desfase_rel),
+                                # bajamos/subimos y luego vamos hacia la izquierda hasta conectar (porque connection_x estará a la izquierda del codo).
+                                elbow1_x = origin_x + timedelta(days=offset_total)
+                                elbow1_y = y_suc_ajustado
+                                # puntos: origin -> codo derecho (más lejos) -> conectar (posible conexión a la izquierda)
+                                points_x += [elbow1_x, connection_x]; points_y += [elbow1_y, y_suc_ajustado]
+                        
                         else:
+                            # Si no es un tipo conocido, saltar
                             continue
+                        # --- Fin bloque reemplazado ---
+
                         
                         # 🔹 Línea continua (no discontinua)
                         fig.add_trace(go.Scatter(
@@ -1444,6 +1498,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
