@@ -1080,6 +1080,7 @@ if archivo_excel:
                         y_pre_ajustado = y_pre - ajuste_vertical     # sale más abajo
                         y_suc_ajustado = y_suc + ajuste_vertical     # llega más arriba
 
+                        points_x = [origin_x]; points_y = [y_pre_ajustado]
                         if tipo_relacion in ['CC','FC']:
                             elbow1_x = origin_x - timedelta(days=offset_days_horizontal); elbow1_y = y_pre_ajustado
                             elbow2_x = elbow1_x; elbow2_y = y_suc_ajustado
@@ -1440,6 +1441,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
