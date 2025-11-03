@@ -910,7 +910,7 @@ if archivo_excel:
                     unsafe_allow_html=True
                 )
 
-                column_config1["RENDIMIENTO"] = st.column_config.NumberColumn(
+                column_config["RENDIMIENTO"] = st.column_config.NumberColumn(
                     "RENDIMIENTO",
                     help="Rendimiento del rubro",
                     format="%.4f",    # 4 decimales
@@ -922,7 +922,7 @@ if archivo_excel:
                     key="tareas_editor_actualizada",
                     use_container_width=True,
                     disabled=True, 
-                    column_config=column_config1
+                    column_config=column_config
                 )
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
@@ -1478,6 +1478,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
