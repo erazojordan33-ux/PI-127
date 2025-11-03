@@ -1214,6 +1214,7 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)
 
 # Mostrar variables en la Pestaña 4___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
+        
         with tab4:
                 st.session_state.tareas_df['FECHAINICIO'] = pd.to_datetime(st.session_state.tareas_df['FECHAINICIO'])
                 st.session_state.tareas_df['FECHAFIN'] = pd.to_datetime(st.session_state.tareas_df['FECHAFIN'])
@@ -1358,7 +1359,7 @@ if archivo_excel:
                         yanchor="top"
                     )],
                     yaxis=dict(autorange="reversed", title="Recurso", tickfont=dict(size=10)),
-                    xaxis=dict(title='Fechas', side='bottom', dtick='M1', tickangle=-90, showgrid=True, gridcolor='rgba(128,128,128,0.3)', gridwidth=0.5),
+                    xaxis=dict(title='Fechas', side='top', dtick='M1', tickangle=-90, showgrid=True, gridcolor='rgba(128,128,128,0.3)', gridwidth=0.5),
                     xaxis2=dict(title='Fechas', overlaying='x', side='top', dtick='M1', tickangle=90, showgrid=True, gridcolor='rgba(128,128,128,0.3)', gridwidth=0.5),
                     height=max(600, len(recursos_tareas_df['RECURSO'].unique())*20),
                     showlegend=False,
@@ -1478,6 +1479,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
