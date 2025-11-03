@@ -921,7 +921,7 @@ if archivo_excel:
                     st.session_state.tareas_df[cols],
                     key="tareas_editor_actualizada",
                     use_container_width=True,
-                    disabled=True 
+                    disabled=True, 
                     column_config=column_config1
                 )
 
@@ -1478,6 +1478,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
