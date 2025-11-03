@@ -843,6 +843,14 @@ if archivo_excel:
                 columnas_editables = ['PREDECESORAS', 'FECHAINICIO', 'FECHAFIN', 'RUTA_CRITICA']
                 column_config = {col: {"editable": (col in columnas_editables)} for col in cols1}
                 
+
+                column_config["RENDIMIENTO"] = st.column_config.NumberColumn(
+                    "RENDIMIENTO",
+                    help="Rendimiento del rubro",
+                    format="%.4f",    # 4 decimales
+                    step=0.0001,
+                    disabled=("RENDIMIENTO" not in columnas_editables)  # respeta tu lógica editable
+                )
                 tareas_editadas = st.data_editor(
                     st.session_state.tareas_df[cols1],
                     key="tareas_editor",
@@ -1463,6 +1471,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
