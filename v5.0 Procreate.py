@@ -821,7 +821,6 @@ if archivo_excel:
         else:
             st.warning("⚠️ No se encontraron las columnas FECHA_INICIO_TEMPRANA o FECHA_FIN_TEMPRANA en el DataFrame.")
                 
-
         if "tareas_df_prev" not in st.session_state:
                 st.session_state.tareas_df_prev = st.session_state.tareas_df.copy()
 
@@ -910,12 +909,20 @@ if archivo_excel:
                     """,
                     unsafe_allow_html=True
                 )
-                
+
+                column_config1["RENDIMIENTO"] = st.column_config.NumberColumn(
+                    "RENDIMIENTO",
+                    help="Rendimiento del rubro",
+                    format="%.4f",    # 4 decimales
+                    step=0.0001,
+                    disabled=("RENDIMIENTO" not in columnas_editables)  # respeta tu lógica editable
+                )
                 st.data_editor(
                     st.session_state.tareas_df[cols],
                     key="tareas_editor_actualizada",
                     use_container_width=True,
                     disabled=True 
+                    column_config=column_config1
                 )
 
                 st.session_state.dependencias_df = st.session_state.dependencias_df.merge(st.session_state.recursos_df, left_on='RECURSO', right_on='RECURSO', how='left')
@@ -1471,6 +1478,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
