@@ -1,4 +1,4 @@
-# Declarar e importar bibliotecas___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+# 1 Declarar e importar bibliotecas___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 import streamlit as st
 import pandas as pd
@@ -10,7 +10,7 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 import math
 import plotly.express as px
 
-# Definir archivo y pestañas___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+# 2. Definir archivo y pestañas___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 st.set_page_config(page_title="Gestión de Proyectos - Cronograma Valorado", layout="wide")
 st.title("📊 Gestión de Proyectos - Seguimiento y Control")
@@ -18,496 +18,382 @@ st.title("📊 Gestión de Proyectos - Seguimiento y Control")
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Inicio","Calendario","Diagrama Gantt", "Recursos", "Presupuesto"])
 
-# Definir funciones de calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+# 3. Definir funciones de calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 ##1
-def calcular_fechas(df):
-        df = df.copy()
-        df.columns = df.columns.str.strip()
-        inicio_rubro = df.set_index('IDRUBRO')['FECHAINICIO'].to_dict()
-        fin_rubro = df.set_index('IDRUBRO')['FECHAFIN'].to_dict()
-        duracion_rubro = (df.set_index('IDRUBRO')['FECHAFIN'] - df.set_index('IDRUBRO')['FECHAINICIO']).dt.days.to_dict()
-        dependencias = defaultdict(list)
-        pre_count = defaultdict(int)
-        for _, row in df.iterrows():
-            tarea_id = row['IDRUBRO']
-            predecesoras_str = str(row['PREDECESORAS']).strip()
-            if predecesoras_str not in ['nan','']:
-                pre_list = predecesoras_str.split(',')
-                for pre in pre_list:
-                    pre = pre.strip()
-                    match = re.match(r'(\d+)', pre)
-                    if match:
-                        pre_id = int(match.group(1))
-                        dependencias[pre_id].append(tarea_id)
-                        pre_count[tarea_id] += 1
-
-        queue = deque([tid for tid in df['IDRUBRO'] if pre_count[tid] == 0])
-        inicio_calc = inicio_rubro.copy()
-        fin_calc = fin_rubro.copy()
-
-        while queue:
-            tarea_id = queue.popleft()
-            row = df[df['IDRUBRO']==tarea_id].iloc[0]
-            duracion = duracion_rubro[tarea_id]
-            predecesoras_str = str(row['PREDECESORAS']).strip()
-    
-            nueva_inicio = inicio_calc[tarea_id]
-            nueva_fin = fin_calc[tarea_id]
-    
-            if predecesoras_str not in ['nan','']:
-                pre_list = predecesoras_str.split(',')
-                for pre in pre_list:
-                    pre = pre.strip()
-                    match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre)
-                    if match:
-                        pre_id = int(match.group(1))
-                        tipo = match.group(2).upper() if match.group(2) else 'FC'
-                        desfase = int(match.group(3)) if match.group(3) else 0
-    
-                        if pre_id in inicio_calc and pre_id in fin_calc:
-                            inicio_pre = inicio_calc[pre_id]
-                            fin_pre = fin_calc[pre_id]
-
-                            if tipo == 'CC':
-                                nueva_inicio = inicio_pre + timedelta(days=desfase)
-                                nueva_fin = nueva_inicio + timedelta(days=duracion)
-                            elif tipo == 'FC':
-                                nueva_inicio = fin_pre + timedelta(days=desfase)
-                                nueva_fin = nueva_inicio + timedelta(days=duracion)
-                            elif tipo == 'CF':
-                                nueva_fin = inicio_pre + timedelta(days=desfase)
-                                nueva_inicio = nueva_fin - timedelta(days=duracion)
-                            elif tipo == 'FF':
-                                nueva_fin = fin_pre + timedelta(days=desfase)
-                                nueva_inicio = nueva_fin - timedelta(days=duracion)
-                            else:
-                                st.warning(f"⚠️ Tipo de relación '{tipo}' no reconocido en '{pre}' para tarea {tarea_id}") 
-
-            inicio_calc[tarea_id] = nueva_inicio
-            fin_calc[tarea_id] = nueva_fin
-
-            for hijo in dependencias[tarea_id]:
-                pre_count[hijo] -= 1
-                if pre_count[hijo] == 0:
-                    queue.append(hijo)
-
-        df['FECHAINICIO'] = df['IDRUBRO'].map(inicio_calc)
-        df['FECHAFIN'] = df['IDRUBRO'].map(fin_calc)
-    
-        return df 
-##2
 def calculo_ruta_critica(tareas_df=None, archivo=None):
+        fecha_inicio_proyecto = st.session_state.get("fecha_inicio_proyecto", None)
 
-    fecha_inicio_proyecto = st.session_state.get("fecha_inicio_proyecto", None)
+        if fecha_inicio_proyecto is not None:
+                existe_inicio = (
+                        not tareas_df[
+                                (tareas_df["IDRUBRO"] == 0) &
+                                (tareas_df["RUBRO"].astype(str).str.lower() == "comienzo del proyecto")
+                        ].empty
+                )
 
-    if fecha_inicio_proyecto is not None:
-            # 🔹 Verificar si ya existe una fila con IDRUBRO = 0 y RUBRO = "Comienzo del Proyecto"
-            existe_inicio = (
-                not tareas_df[
-                    (tareas_df["IDRUBRO"] == 0) &
-                    (tareas_df["RUBRO"].astype(str).str.lower() == "comienzo del proyecto")
-                ].empty
-            )
-
-            if not existe_inicio:
-                # 🔹 Crear la fila del hito "Comienzo del Proyecto"
+        if not existe_inicio:
                 fila_inicio = pd.DataFrame([{
-                    "IDRUBRO": 0,
-                    "RUBRO": "Comienzo del Proyecto",
-                    "PREDECESORAS": "",
-                    "FECHAINICIO": fecha_inicio_proyecto,
-                    "FECHAFIN": fecha_inicio_proyecto,
-                    "DURACION": 0,
-                    "UNIDAD_RUBRO": "",
-                    "RENDIMIENTO": "",
-                    "HOLGURA_TOTAL": 0,
-                    "RUTA_CRITICA": ""
+                        "IDRUBRO": 0,
+                        "RUBRO": "Comienzo del Proyecto",
+                        "PREDECESORAS": "",
+                        "FECHAINICIO": fecha_inicio_proyecto,
+                        "FECHAFIN": fecha_inicio_proyecto,
+                        "DURACION": 0,
+                        "UNIDAD_RUBRO": "",
+                        "RENDIMIENTO": "",
+                        "HOLGURA_TOTAL": 0,
+                        "RUTA_CRITICA": ""
                 }])
 
-                # 🔹 Concatenar al inicio de la tabla
                 tareas_df = pd.concat([fila_inicio, tareas_df], ignore_index=True)
-
-                # 🔹 Forzar tipo correcto de IDRUBRO
                 tareas_df["IDRUBRO"] = tareas_df["IDRUBRO"].astype(int)
 
-                # 🔹 Reasignar las tareas sin predecesoras para que dependan del hito
                 tareas_df.loc[
-                    (tareas_df["IDRUBRO"] != 0) &
-                    ((tareas_df["PREDECESORAS"].isna()) | (tareas_df["PREDECESORAS"].astype(str).str.strip() == "")),
-                    "PREDECESORAS"
-                ] = "0FC"  # 👈 Dependen del hito con relación Fin-Comienzo (FC)
-    else:
-            st.error("❌ Error: No se ha definido la fecha de inicio del proyecto antes de calcular la ruta crítica.") # Replaced st.error
-
-    tareas_df.columns = tareas_df.columns.str.strip()
-
-    # Dictionaries & structures
-    duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
-    dependencias = defaultdict(list)
-    predecesoras_map = defaultdict(list)
-    all_task_ids = set(tareas_df['IDRUBRO'].tolist())
-    es = {}
-    ef = {}
-    ls = {}
-    lf = {}
-    tf = {}
-    ff = {}
-
-    # Parse predecesoras into structures
-    for _, row in tareas_df.iterrows():
-        tarea_id = row['IDRUBRO']
-        predecesoras_str = str(row['PREDECESORAS']).strip()
-        if predecesoras_str not in ['nan', '']:
-            for pre_entry in predecesoras_str.split(','):
-                pre_entry = pre_entry.strip()
-                match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre_entry)
-                if match:
-                    pre_id = int(match.group(1))
-                    tipo_relacion = match.group(2).upper() if match.group(2) else 'FC'
-                    desfase = int(match.group(3)) if match.group(3) else 0
-                    if pre_id in all_task_ids:
-                        dependencias[pre_id].append(tarea_id)
-                        predecesoras_map[tarea_id].append((pre_id, tipo_relacion, desfase))
-                    else:
-                        st.warning(f"Predecesor {pre_id} de tarea {tarea_id} no encontrado. Ignorado.")
-                elif pre_entry != '':
-                    st.warning(f"Formato de predecesora '{pre_entry}' no reconocido para tarea {tarea_id}.")
-
-    initial_tasks_ids = [tid for tid in all_task_ids if tid not in predecesoras_map]
-
-    for tid in initial_tasks_ids:
-         task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
-         duration = duracion_dict.get(tid, 0)
-         if not isinstance(duration, (int, float)):
-                duration = 0
-
-         es[tid] = fecha_inicio_proyecto
-         ef[tid] = es[tid] + timedelta(days=duration)
-
-    predecessor_process_count = defaultdict(int)
-    in_degree = {tid: len(predecesoras_map.get(tid, [])) for tid in all_task_ids}
-    queue = deque([tid for tid in all_task_ids if in_degree[tid] == 0])
-    processed_forward = set(queue)
-
-    for tid in list(queue):
-        task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
-        if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
-            es[tid] = task_row.iloc[0]['FECHAINICIO']
-            duration = duracion_dict.get(tid, 0)
-            if not isinstance(duration, (int, float)): duration = 0
-            ef[tid] = es[tid] + timedelta(days=duration)
+                        (tareas_df["IDRUBRO"] != 0) &
+                        ((tareas_df["PREDECESORAS"].isna()) | (tareas_df["PREDECESORAS"].astype(str).str.strip() == "")),
+                        "PREDECESORAS"
+                ] = "0FC"
         else:
-            # keep previously assigned ES/EF (already set to project start)
-            pass
+                st.error("❌ Error: No se ha definido la fecha de inicio del proyecto antes de calcular la ruta crítica.") # Replaced st.error
 
-    while queue:
-        u = queue.popleft()
-        for v in dependencias.get(u, []):
-            for pre_id_v, tipo_v, desfase_v in predecesoras_map.get(v, []):
-                if pre_id_v == u:
-                    potential_es_v = None
-                    duration_v = duracion_dict.get(v, 0)
-                    if not isinstance(duration_v, (int, float)): duration_v = 0
+        tareas_df.columns = tareas_df.columns.str.strip()
 
-                    if u in ef and u in es:
-                        if tipo_v == 'CC':
-                            potential_es_v = es[u] + timedelta(days=desfase_v)
-                        elif tipo_v == 'FC':
-                            potential_es_v = ef[u] + timedelta(days=desfase_v)
-                        elif tipo_v == 'CF':
-                             potential_es_v = (es[u] + timedelta(days=desfase_v)) - timedelta(days=duration_v)
-                        elif tipo_v == 'FF':
-                             potential_es_v = (ef[u] + timedelta(days=desfase_v)) - timedelta(days=duration_v)
+        duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
+        dependencias = defaultdict(list)
+        predecesoras_map = defaultdict(list)
+        all_task_ids = set(tareas_df['IDRUBRO'].tolist())
+        es = {}
+        ef = {}
+        ls = {}
+        lf = {}
+        tf = {}
+        ff = {}
+
+        for _, row in tareas_df.iterrows():
+                tarea_id = row['IDRUBRO']
+                predecesoras_str = str(row['PREDECESORAS']).strip()
+                if predecesoras_str not in ['nan', '']:
+                        for pre_entry in predecesoras_str.split(','):
+                                pre_entry = pre_entry.strip()
+                                match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre_entry)
+                                if match:
+                                        pre_id = int(match.group(1))
+                                        tipo_relacion = match.group(2).upper() if match.group(2) else 'FC'
+                                        desfase = int(match.group(3)) if match.group(3) else 0
+                                        if pre_id in all_task_ids:
+                                                dependencias[pre_id].append(tarea_id)
+                                                predecesoras_map[tarea_id].append((pre_id, tipo_relacion, desfase))
+                                        else:
+                                                st.warning(f"Predecesor {pre_id} de tarea {tarea_id} no encontrado. Ignorado.")
+                                elif pre_entry != '':
+                                        st.warning(f"Formato de predecesora '{pre_entry}' no reconocido para tarea {tarea_id}.")
+        initial_tasks_ids = [tid for tid in all_task_ids if tid not in predecesoras_map]
+
+        for tid in initial_tasks_ids:
+                task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
+                duration = duracion_dict.get(tid, 0)
+                if not isinstance(duration, (int, float)):
+                        duration = 0
+                es[tid] = fecha_inicio_proyecto
+                ef[tid] = es[tid] + timedelta(days=duration)
+
+        predecessor_process_count = defaultdict(int)
+        in_degree = {tid: len(predecesoras_map.get(tid, [])) for tid in all_task_ids}
+        queue = deque([tid for tid in all_task_ids if in_degree[tid] == 0])
+        processed_forward = set(queue)
+
+        for tid in list(queue):
+                task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
+                if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
+                        es[tid] = task_row.iloc[0]['FECHAINICIO']
+                        duration = duracion_dict.get(tid, 0)
+                        if not isinstance(duration, (int, float)): duration = 0
+                        ef[tid] = es[tid] + timedelta(days=duration)
+                else:
+                        pass
+
+        while queue:
+                u = queue.popleft()
+                for v in dependencias.get(u, []):
+                        for pre_id_v, tipo_v, desfase_v in predecesoras_map.get(v, []):
+                                if pre_id_v == u:
+                                        potential_es_v = None
+                                        duration_v = duracion_dict.get(v, 0)
+                                        if not isinstance(duration_v, (int, float)): duration_v = 0
+                                        if u in ef and u in es:
+                                                if tipo_v == 'CC':
+                                                        potential_es_v = es[u] + timedelta(days=desfase_v)
+                                                elif tipo_v == 'FC':
+                                                        potential_es_v = ef[u] + timedelta(days=desfase_v)
+                                                elif tipo_v == 'CF':
+                                                        potential_es_v = (es[u] + timedelta(days=desfase_v)) - timedelta(days=duration_v)
+                                                elif tipo_v == 'FF':
+                                                        potential_es_v = (ef[u] + timedelta(days=desfase_v)) - timedelta(days=duration_v)
+                                                else:
+                                                        st.error(f"⚠️ Tipo de relación '{tipo_v}' no reconocido para calcular ES de tarea {v} basada en {u}. Usando lógica FC por defecto.")
+                                                        potential_es_v = ef[u] + timedelta(days=desfase_v)
+
+                                                if v not in es or (potential_es_v is not None and potential_es_v > es[v]):
+                                                        es[v] = potential_es_v
+
+                                                if v in es:
+                                                        duration_v_calc = duracion_dict.get(v, 0)
+                                                        if not isinstance(duration_v_calc, (int, float)): duration_v_calc = 0
+                                                        ef[v] = es[v] + timedelta(days=duration_v_calc)
+                                        else:
+                                                st.error(f"⚠️ Advertencia: ES/EF no calculados para predecesor ID {u} al procesar sucesor ID {v}. Saltando cálculo de ES/EF para v basado en u.")
+
+                        in_degree[v] -= 1
+                        if in_degree[v] == 0 and v not in processed_forward:
+                                queue.append(v)
+                                processed_forward.add(v)
+
+        unprocessed_forward = all_task_ids - processed_forward
+        if unprocessed_forward:
+                for tid in unprocessed_forward:
+                        if tid not in es:
+                                task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
+                                if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
+                                        es[tid] = task_row.iloc[0]['FECHAINICIO']
+                                        duration = duracion_dict.get(tid, 0)
+                                        if not isinstance(duration, (int, float)): duration = 0
+                                        ef[tid] = es[tid] + timedelta(days=duration)
+                                else:
+                                        st.error(f"❌ Error: Tarea no procesada {tid} no encontrada o FECHAINICIO inválida. No se pudo inicializar ES/EF.")
+
+        end_tasks_ids = [tid for tid in all_task_ids if tid not in dependencias]
+        tasks_without_successors = [tid for tid in all_task_ids if tid not in dependencias]
+
+        project_finish_date = max(ef.values())  
+        end_tasks_ids = [tid for tid, fecha in ef.items() if fecha == project_finish_date]
+
+        for tid in end_tasks_ids:
+                lf[tid] = project_finish_date
+                duration = duracion_dict.get(tid, 0)
+                ls[tid] = lf[tid] - timedelta(days=duration)
+
+        successor_map = defaultdict(list)
+        for tid, pre_list in predecesoras_map.items():
+                for pre_id, tipo, desfase in pre_list:
+                        successor_map[pre_id].append((tid, tipo, desfase))
+
+        project_finish_date = max(ef.values())
+        end_tasks_ids = [tid for tid, fecha in ef.items() if fecha == project_finish_date]
+
+        lf.update({tid: project_finish_date for tid in end_tasks_ids})
+        for tid in end_tasks_ids:
+                duration = duracion_dict.get(tid, 0)
+                if not isinstance(duration, (int, float)): duration = 0
+                ls[tid] = lf[tid] - timedelta(days=duration)
+
+        queue_backward = deque(end_tasks_ids)
+        processed_backward = set(end_tasks_ids)
+
+        successor_map = defaultdict(list)
+        for tid, pre_list in predecesoras_map.items():
+                for pre_id, tipo, desfase in pre_list:
+                        successor_map[pre_id].append((tid, tipo, desfase))
+
+        while queue_backward:
+                v = queue_backward.popleft()
+
+        for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []):
+                duration_u = duracion_dict.get(u, 0)
+                if not isinstance(duration_u, (int, float)): duration_u = 0
+                if tipo_relacion_uv == 'FC':
+                        candidate_lf = ls[v] - timedelta(days=desfase_uv)
+                        candidate_ls = candidate_lf - timedelta(days=duration_u)
+                elif tipo_relacion_uv == 'CC':
+                        candidate_ls = ls[v] - timedelta(days=desfase_uv)
+                        candidate_lf = candidate_ls + timedelta(days=duration_u)
+                elif tipo_relacion_uv == 'CF':
+                        candidate_ls = lf[v] - timedelta(days=desfase_uv)
+                        candidate_lf = candidate_ls + timedelta(days=duration_u)
+                elif tipo_relacion_uv == 'FF':
+                        candidate_lf = lf[v] - timedelta(days=desfase_uv)
+                        candidate_ls = candidate_lf + timedelta(days=duration_u)
+                else:
+                        candidate_lf = ls[v] + timedelta(days=desfase_uv)
+                if u not in lf:
+                        lf[u] = candidate_lf
+                else:
+                        lf[u] = min(lf[u], candidate_lf)
+                if u not in ls:
+                        ls[u] = candidate_ls
+                else:
+                        ls[u] = min(ls[u], candidate_ls)
+                if u not in processed_backward:
+                        queue_backward.append(u)
+                        processed_backward.add(u)
+
+        queue_special_backward = deque(tasks_without_successors)
+        processed_special_backward = set(tasks_without_successors)
+        
+        print("🔹 Tareas sin sucesoras:")
+        for tid in tasks_without_successors:
+                print(f"- {tid}")
+
+        for tid in tasks_without_successors:
+                duration = duracion_dict.get(tid, 0)
+                if not isinstance(duration, (int, float)):
+                        duration = 0
+                lf[tid] = project_finish_date
+                ls[tid] = lf[tid] - timedelta(days=duration)
+                print(f"Tarea: {tid} | Duración: {duration} | LF: {lf[tid]} | LS: {ls[tid]}")
+
+        while queue_special_backward:
+                v = queue_special_backward.popleft()
+                for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []):
+                        duration_u = duracion_dict.get(u, 0)
+                        if not isinstance(duration_u, (int, float)):
+                                duration_u = 0
+                        if tipo_relacion_uv == 'FC':
+                                candidate_lf = ls[v] - timedelta(days=desfase_uv)
+                                candidate_ls = candidate_lf - timedelta(days=duration_u)
+                        elif tipo_relacion_uv == 'CC':
+                                candidate_ls = ls[v] - timedelta(days=desfase_uv)
+                                candidate_lf = candidate_ls + timedelta(days=duration_u)
+                        elif tipo_relacion_uv == 'CF':
+                                candidate_ls = lf[v] - timedelta(days=desfase_uv)
+                                candidate_lf = candidate_ls + timedelta(days=duration_u)
+                        elif tipo_relacion_uv == 'FF':
+                                candidate_lf = lf[v] - timedelta(days=desfase_uv)
+                                candidate_ls = candidate_lf - timedelta(days=duration_u)
                         else:
-                             st.error(f"⚠️ Tipo de relación '{tipo_v}' no reconocido para calcular ES de tarea {v} basada en {u}. Usando lógica FC por defecto.")
-                             potential_es_v = ef[u] + timedelta(days=desfase_v)
+                                candidate_lf = ls[v] + timedelta(days=desfase_uv)
+                                candidate_ls = candidate_lf - timedelta(days=duration_u)
+                        if u in lf:
+                                if candidate_lf < lf[u]:
+                                        lf[u] = candidate_lf
+                                        ls[u] = lf[u] - timedelta(days=duration_u)
+                        else:
+                                        lf[u] = candidate_lf
+                                        ls[u] = candidate_ls
 
-                        if v not in es or (potential_es_v is not None and potential_es_v > es[v]):
-                            es[v] = potential_es_v
+                        if lf[u] > project_finish_date:
+                                lf[u] = project_finish_date
+                                ls[u] = lf[u] - timedelta(days=duration_u)
+                                
+                                queue_forward = deque([u])
+                                processed_forward = set()
 
-                        if v in es:
-                            duration_v_calc = duracion_dict.get(v, 0)
-                            if not isinstance(duration_v_calc, (int, float)): duration_v_calc = 0
-                            ef[v] = es[v] + timedelta(days=duration_v_calc)
+                                while queue_forward:
+                                        x = queue_forward.popleft()
+                                        if x in processed_forward:
+                                                continue
+                                        processed_forward.add(x)
 
-                    else:
-                        st.error(f"⚠️ Advertencia: ES/EF no calculados para predecesor ID {u} al procesar sucesor ID {v}. Saltando cálculo de ES/EF para v basado en u.")
-
-            in_degree[v] -= 1
-            if in_degree[v] == 0 and v not in processed_forward:
-                 queue.append(v)
-                 processed_forward.add(v)
-
-    unprocessed_forward = all_task_ids - processed_forward
-    if unprocessed_forward:
-        for tid in unprocessed_forward:
-             if tid not in es:
-                 task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
-                 if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
-                     es[tid] = task_row.iloc[0]['FECHAINICIO']
-                     duration = duracion_dict.get(tid, 0)
-                     if not isinstance(duration, (int, float)): duration = 0
-                     ef[tid] = es[tid] + timedelta(days=duration)
-                 else:
-                     st.error(f"❌ Error: Tarea no procesada {tid} no encontrada o FECHAINICIO inválida. No se pudo inicializar ES/EF.")
-
-    end_tasks_ids = [tid for tid in all_task_ids if tid not in dependencias]
-    tasks_without_successors = [tid for tid in all_task_ids if tid not in dependencias]
-
-    project_finish_date = max(ef.values())  # EF máximo del proyecto
-    end_tasks_ids = [tid for tid, fecha in ef.items() if fecha == project_finish_date]
-
-    for tid in end_tasks_ids:
-      lf[tid] = project_finish_date
-      duration = duracion_dict.get(tid, 0)
-      ls[tid] = lf[tid] - timedelta(days=duration)
-
-   # --------------------------
-    # BACKWARD PASS CORREGIDO
-    # --------------------------
-
-# Crear mapa de sucesoras a partir de predecesoras
-    successor_map = defaultdict(list)
-    for tid, pre_list in predecesoras_map.items():
-        for pre_id, tipo, desfase in pre_list:
-            successor_map[pre_id].append((tid, tipo, desfase))
-
-    # Determinar tareas finales reales
-    project_finish_date = max(ef.values())
-    end_tasks_ids = [tid for tid, fecha in ef.items() if fecha == project_finish_date]
-
-    # Inicializar LF/LS de las tareas finales
-    lf.update({tid: project_finish_date for tid in end_tasks_ids})
-    for tid in end_tasks_ids:
-        duration = duracion_dict.get(tid, 0)
-        if not isinstance(duration, (int, float)): duration = 0
-        ls[tid] = lf[tid] - timedelta(days=duration)
-
-    queue_backward = deque(end_tasks_ids)
-    processed_backward = set(end_tasks_ids)
-
-    successor_map = defaultdict(list)
-    for tid, pre_list in predecesoras_map.items():
-        for pre_id, tipo, desfase in pre_list:
-            successor_map[pre_id].append((tid, tipo, desfase))
-
-    while queue_backward:
-        v = queue_backward.popleft()
-
-        # Iterar sobre todas las predecesoras de v
-        for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []):
-            duration_u = duracion_dict.get(u, 0)
-            if not isinstance(duration_u, (int, float)): duration_u = 0
-
-            if tipo_relacion_uv == 'FC':
-                candidate_lf = ls[v] - timedelta(days=desfase_uv)
-                candidate_ls = candidate_lf - timedelta(days=duration_u)
-
-            elif tipo_relacion_uv == 'CC':
-                candidate_ls = ls[v] - timedelta(days=desfase_uv)
-                candidate_lf = candidate_ls + timedelta(days=duration_u)
-
-            elif tipo_relacion_uv == 'CF':
-                candidate_ls = lf[v] - timedelta(days=desfase_uv)
-                candidate_lf = candidate_ls + timedelta(days=duration_u)
-
-            elif tipo_relacion_uv == 'FF':
-                candidate_lf = lf[v] - timedelta(days=desfase_uv)
-                candidate_ls = candidate_lf + timedelta(days=duration_u)
-            else:
-                candidate_lf = ls[v] + timedelta(days=desfase_uv)
-
-            if u not in lf:
-                lf[u] = candidate_lf
-            else:
-                lf[u] = min(lf[u], candidate_lf)
-
-            if u not in ls:
-                ls[u] = candidate_ls
-            else:
-                ls[u] = min(ls[u], candidate_ls)
-
-            if u not in processed_backward:
-                queue_backward.append(u)
-                processed_backward.add(u)
-
-    queue_special_backward = deque(tasks_without_successors)
-    processed_special_backward = set(tasks_without_successors)
-
-    print("🔹 Tareas sin sucesoras:")
-    for tid in tasks_without_successors:
-        print(f"- {tid}")
-
-    for tid in tasks_without_successors:
-        duration = duracion_dict.get(tid, 0)
-        if not isinstance(duration, (int, float)):
-            duration = 0
-        lf[tid] = project_finish_date
-        ls[tid] = lf[tid] - timedelta(days=duration)
-        print(f"Tarea: {tid} | Duración: {duration} | LF: {lf[tid]} | LS: {ls[tid]}")
-
-    while queue_special_backward:
-        v = queue_special_backward.popleft()
-
-        for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []):
-            duration_u = duracion_dict.get(u, 0)
-            if not isinstance(duration_u, (int, float)):
-                duration_u = 0
-
-            if tipo_relacion_uv == 'FC':
-                candidate_lf = ls[v] - timedelta(days=desfase_uv)
-                candidate_ls = candidate_lf - timedelta(days=duration_u)
-            elif tipo_relacion_uv == 'CC':
-                candidate_ls = ls[v] - timedelta(days=desfase_uv)
-                candidate_lf = candidate_ls + timedelta(days=duration_u)
-            elif tipo_relacion_uv == 'CF':
-                candidate_ls = lf[v] - timedelta(days=desfase_uv)
-                candidate_lf = candidate_ls + timedelta(days=duration_u)
-            elif tipo_relacion_uv == 'FF':
-                candidate_lf = lf[v] - timedelta(days=desfase_uv)
-                candidate_ls = candidate_lf - timedelta(days=duration_u)
-            else:
-                candidate_lf = ls[v] + timedelta(days=desfase_uv)
-                candidate_ls = candidate_lf - timedelta(days=duration_u)
-
-            if u in lf:
-                if candidate_lf < lf[u]:
-                    lf[u] = candidate_lf
-                    ls[u] = lf[u] - timedelta(days=duration_u)
-            else:
-                lf[u] = candidate_lf
-                ls[u] = candidate_ls
-
-            if lf[u] > project_finish_date:
-                lf[u] = project_finish_date
-                ls[u] = lf[u] - timedelta(days=duration_u)
-
-                queue_forward = deque([u])
-                processed_forward = set()
-
-                while queue_forward:
-                    x = queue_forward.popleft()
-                    if x in processed_forward:
-                        continue
-                    processed_forward.add(x)
-
-                    for succ, tipo_relacion_xs, desfase_xs in successor_map.get(x, []):
-                        dur_succ = duracion_dict.get(succ, 0)
-                        if not isinstance(dur_succ, (int, float)):
-                            dur_succ = 0
-
-                        if tipo_relacion_xs == 'FC':
-                            lf[succ] = min(lf.get(succ, lf[x] + timedelta(days=desfase_xs)), lf[x] + timedelta(days=desfase_xs))
-                            ls[succ] = lf[succ] - timedelta(days=dur_succ)
-                        elif tipo_relacion_xs == 'CC':
-                            ls[succ] = ls[x] + timedelta(days=desfase_xs)
-                            lf[succ] = ls[succ] + timedelta(days=dur_succ)
-                        elif tipo_relacion_xs == 'CF':
-                            ls[succ] = lf[x] + timedelta(days=desfase_xs)
-                            lf[succ] = ls[succ] + timedelta(days=dur_succ)
-                        elif tipo_relacion_xs == 'FF':
-                            lf[succ] = lf[x] + timedelta(days=desfase_xs)
-                            ls[succ] = lf[succ] - timedelta(days=dur_succ)
-
-                        # Si se vuelve a pasar del fin del proyecto, corregir de nuevo
-                        if lf[succ] > project_finish_date:
-                            lf[succ] = project_finish_date
-                            ls[succ] = lf[succ] - timedelta(days=dur_succ)
-                            queue_forward.append(succ)
-
-
-            if u not in processed_special_backward:
-                queue_special_backward.append(u)
-                processed_special_backward.add(u)
+                                for succ, tipo_relacion_xs, desfase_xs in successor_map.get(x, []):
+                                        dur_succ = duracion_dict.get(succ, 0)
+                                        if not isinstance(dur_succ, (int, float)):
+                                                dur_succ = 0
+                                        if tipo_relacion_xs == 'FC':
+                                                lf[succ] = min(lf.get(succ, lf[x] + timedelta(days=desfase_xs)), lf[x] + timedelta(days=desfase_xs))
+                                                ls[succ] = lf[succ] - timedelta(days=dur_succ)
+                                        elif tipo_relacion_xs == 'CC':
+                                                ls[succ] = ls[x] + timedelta(days=desfase_xs)
+                                                lf[succ] = ls[succ] + timedelta(days=dur_succ)
+                                        elif tipo_relacion_xs == 'CF':
+                                                ls[succ] = lf[x] + timedelta(days=desfase_xs)
+                                                lf[succ] = ls[succ] + timedelta(days=dur_succ)
+                                        elif tipo_relacion_xs == 'FF':
+                                                lf[succ] = lf[x] + timedelta(days=desfase_xs)
+                                                ls[succ] = lf[succ] - timedelta(days=dur_succ)
+                                        if lf[succ] > project_finish_date:
+                                                lf[succ] = project_finish_date
+                                                ls[succ] = lf[succ] - timedelta(days=dur_succ)
+                                                queue_forward.append(succ)
+                                                
+                        if u not in processed_special_backward:
+                                queue_special_backward.append(u)
+                                processed_special_backward.add(u)
                 
-    for tid in all_task_ids:
-        if tid in ef and tid in lf:
-            tf[tid] = lf[tid] - ef[tid]
-            if tf[tid].total_seconds() < -1e-9:
-                 tf[tid] = timedelta(days=0)
-            min_successor_es = None
-            for suc_id in dependencias.get(tid, []):
-                 for pre_id_suc, tipo_suc, desfase_suc in predecesoras_map.get(suc_id, []):
-                     if pre_id_suc == tid:
-                         required_start_suc = None
-                         if tid in es and tid in ef:
-                             if tipo_suc == 'CC':
-                                  required_start_suc = es[tid] + timedelta(days=desfase_suc)
-                             elif tipo_suc == 'FC':
-                                  required_start_suc = ef[tid] + timedelta(days=desfase_suc)
-                             elif tipo_suc == 'CF':
-                                  duration_suc = duracion_dict.get(suc_id, 0)
-                                  if not isinstance(duration_suc, (int, float)): duration_suc = 0
-                                  required_start_suc = (es[tid] + timedelta(days=desfase_suc)) - timedelta(days=duration_suc)
-                             elif tipo_suc == 'FF':
-                                  duration_suc = duracion_dict.get(suc_id, 0)
-                                  if not isinstance(duration_suc, (int, float)): duration_suc = 0
-                                  required_start_suc = (ef[tid] + timedelta(days=desfase_suc)) - timedelta(days=duration_suc)
-                             else:
-                                  required_start_suc = ef[tid] + timedelta(days=desfase_suc)
-                             if required_start_suc is not None:
-                                 if min_successor_es is None or required_start_suc < min_successor_es:
-                                     min_successor_es = required_start_suc
-                             break
+        for tid in all_task_ids:
+                if tid in ef and tid in lf:
+                        tf[tid] = lf[tid] - ef[tid]
+                        if tf[tid].total_seconds() < -1e-9:
+                                tf[tid] = timedelta(days=0)
+                        min_successor_es = None
+                        for suc_id in dependencias.get(tid, []):
+                                for pre_id_suc, tipo_suc, desfase_suc in predecesoras_map.get(suc_id, []):
+                                        if pre_id_suc == tid:
+                                                required_start_suc = None
+                                                if tid in es and tid in ef:
+                                                        if tipo_suc == 'CC':
+                                                                required_start_suc = es[tid] + timedelta(days=desfase_suc)
+                                                        elif tipo_suc == 'FC':
+                                                                required_start_suc = ef[tid] + timedelta(days=desfase_suc)
+                                                        elif tipo_suc == 'CF':
+                                                                duration_suc = duracion_dict.get(suc_id, 0)
+                                                                if not isinstance(duration_suc, (int, float)): duration_suc = 0
+                                                                required_start_suc = (es[tid] + timedelta(days=desfase_suc)) - timedelta(days=duration_suc)
+                                                        elif tipo_suc == 'FF':
+                                                                duration_suc = duracion_dict.get(suc_id, 0)
+                                                                if not isinstance(duration_suc, (int, float)): duration_suc = 0
+                                                                required_start_suc = (ef[tid] + timedelta(days=desfase_suc)) - timedelta(days=duration_suc)
+                                                        else:
+                                                                required_start_suc = ef[tid] + timedelta(days=desfase_suc)
+                                                        if required_start_suc is not None:
+                                                                if min_successor_es is None or required_start_suc < min_successor_es:
+                                                                        min_successor_es = required_start_suc
+                                                        break
 
-            if min_successor_es is not None and tid in ef:
-                 ff[tid] = min_successor_es - ef[tid]
-                 if ff[tid].total_seconds() < -1e-9:
-                      ff[tid] = timedelta(days=0)
-            else:
-                 ff[tid] = timedelta(days=0)
-        else:
-            tf[tid] = pd.NA
-            ff[tid] = pd.NA
+                        if min_successor_es is not None and tid in ef:
+                                ff[tid] = min_successor_es - ef[tid]
+                                if ff[tid].total_seconds() < -1e-9:
+                                        ff[tid] = timedelta(days=0)
+                        else:
+                                ff[tid] = timedelta(days=0)
+                else:
+                        tf[tid] = pd.NA
+                        ff[tid] = pd.NA
 
-    tareas_df['FECHA_INICIO_TEMPRANA'] = tareas_df['IDRUBRO'].map(es)
-    tareas_df['FECHA_FIN_TEMPRANA'] = tareas_df['IDRUBRO'].map(ef)
-    tareas_df['FECHA_INICIO_TARDE'] = tareas_df['IDRUBRO'].map(ls)
-    tareas_df['FECHA_FIN_TARDE'] = tareas_df['IDRUBRO'].map(lf)
-    tareas_df['HOLGURA_TOTAL_TD'] = tareas_df['IDRUBRO'].map(tf)
-    tareas_df['HOLGURA_LIBRE_TD'] = tareas_df['IDRUBRO'].map(ff)
-    tareas_df['HOLGURA_TOTAL'] = tareas_df['HOLGURA_TOTAL_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
-    tareas_df['HOLGURA_LIBRE'] = tareas_df['HOLGURA_LIBRE_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
-    tolerance_days = 1e-9
-    tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
+        tareas_df['FECHA_INICIO_TEMPRANA'] = tareas_df['IDRUBRO'].map(es)
+        tareas_df['FECHA_FIN_TEMPRANA'] = tareas_df['IDRUBRO'].map(ef)
+        tareas_df['FECHA_INICIO_TARDE'] = tareas_df['IDRUBRO'].map(ls)
+        tareas_df['FECHA_FIN_TARDE'] = tareas_df['IDRUBRO'].map(lf)
+        tareas_df['HOLGURA_TOTAL_TD'] = tareas_df['IDRUBRO'].map(tf)
+        tareas_df['HOLGURA_LIBRE_TD'] = tareas_df['IDRUBRO'].map(ff)
+        tareas_df['HOLGURA_TOTAL'] = tareas_df['HOLGURA_TOTAL_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
+        tareas_df['HOLGURA_LIBRE'] = tareas_df['HOLGURA_LIBRE_TD'].apply(lambda x: x.days if pd.notna(x) else pd.NA)
+        tolerance_days = 1e-9
+        tareas_df['RUTA_CRITICA'] = tareas_df['HOLGURA_TOTAL'].apply(lambda x: abs(x) < tolerance_days if pd.notna(x) else False)
 
-    return tareas_df
-##3
+        return tareas_df
+        
+##2
 def calculo_predecesoras(df, fila_editada):
 
-    row = df.loc[fila_editada]
-
-    if row['RUTA_CRITICA']: 
-        criticas = df[(df['RUTA_CRITICA'] == True) & 
-                      (df.index != fila_editada) & 
-                      (df['FECHAINICIO'] > row['FECHAINICIO'])]
-        if not criticas.empty:
-            fila_predecesora = criticas.loc[criticas['FECHAINICIO'].idxmin()]
-            nuevo_valor = f"{row['IDRUBRO']}FC"
-
-            idx_predecesora = fila_predecesora.name
-            if pd.isna(df.at[idx_predecesora, 'PREDECESORAS']) or df.at[idx_predecesora, 'PREDECESORAS'] == "":
-                df.at[idx_predecesora, 'PREDECESORAS'] = nuevo_valor
-            else:
-                df.at[idx_predecesora, 'PREDECESORAS'] += f", {nuevo_valor}"
-    else: 
-            id_a_eliminar = str(row['IDRUBRO'])
-            for idx, pre_row in df.iterrows():
-                predecesoras = pre_row['PREDECESORAS']
-                if pd.notna(predecesoras) and predecesoras != "":
-                    partes = [p.strip() for p in predecesoras.split(",")]
-                    nuevas_partes = []
-                    for p in partes:
-                        # Buscar patrón: ID + tipo (FC, CC, FF, CF)
-                        match = re.match(r"(\d+)(FC|CC|FF|CF)", p)
-                        if match:
-                            if match.group(1) != id_a_eliminar:
-                                nuevas_partes.append(p)
+        row = df.loc[fila_editada]
+        
+        if row['RUTA_CRITICA']: 
+                criticas = df[(df['RUTA_CRITICA'] == True) & 
+                        (df.index != fila_editada) & 
+                        (df['FECHAINICIO'] > row['FECHAINICIO'])]
+                if not criticas.empty:
+                        fila_predecesora = criticas.loc[criticas['FECHAINICIO'].idxmin()]
+                        nuevo_valor = f"{row['IDRUBRO']}FC"
+                        idx_predecesora = fila_predecesora.name
+                        if pd.isna(df.at[idx_predecesora, 'PREDECESORAS']) or df.at[idx_predecesora, 'PREDECESORAS'] == "":
+                                df.at[idx_predecesora, 'PREDECESORAS'] = nuevo_valor
                         else:
-                            # Si no coincide con patrón, lo dejamos
-                            nuevas_partes.append(p)
-                    df.at[idx, 'PREDECESORAS'] = ", ".join(nuevas_partes)
-    return df
+                                df.at[idx_predecesora, 'PREDECESORAS'] += f", {nuevo_valor}"
+        else: 
+                id_a_eliminar = str(row['IDRUBRO'])
+                for idx, pre_row in df.iterrows():
+                        predecesoras = pre_row['PREDECESORAS']
+                        if pd.notna(predecesoras) and predecesoras != "":
+                                partes = [p.strip() for p in predecesoras.split(",")]
+                                nuevas_partes = []
+                                for p in partes:
+                                        match = re.match(r"(\d+)(FC|CC|FF|CF)", p)
+                                        if match:
+                                                if match.group(1) != id_a_eliminar:
+                                                        nuevas_partes.append(p)
+                                                else:
+                                                        nuevas_partes.append(p)
+                                df.at[idx, 'PREDECESORAS'] = ", ".join(nuevas_partes)
+        return df
 
 # Definicion de variables y calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
@@ -1478,6 +1364,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
