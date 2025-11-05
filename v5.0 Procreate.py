@@ -29,7 +29,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                                 (tareas_df["RUBRO"].astype(str).str.lower() == "comienzo del proyecto")
                         ].empty
                 )
-
                 if not existe_inicio:
                         fila_inicio = pd.DataFrame([{
                                 "IDRUBRO": 0,
@@ -86,8 +85,8 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                                                 st.warning(f"Predecesor {pre_id} de tarea {tarea_id} no encontrado. Ignorado.")
                                 elif pre_entry != '':
                                         st.warning(f"Formato de predecesora '{pre_entry}' no reconocido para tarea {tarea_id}.")
+        
         initial_tasks_ids = [tid for tid in all_task_ids if tid not in predecesoras_map]
-
         for tid in initial_tasks_ids:
                 task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
                 duration = duracion_dict.get(tid, 0)
@@ -172,6 +171,7 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                 ls[tid] = lf[tid] - timedelta(days=duration)
 
         successor_map = defaultdict(list)
+        
         for tid, pre_list in predecesoras_map.items():
                 for pre_id, tipo, desfase in pre_list:
                         successor_map[pre_id].append((tid, tipo, desfase))
@@ -195,35 +195,35 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
 
         while queue_backward:
                 v = queue_backward.popleft()
-
-        for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []):
-                duration_u = duracion_dict.get(u, 0)
-                if not isinstance(duration_u, (int, float)): duration_u = 0
-                if tipo_relacion_uv == 'FC':
-                        candidate_lf = ls[v] - timedelta(days=desfase_uv)
-                        candidate_ls = candidate_lf - timedelta(days=duration_u)
-                elif tipo_relacion_uv == 'CC':
-                        candidate_ls = ls[v] - timedelta(days=desfase_uv)
-                        candidate_lf = candidate_ls + timedelta(days=duration_u)
-                elif tipo_relacion_uv == 'CF':
-                        candidate_ls = lf[v] - timedelta(days=desfase_uv)
-                        candidate_lf = candidate_ls + timedelta(days=duration_u)
-                elif tipo_relacion_uv == 'FF':
-                        candidate_lf = lf[v] - timedelta(days=desfase_uv)
-                        candidate_ls = candidate_lf + timedelta(days=duration_u)
-                else:
-                        candidate_lf = ls[v] + timedelta(days=desfase_uv)
-                if u not in lf:
-                        lf[u] = candidate_lf
-                else:
-                        lf[u] = min(lf[u], candidate_lf)
-                if u not in ls:
-                        ls[u] = candidate_ls
-                else:
-                        ls[u] = min(ls[u], candidate_ls)
-                if u not in processed_backward:
-                        queue_backward.append(u)
-                        processed_backward.add(u)
+                for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []):
+                        duration_u = duracion_dict.get(u, 0)
+                        if not isinstance(duration_u, (int, float)): duration_u = 0
+                                
+                        if tipo_relacion_uv == 'FC':
+                                candidate_lf = ls[v] - timedelta(days=desfase_uv)
+                                candidate_ls = candidate_lf - timedelta(days=duration_u)
+                        elif tipo_relacion_uv == 'CC':
+                                candidate_ls = ls[v] - timedelta(days=desfase_uv)
+                                candidate_lf = candidate_ls + timedelta(days=duration_u)
+                        elif tipo_relacion_uv == 'CF':
+                                candidate_ls = lf[v] - timedelta(days=desfase_uv)
+                                candidate_lf = candidate_ls + timedelta(days=duration_u)
+                        elif tipo_relacion_uv == 'FF':
+                                candidate_lf = lf[v] - timedelta(days=desfase_uv)
+                                candidate_ls = candidate_lf + timedelta(days=duration_u)
+                        else:
+                                candidate_lf = ls[v] + timedelta(days=desfase_uv)
+                        if u not in lf:
+                                lf[u] = candidate_lf
+                        else:
+                                lf[u] = min(lf[u], candidate_lf)
+                        if u not in ls:
+                                ls[u] = candidate_ls
+                        else:
+                                ls[u] = min(ls[u], candidate_ls)
+                        if u not in processed_backward:
+                                queue_backward.append(u)
+                                processed_backward.add(u)
 
         queue_special_backward = deque(tasks_without_successors)
         processed_special_backward = set(tasks_without_successors)
@@ -1363,6 +1363,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
