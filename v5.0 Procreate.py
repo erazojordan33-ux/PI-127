@@ -22,7 +22,6 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["Inicio","Calendario","Diagrama Gantt", 
 ##1
 def calculo_ruta_critica(tareas_df=None, archivo=None):
         fecha_inicio_proyecto = st.session_state.get("fecha_inicio_proyecto", None)
-
         if fecha_inicio_proyecto is not None:
                 existe_inicio = (
                         not tareas_df[
@@ -31,30 +30,30 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                         ].empty
                 )
 
-        if not existe_inicio:
-                fila_inicio = pd.DataFrame([{
-                        "IDRUBRO": 0,
-                        "RUBRO": "Comienzo del Proyecto",
-                        "PREDECESORAS": "",
-                        "FECHAINICIO": fecha_inicio_proyecto,
-                        "FECHAFIN": fecha_inicio_proyecto,
-                        "DURACION": 0,
-                        "UNIDAD_RUBRO": "",
-                        "RENDIMIENTO": "",
-                        "HOLGURA_TOTAL": 0,
-                        "RUTA_CRITICA": ""
-                }])
+                if not existe_inicio:
+                        fila_inicio = pd.DataFrame([{
+                                "IDRUBRO": 0,
+                                "RUBRO": "Comienzo del Proyecto",
+                                "PREDECESORAS": "",
+                                "FECHAINICIO": fecha_inicio_proyecto,
+                                "FECHAFIN": fecha_inicio_proyecto,
+                                "DURACION": 0,
+                                "UNIDAD_RUBRO": "",
+                                "RENDIMIENTO": "",
+                                "HOLGURA_TOTAL": 0,
+                                "RUTA_CRITICA": ""
+                        }])
 
-                tareas_df = pd.concat([fila_inicio, tareas_df], ignore_index=True)
-                tareas_df["IDRUBRO"] = tareas_df["IDRUBRO"].astype(int)
-
-                tareas_df.loc[
-                        (tareas_df["IDRUBRO"] != 0) &
-                        ((tareas_df["PREDECESORAS"].isna()) | (tareas_df["PREDECESORAS"].astype(str).str.strip() == "")),
-                        "PREDECESORAS"
-                ] = "0FC"
+                        tareas_df = pd.concat([fila_inicio, tareas_df], ignore_index=True)
+                        tareas_df["IDRUBRO"] = tareas_df["IDRUBRO"].astype(int)
+        
+                        tareas_df.loc[
+                                (tareas_df["IDRUBRO"] != 0) &
+                                ((tareas_df["PREDECESORAS"].isna()) | (tareas_df["PREDECESORAS"].astype(str).str.strip() == "")),
+                                "PREDECESORAS"
+                        ] = "0FC"
         else:
-                st.error("❌ Error: No se ha definido la fecha de inicio del proyecto antes de calcular la ruta crítica.") # Replaced st.error
+                st.error("❌ Error: No se ha definido la fecha de inicio del proyecto antes de calcular la ruta crítica.")
 
         tareas_df.columns = tareas_df.columns.str.strip()
 
@@ -1364,6 +1363,7 @@ if archivo_excel:
 
 else:
     st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
