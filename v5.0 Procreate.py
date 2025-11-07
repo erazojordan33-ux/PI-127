@@ -1194,8 +1194,8 @@ if archivo_excel:
                                 elif not pd.api.types.is_dtype_equal(resource_demand_with_details_df[col].dtype, expected_type):
                                         if expected_type == 'float64' and pd.api.types.is_integer_dtype(resource_demand_with_details_df[col]):
                                                 pass 
-                                else:
-                                        type_issues.append(f"Column '{col}' has type {resource_demand_with_details_df[col].dtype} but expected {expected_type}.")
+                                        else:
+                                                type_issues.append(f"Column '{col}' has type {resource_demand_with_details_df[col].dtype} but expected {expected_type}.")
                         if type_issues:
                                 for issue in type_issues:
                                         st.warning(f"⚠️ Tipo de dato: {issue}")
@@ -1271,6 +1271,7 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)   
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
