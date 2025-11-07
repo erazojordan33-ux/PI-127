@@ -810,18 +810,18 @@ if archivo_excel:
                                 for pre_entry in pre_list:
                                         pre_entry = pre_entry.strip()
                                         match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre_entry)
-                                                if match:
-                                                        pre_id = int(match.group(1))
-                                                        tipo_relacion = match.group(2).upper() if match.group(2) else 'FC'
-                                                        desfase = int(match.group(3)) if match.group(3) else 0
-                                                        if pre_id in st.session_state.tareas_df['IDRUBRO'].values:
-                                                                dependencias[pre_id].append(tarea_id)
-                                                                predecesoras_map_details[tarea_id].append((pre_id, tipo_relacion, desfase))
-                                                        else:
-                                                                st.warning(f"⚠️ Advertencia: Predecesor ID {pre_id} mencionado en '{pre_entry}' para tarea {tarea_id} no encontrado en la lista de tareas. Ignorando esta dependencia.")
+                                        if match:
+                                                pre_id = int(match.group(1))
+                                                tipo_relacion = match.group(2).upper() if match.group(2) else 'FC'
+                                                desfase = int(match.group(3)) if match.group(3) else 0
+                                                if pre_id in st.session_state.tareas_df['IDRUBRO'].values:
+                                                        dependencias[pre_id].append(tarea_id)
+                                                        predecesoras_map_details[tarea_id].append((pre_id, tipo_relacion, desfase))
                                                 else:
-                                                        if pre_entry != '':
-                                                                st.warning(f"⚠️ Advertencia: Formato de predecesora '{pre_entry}' no reconocido para la tarea {tarea_id}. Ignorando.")
+                                                        st.warning(f"⚠️ Advertencia: Predecesor ID {pre_id} mencionado en '{pre_entry}' para tarea {tarea_id} no encontrado en la lista de tareas. Ignorando esta dependencia.")
+                                        else:
+                                                if pre_entry != '':
+                                                        st.warning(f"⚠️ Advertencia: Formato de predecesora '{pre_entry}' no reconocido para la tarea {tarea_id}. Ignorando.")
                 shapes = []
                 color_banda = 'rgba(240, 240, 240, 0.1)'
                 for y_pos in range(len(st.session_state.tareas_df)):
@@ -1268,8 +1268,8 @@ if archivo_excel:
                         ),
                         plot_bgcolor='white'
                 )
-                st.plotly_chart(fig, use_container_width=True)
-        
+                st.plotly_chart(fig, use_container_width=True)   
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
