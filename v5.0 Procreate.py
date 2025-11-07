@@ -540,23 +540,23 @@ if archivo_excel:
                         if "rangos_personalizados" not in st.session_state:
                                 st.session_state.rangos_personalizados = []
 
-                if st.button("Agregar rango"):
-                        st.session_state.rangos_personalizados.append({
-                                "inicio": fecha_inicio_proyecto,
-                                "fin": fecha_inicio_proyecto
-                        })
+                        if st.button("Agregar rango"):
+                                st.session_state.rangos_personalizados.append({
+                                        "inicio": fecha_inicio_proyecto,
+                                        "fin": fecha_inicio_proyecto
+                                })
 
-                for idx, rango in enumerate(st.session_state.rangos_personalizados):
-                        col1, col2, col3 = st.columns([3,3,1])
-                        with col1:
-                                inicio = st.date_input(f"Rango {idx+1} inicio", value=rango["inicio"], key=f"inicio_{idx}")
-                        with col2:
-                                fin = st.date_input(f"Rango {idx+1} fin", value=rango["fin"], key=f"fin_{idx}")
-                        with col3:
-                                if st.button("❌", key=f"borrar_{idx}"):
-                                        st.session_state.rangos_personalizados.pop(idx)
-                                        st.experimental_rerun()
-                        st.session_state.rangos_personalizados[idx] = {"inicio": inicio, "fin": fin}
+                        for idx, rango in enumerate(st.session_state.rangos_personalizados):
+                                col1, col2, col3 = st.columns([3,3,1])
+                                with col1:
+                                        inicio = st.date_input(f"Rango {idx+1} inicio", value=rango["inicio"], key=f"inicio_{idx}")
+                                with col2:
+                                        fin = st.date_input(f"Rango {idx+1} fin", value=rango["fin"], key=f"fin_{idx}")
+                                with col3:
+                                        if st.button("❌", key=f"borrar_{idx}"):
+                                                st.session_state.rangos_personalizados.pop(idx)
+                                                st.experimental_rerun()
+                                st.session_state.rangos_personalizados[idx] = {"inicio": inicio, "fin": fin}
         
                 st.markdown("---")
                 st.write("Horas laborables por día")
@@ -1271,5 +1271,6 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)   
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
