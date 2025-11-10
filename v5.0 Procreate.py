@@ -1645,137 +1645,111 @@ if archivo_excel:
                                 )
                 st.plotly_chart(fig, use_container_width=True)
 
-                import pandas as pd
                 import plotly.graph_objects as go
-                from plotly.subplots import make_subplots
-                import streamlit as st
+                import pandas as pd
                 
-                # --- Validación básica de columnas ---
-                required_columns_and_types = {
-                    'Fecha': 'datetime64[ns]',
-                    'RECURSO': 'object', 
-                    'UNIDAD': 'object', 
-                    'Demanda_Diaria_Total': 'float64', 
-                    'TYPE': 'object',
-                    'TARIFA': 'float64', 
-                    'Costo_Diario': 'float64',
-                    'CANTIDAD EJECUTADA': 'float64'  # agregado para cantidades ejecutadas
-                }
+                # --- Preparar datos ---
+                # Asegurarse que las fechas estén en datetime
+                st.session_state.tareas_df_seguimiento['FECHAINICIO'] = pd.to_datetime(st.session_state.tareas_df_seguimiento['FECHAINICIO'])
+                st.session_state.tareas_df_seguimiento['FECHA_SEGUIMIENTO'] = pd.to_datetime(st.session_state.tareas_df_seguimiento['FECHA_SEGUIMIENTO'])
+                st.session_state.tareas_df_seguimiento['RUBRO'] = st.session_state.tareas_df_seguimiento['RUBRO'].str.strip()
                 
-                missing_columns = [col for col in required_columns_and_types if col not in resource_demand_with_details_df.columns]
-                if missing_columns:
-                    st.warning(f"❌ Error: Missing required columns: {missing_columns}")
+                # Crear y ordenar recursos
+                unique_rubros = sorted(st.session_state.tareas_df_seguimiento['RUBRO'].unique().tolist())
+                y_mapping = {rubro: i for i, rubro in enumerate(unique_rubros)}  # mapea cada rubro a un índice Y
                 
-                df = resource_demand_with_details_df.copy()
-                df['Fecha'] = pd.to_datetime(df['Fecha'])
-                df['Periodo_Mensual'] = df['Fecha'].dt.to_period('M')
+                # Colores
+                color_plan = "rgba(174, 198, 207, 0.6)"  # azul claro planificado
+                color_avance = "rgba(0, 100, 200, 0.8)"  # azul más fuerte avance
                 
-                # --- Agrupar costos ---
-                monthly_costs_df = df.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
-                monthly_costs_df['Costo_Acumulado'] = monthly_costs_df['Costo_Diario'].cumsum()
-                monthly_costs_df['Periodo_Mensual'] = monthly_costs_df['Periodo_Mensual'].astype(str)
+                # --- Crear figura ---
+                fig_resource_timeline = go.Figure()
                 
-                # --- Agrupar cantidades ejecutadas ---
-                monthly_quantities_df = df.groupby('Periodo_Mensual')['CANTIDAD EJECUTADA'].sum().reset_index()
-                monthly_quantities_df['Cantidad_Acumulada'] = monthly_quantities_df['CANTIDAD EJECUTADA'].cumsum()
-                monthly_quantities_df['Periodo_Mensual'] = monthly_quantities_df['Periodo_Mensual'].astype(str)
+                # Barras de planificación
+                for i, row in st.session_state.tareas_df_seguimiento.iterrows():
+                    y_pos = y_mapping[row['RUBRO']]
+                    x_start = row['FECHAINICIO']
+                    x_end = row.get('FECHAFIN', row['FECHAINICIO'])  # si FECHAFIN no existe, usar FECHAINICIO
+                    y0 = y_pos - 0.35
+                    y1 = y_pos + 0.35
                 
-                # --- Formateo para hover ---
-                def format_currency(value):
-                    if pd.notna(value):
-                        return f"S/ {value:,.2f}"
-                    return "S/ 0.00"
+                    fig_resource_timeline.add_trace(go.Scatter(
+                        x=[x_start, x_end, x_end, x_start, x_start],
+                        y=[y0, y0, y1, y1, y0],
+                        fill='toself',
+                        fillcolor=color_plan,
+                        line=dict(color=color_plan, width=1),
+                        hoverinfo='text',
+                        text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>Plan:</b> {x_start.strftime('%Y-%m-%d')} → {x_end.strftime('%Y-%m-%d')}",
+                        showlegend=False
+                    ))
                 
-                monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
-                monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
-                monthly_quantities_df['Cantidad_Ejecutada_Formateada'] = monthly_quantities_df['CANTIDAD_EJECUTADA'].map(lambda x: f"{x:,.2f}")
-                monthly_quantities_df['Cantidad_Acumulada_Formateada'] = monthly_quantities_df['Cantidad_Acumulada'].map(lambda x: f"{x:,.2f}")
+                # Barras de avance
+                for i, row in st.session_state.tareas_df_seguimiento.iterrows():
+                    y_pos = y_mapping[row['RUBRO']]
+                    x_start = row['FECHAINICIO']
+                    x_end = row['FECHA_SEGUIMIENTO']
+                    y0 = y_pos - 0.35
+                    y1 = y_pos + 0.35
                 
-                # --- Crear figura con ejes secundarios ---
-                st.subheader("📊 Cronograma Valorado")
-                fig = make_subplots(specs=[[{"secondary_y": True}]])
+                    fig_resource_timeline.add_trace(go.Scatter(
+                        x=[x_start, x_end, x_end, x_start, x_start],
+                        y=[y0, y0, y1, y1, y0],
+                        fill='toself',
+                        fillcolor=color_avance,
+                        line=dict(color=color_avance, width=1),
+                        hoverinfo='text',
+                        text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>%Avance:</b> {row['%AVANCE']:.1f}%",
+                        showlegend=False
+                    ))
                 
-                # --- Costo Mensual ---
-                fig.add_bar(
-                    x=monthly_costs_df['Periodo_Mensual'],
-                    y=monthly_costs_df['Costo_Diario'],
-                    name='Costo Mensual',
-                    text=monthly_costs_df['Costo_Mensual_Formateado'],
-                    hoverinfo='text',
-                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
-                    marker_color='rgba(0, 100, 200, 0.6)',
-                    secondary_y=False
-                )
+                    # Etiqueta de %Avance a la derecha
+                    fig_resource_timeline.add_trace(go.Scatter(
+                        x=[x_end + pd.Timedelta(days=1)],
+                        y=[y_pos],
+                        mode='text',
+                        text=[f"{row['%AVANCE']:.1f}%"],
+                        textposition='middle right',
+                        showlegend=False,
+                        hoverinfo='skip'
+                    ))
                 
-                # --- Costo Acumulado ---
-                fig.add_scatter(
-                    x=monthly_costs_df['Periodo_Mensual'],
-                    y=monthly_costs_df['Costo_Acumulado'],
-                    mode='lines+markers',
-                    name='Costo Acumulado',
-                    text=monthly_costs_df['Costo_Acumulado_Formateado'],
-                    hoverinfo='text',
-                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
-                    line=dict(color='red', width=2),
-                    secondary_y=True
-                )
+                # --- Configurar layout ---
+                y_ticktext_styled = [rubro for rubro in unique_rubros]
                 
-                # --- Cantidad Ejecutada Mensual ---
-                fig.add_bar(
-                    x=monthly_quantities_df['Periodo_Mensual'],
-                    y=monthly_quantities_df['CANTIDAD EJECUTADA'],
-                    name='Cantidad Ejecutada Mensual',
-                    text=monthly_quantities_df['Cantidad_Ejecutada_Formateada'],
-                    hoverinfo='text',
-                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
-                    marker_color='rgba(0, 150, 0, 0.6)',
-                    secondary_y=False
-                )
-                
-                # --- Cantidad Ejecutada Acumulada ---
-                fig.add_scatter(
-                    x=monthly_quantities_df['Periodo_Mensual'],
-                    y=monthly_quantities_df['Cantidad_Acumulada'],
-                    mode='lines+markers',
-                    name='Cantidad Ejecutada Acumulada',
-                    text=monthly_quantities_df['Cantidad_Acumulada_Formateada'],
-                    hoverinfo='text',
-                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
-                    line=dict(color='green', width=2),
-                    secondary_y=True
-                )
-                
-                # --- Ejes ---
-                fig.update_yaxes(
-                    title_text="Costo / Cantidad Mensual",
-                    secondary_y=False,
-                    showgrid=False,
-                    range=[0, max(monthly_costs_df['Costo_Diario'].max(), monthly_quantities_df['CANTIDAD EJECUTADA'].max())*1.1]
-                )
-                fig.update_yaxes(
-                    title_text="Costo / Cantidad Acumulado",
-                    secondary_y=True,
-                    showgrid=True,
-                    gridcolor='lightgrey',
-                    range=[0, max(monthly_costs_df['Costo_Acumulado'].max(), monthly_quantities_df['Cantidad_Acumulada'].max())*1.1]
-                )
-                fig.update_xaxes(title_text="Período Mensual", tickangle=-45)
-                fig.update_layout(
-                    hovermode='x unified',
-                    height=600,
-                    legend=dict(
-                        x=1.05,
-                        y=1,
-                        bgcolor='rgba(255, 255, 255, 0.5)',
-                        bordercolor='rgba(0, 0, 0, 0.5)'
+                fig_resource_timeline.update_layout(
+                    yaxis=dict(
+                        autorange="reversed",
+                        tickvals=list(range(len(unique_rubros))),
+                        ticktext=y_ticktext_styled,
+                        tickfont=dict(size=10),
+                        title="Rubro"
                     ),
-                    plot_bgcolor='white'
+                    xaxis=dict(
+                        title="Fechas",
+                        side='top',
+                        dtick='M1',
+                        tickangle=-90,
+                        showgrid=True,
+                        gridcolor='rgba(128,128,128,0.3)',
+                        gridwidth=0.5
+                    ),
+                    height=max(600, len(unique_rubros)*25),
+                    plot_bgcolor='white',
+                    hovermode='closest'
                 )
                 
-                st.plotly_chart(fig, use_container_width=True)
+                # Mostrar gráfico
+                st.subheader("📊 Gantt de Recursos con Avance")
+                st.plotly_chart(fig_resource_timeline, use_container_width=True)
+
+
+
+              
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
