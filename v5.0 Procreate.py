@@ -1275,7 +1275,10 @@ if archivo_excel:
                 
                     # --- Redondear rendimiento ---
                     if "RENDIMIENTO" in tareas_df_seguimiento.columns:
-                        tareas_df_seguimiento["RENDIMIENTO"] = tareas_df_seguimiento["RENDIMIENTO"].round(4)
+                            tareas_df_seguimiento["RENDIMIENTO"] = pd.to_numeric(
+                                tareas_df_seguimiento["RENDIMIENTO"], errors="coerce"
+                            ).fillna(0).round(4)
+
                 
                     # --- Mostrar editor solo con columnas seleccionadas ---
                     columnas_mostrar = [
@@ -1341,6 +1344,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
