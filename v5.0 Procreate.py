@@ -1473,7 +1473,9 @@ if archivo_excel:
                             st.session_state.tareas_df["IDRUBRO"] == id_rubro, "y_num"
                         ].iloc[0]
 
-                        color_avance = "rgba(0, 100, 200, 1)" if not seg_row.get("RUTA_CRITICA", False) else "rgba(200, 0, 0,1)"
+                        is_critical = st.session_state.tareas_df.loc[st.session_state.tareas_df['IDRUBRO'] == seg_row['IDRUBRO'], 'RUTA_CRITICA'].values[0]
+                        color_avance = "rgba(0, 100, 200, 1)" if not is_critical else "rgba(200, 0, 0,1)"
+
 
                         start_date_real = seg_row["FECHA_INICIO_TEMPRANA"]
                         end_date_real = seg_row["FECHA_SEGUIMIENTO"]
@@ -1644,6 +1646,7 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
