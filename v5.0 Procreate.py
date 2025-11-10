@@ -1283,7 +1283,7 @@ if archivo_excel:
                     # --- Mostrar editor solo con columnas seleccionadas ---
                     columnas_mostrar = [
                         "IDRUBRO", "RUBRO", "FECHA_INICIO_TEMPRANA", "FECHA_FIN_TEMPRANA",
-                        "DURACION_EFECTIVA", "RENDIMIENTO", "UNIDAD_RUBRO",
+                        "DURACION_EFECTIVA", "RENDIMIENTO", "CANTIDAD_RUBRO","UNIDAD_RUBRO",
                         "%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO"
                     ]
                 
@@ -1344,6 +1344,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
