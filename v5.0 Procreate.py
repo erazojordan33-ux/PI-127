@@ -1498,8 +1498,8 @@ if archivo_excel:
                         ))
 
                         fig.add_trace(go.Scatter(
-                            x=[end_date_real + timedelta(days=10)],
-                            y=[y_center],
+                            x=[end_date_real + timedelta(days=13)],
+                            y=[y_center+0.1],
                             text=[f"{avance_pct:.1f}%"],
                             mode="text",
                             textfont=dict(color="black", size=10, family="Arial Black"),
@@ -1507,7 +1507,6 @@ if archivo_excel:
                             hoverinfo='skip'
                         ))
 
-                
                 for pre_id, sucesores in dependencias.items():
                         pre_row_df = st.session_state.tareas_df[st.session_state.tareas_df['IDRUBRO'] == pre_id]
                         if pre_row_df.empty: continue
@@ -1645,6 +1644,7 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
