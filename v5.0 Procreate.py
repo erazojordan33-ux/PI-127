@@ -1356,20 +1356,21 @@ if archivo_excel:
                     st.dataframe(df, use_container_width=True)
 
                 
-                st.session_state.tareas_df_seguimiento['y_num'] = range(len(st.session_state.tareas_df_seguimiento))
+                                st.session_state.tareas_df['y_num'] = range(len(st.session_state.tareas_df))
+                
                 fig = go.Figure()
-                fecha_inicio_col = 'FECHA_INICIO_TEMPRANA'
-                fecha_fin_col = 'FECHA_FIN_TEMPRANA'
-                if fecha_inicio_col not in st.session_state.tareas_df_seguimiento.columns or fecha_fin_col not in st.session_state.tareas_df_seguimiento.columns:
+                fecha_inicio_col = 'FECHAINICIO'
+                fecha_fin_col = 'FECHAFIN'
+                if fecha_inicio_col not in st.session_state.tareas_df.columns or fecha_fin_col not in st.session_state.tareas_df.columns:
                         st.warning("❌ Error: No se encontraron columnas de fechas de inicio/fin necesarias para dibujar el Gantt.")
          
-                inicio_rubro_calc = st.session_state.tareas_df_seguimiento.set_index('IDRUBRO')[fecha_inicio_col].to_dict()
-                fin_rubro_calc = st.session_state.tareas_df_seguimiento.set_index('IDRUBRO')[fecha_fin_col].to_dict()
-                is_critical_dict = st.session_state.tareas_df_seguimiento.set_index('IDRUBRO')['RUTA_CRITICA'].to_dict()
+                inicio_rubro_calc = st.session_state.tareas_df.set_index('IDRUBRO')[fecha_inicio_col].to_dict()
+                fin_rubro_calc = st.session_state.tareas_df.set_index('IDRUBRO')[fecha_fin_col].to_dict()
+                is_critical_dict = st.session_state.tareas_df.set_index('IDRUBRO')['RUTA_CRITICA'].to_dict()
                 dependencias = defaultdict(list)
                 predecesoras_map_details = defaultdict(list)
                 
-                for _, row in st.session_state.tareas_df_seguimiento.iterrows():
+                for _, row in st.session_state.tareas_df.iterrows():
                         tarea_id = row['IDRUBRO']
                         predecesoras_str = str(row['PREDECESORAS']).strip()
                         if predecesoras_str not in ['nan', '']:
@@ -1381,7 +1382,7 @@ if archivo_excel:
                                                 pre_id = int(match.group(1))
                                                 tipo_relacion = match.group(2).upper() if match.group(2) else 'FC'
                                                 desfase = int(match.group(3)) if match.group(3) else 0
-                                                if pre_id in st.session_state.tareas_df_seguimiento['IDRUBRO'].values:
+                                                if pre_id in st.session_state.tareas_df['IDRUBRO'].values:
                                                         dependencias[pre_id].append(tarea_id)
                                                         predecesoras_map_details[tarea_id].append((pre_id, tipo_relacion, desfase))
                                                 else:
@@ -1391,13 +1392,13 @@ if archivo_excel:
                                                         st.warning(f"⚠️ Advertencia: Formato de predecesora '{pre_entry}' no reconocido para la tarea {tarea_id}. Ignorando.")
                 shapes = []
                 color_banda = 'rgba(240, 240, 240, 0.1)'
-                for y_pos in range(len(st.session_state.tareas_df_seguimiento)):
+                for y_pos in range(len(st.session_state.tareas_df)):
                         if y_pos % 2 == 0:
                                 shapes.append(dict(type="rect", xref="paper", yref="y", x0=0, x1=1, y0=y_pos - 0.5, y1=y_pos + 0.5, fillcolor=color_banda, layer="below", line_width=0))
                 color_no_critica_barra = 'lightblue'
                 color_critica_barra = 'rgb(255, 133, 133)'
                 
-                for i, row in st.session_state.tareas_df_seguimiento.iterrows():
+                for i, row in st.session_state.tareas_df.iterrows():
                         line_color = color_critica_barra if row.get('RUTA_CRITICA', False) else color_no_critica_barra
                         start_date = row[fecha_inicio_col]
                         end_date = row[fecha_fin_col]
@@ -1409,7 +1410,13 @@ if archivo_excel:
                                 costo_formateado = f"S/ {valor_costo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                         except Exception:
                                 costo_formateado = "S/ 0,00"
-                        hover_text = (f"📌 <b>Rubro:</b> {row['RUBRO']}<br>")
+                        hover_text = (f"📌 <b>Rubro:</b> {row['RUBRO']}<br>"
+                                  f"🗓️ <b>Capítulo:</b> {row['CAPÍTULO']}<br>"
+                                  f"📅 <b>Inicio:</b> {start_date.strftime('%d/%m/%Y')}<br>"
+                                  f"🏁 <b>Fin:</b> {end_date.strftime('%d/%m/%Y')}<br>"
+                                  f"⏱️ <b>Duración:</b> {(end_date - start_date).days} días<br>"
+                                  f"⏳ <b>Holgura Total:</b> {row.get('HOLGURA_TOTAL', 'N/A')} días<br>"
+                                  f"💰 <b>Costo:</b> {costo_formateado}")
                         half_height = 0.35
                         y_center = row['y_num']
                         y0 = y_center - half_height
@@ -1506,7 +1513,7 @@ if archivo_excel:
 
                 
                 for pre_id, sucesores in dependencias.items():
-                        pre_row_df = st.session_state.tareas_df_seguimiento[st.session_state.tareas_df_seguimiento['IDRUBRO'] == pre_id]
+                        pre_row_df = st.session_state.tareas_df[st.session_state.tareas_df['IDRUBRO'] == pre_id]
                         if pre_row_df.empty: continue
                         y_pre = pre_row_df.iloc[0]['y_num']
                         pre_is_critical = is_critical_dict.get(pre_id, False)
@@ -1514,7 +1521,7 @@ if archivo_excel:
                         x_pre_fin = fin_rubro_calc.get(pre_id)
                         if pd.isna(x_pre_inicio) or pd.isna(x_pre_fin): continue
                         for suc_id in sucesores:
-                                suc_row_df = st.session_state.tareas_df_seguimiento[st.session_state.tareas_df_seguimiento['IDRUBRO'] == suc_id]
+                                suc_row_df = st.session_state.tareas_df[st.session_state.tareas_df['IDRUBRO'] == suc_id]
                                 if suc_row_df.empty: continue
                                 y_suc = suc_row_df.iloc[0]['y_num']
                                 suc_is_critical = is_critical_dict.get(suc_id, False)
@@ -1597,8 +1604,8 @@ if archivo_excel:
                                     ))
 
                 y_ticktext_styled = []
-                for y_pos in range(len(st.session_state.tareas_df_seguimiento)):
-                        row_for_y_pos = st.session_state.tareas_df_seguimiento[st.session_state.tareas_df_seguimiento['y_num'] == y_pos]
+                for y_pos in range(len(st.session_state.tareas_df)):
+                        row_for_y_pos = st.session_state.tareas_df[st.session_state.tareas_df['y_num'] == y_pos]
                         if not row_for_y_pos.empty:
                                 rubro_text = row_for_y_pos.iloc[0]['RUBRO']
                                 y_ticktext_styled.append(f"<b>{rubro_text}</b>" if y_pos % 2 == 0 else rubro_text)
@@ -1616,23 +1623,23 @@ if archivo_excel:
                         yaxis_title='Rubro',
                         yaxis=dict(
                                 autorange='reversed',
-                                tickvals=st.session_state.tareas_df_seguimiento['y_num'],
+                                tickvals=st.session_state.tareas_df['y_num'],
                                 ticktext=y_ticktext_styled,
                                 tickfont=dict(size=10),
                                 showgrid=False
                         ),
                         shapes=shapes,
-                        height=max(600, len(st.session_state.tareas_df_seguimiento)*25),
+                        height=max(600, len(st.session_state.tareas_df)*25),
                         showlegend=False,
                         plot_bgcolor='white',
                         hovermode='closest'
                 )
-                for i, tarea in enumerate(st.session_state.tareas_df_seguimiento['RUBRO'].unique()):
+                for i, tarea in enumerate(st.session_state.tareas_df['RUBRO'].unique()):
                         if i % 2 == 0:
                                 fig.add_shape(
                                         type="rect",
-                                        x0=st.session_state.tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'].min(),
-                                        x1=st.session_state.tareas_df_seguimiento['FECHA_FIN_TEMPRANA'].max(),
+                                        x0=st.session_state.tareas_df['FECHAINICIO'].min(),
+                                        x1=st.session_state.tareas_df['FECHAFIN'].max(),
                                         y0=i - 0.5,
                                         y1=i + 0.5,
                                         fillcolor="rgba(240,240,240,0.01)",
@@ -1640,9 +1647,9 @@ if archivo_excel:
                                         layer="below"
                                 )
                 st.plotly_chart(fig, use_container_width=True)
-
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
