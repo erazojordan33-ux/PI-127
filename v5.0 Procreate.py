@@ -1356,7 +1356,7 @@ if archivo_excel:
                     st.dataframe(df, use_container_width=True)
 
                 
-                                st.session_state.tareas_df['y_num'] = range(len(st.session_state.tareas_df))
+                st.session_state.tareas_df['y_num'] = range(len(st.session_state.tareas_df))
                 
                 fig = go.Figure()
                 fecha_inicio_col = 'FECHAINICIO'
@@ -1649,6 +1649,7 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
