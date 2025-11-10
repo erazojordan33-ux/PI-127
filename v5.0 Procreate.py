@@ -1650,7 +1650,7 @@ if archivo_excel:
                 
                 # --- Preparar datos ---
                 # Asegurarse que las fechas estén en datetime
-                st.session_state.tareas_df_seguimiento['FECHAINICIO'] = pd.to_datetime(st.session_state.tareas_df_seguimiento['FECHAINICIO'])
+                st.session_state.tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'] = pd.to_datetime(st.session_state.tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'])
                 st.session_state.tareas_df_seguimiento['FECHA_SEGUIMIENTO'] = pd.to_datetime(st.session_state.tareas_df_seguimiento['FECHA_SEGUIMIENTO'])
                 st.session_state.tareas_df_seguimiento['RUBRO'] = st.session_state.tareas_df_seguimiento['RUBRO'].str.strip()
                 
@@ -1668,8 +1668,8 @@ if archivo_excel:
                 # Barras de planificación
                 for i, row in st.session_state.tareas_df_seguimiento.iterrows():
                     y_pos = y_mapping[row['RUBRO']]
-                    x_start = row['FECHAINICIO']
-                    x_end = row.get('FECHAFIN', row['FECHAINICIO'])  # si FECHAFIN no existe, usar FECHAINICIO
+                    x_start = row['FECHA_INICIO_TEMPRANA']
+                    x_end = row.get('FECHAFIN', row['FECHA_INICIO_TEMPRANA'])  # si FECHAFIN no existe, usar FECHAINICIO
                     y0 = y_pos - 0.35
                     y1 = y_pos + 0.35
                 
@@ -1687,7 +1687,7 @@ if archivo_excel:
                 # Barras de avance
                 for i, row in st.session_state.tareas_df_seguimiento.iterrows():
                     y_pos = y_mapping[row['RUBRO']]
-                    x_start = row['FECHAINICIO']
+                    x_start = row['FECHA_INICIO_TEMPRANA']
                     x_end = row['FECHA_SEGUIMIENTO']
                     y0 = y_pos - 0.35
                     y1 = y_pos + 0.35
@@ -1749,6 +1749,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
