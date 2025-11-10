@@ -1257,46 +1257,91 @@ if archivo_excel:
         with tab6:
                 import streamlit as st
                 import pandas as pd
+                import numpy as np
                 
-                # Asegurar que existe el dataframe en session_state
                 if "tareas_df" not in st.session_state:
                     st.error("No se encontró 'tareas_df' en session_state.")
                 else:
-                    df = st.session_state.tareas_df.copy()
+                    # --- Crear copia base ---
+                    tareas_df_seguimiento = st.session_state.tareas_df.copy()
                 
-                    # Crear las columnas si no existen
-                    for col in ["%AVANCE", "CANTIDAD EJECUTADA"]:
-                        if col not in df.columns:
-                            df[col] = 0.0  # valor inicial
+                    # --- Crear columnas si no existen ---
+                    for col in ["%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO"]:
+                        if col not in tareas_df_seguimiento.columns:
+                            if col == "FECHA_SEGUIMIENTO":
+                                tareas_df_seguimiento[col] = pd.NaT
+                            else:
+                                tareas_df_seguimiento[col] = 0.0
                 
-                    # Seleccionar solo las columnas relevantes
+                    # --- Redondear rendimiento ---
+                    if "RENDIMIENTO" in tareas_df_seguimiento.columns:
+                        tareas_df_seguimiento["RENDIMIENTO"] = tareas_df_seguimiento["RENDIMIENTO"].round(4)
+                
+                    # --- Mostrar editor solo con columnas seleccionadas ---
                     columnas_mostrar = [
                         "IDRUBRO", "RUBRO", "FECHA_INICIO_TEMPRANA", "FECHA_FIN_TEMPRANA",
-                        "DURACION_EFECTIVA", "RENDIMIENTO", "UNIDAD_RUBRO", "%AVANCE", "CANTIDAD EJECUTADA"
+                        "DURACION_EFECTIVA", "RENDIMIENTO", "UNIDAD_RUBRO",
+                        "%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO"
                     ]
                 
-                    # Filtrar (solo las que existan para evitar errores)
-                    columnas_validas = [c for c in columnas_mostrar if c in df.columns]
-                    df_mostrar = df[columnas_validas].copy()
+                    columnas_validas = [c for c in columnas_mostrar if c in tareas_df_seguimiento.columns]
+                    df_mostrar = tareas_df_seguimiento[columnas_validas].copy()
                 
-                    # Mostrar editor interactivo
-                    st.subheader("Avance y cantidad ejecutada por rubro")
+                    st.subheader("Seguimiento de rubros")
                     edited_df = st.data_editor(
                         df_mostrar,
                         use_container_width=True,
-                        num_rows="fixed",  # evita agregar filas
+                        num_rows="fixed",
                         disabled=[c for c in columnas_validas if c not in ["%AVANCE", "CANTIDAD EJECUTADA"]],
-                        key="editor_tareas"
+                        key="editor_seguimiento"
                     )
                 
-                    # Guardar cambios en session_state
-                    st.session_state.tareas_df[columnas_validas] = edited_df[columnas_validas]
+                    # --- Aplicar cálculos ---
+                    df = edited_df.copy()
+                
+                    # Asegurar tipos
+                    for c in ["%AVANCE", "CANTIDAD EJECUTADA"]:
+                        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+                
+                    for c in ["FECHA_INICIO_TEMPRANA"]:
+                        df[c] = pd.to_datetime(df[c], errors="coerce")
+                
+                    # Variables necesarias
+                    dur = df.get("DURACION_EFECTIVA", 0)
+                    rend = df.get("RENDIMIENTO", 1)
+                    cant_rubro = df.get("CANTIDAD_RUBRO", 1)
+                
+                    # Caso 1: CANTIDAD EJECUTADA ≠ 0
+                    mask1 = df["CANTIDAD EJECUTADA"] != 0
+                    df.loc[mask1, "FECHA_SEGUIMIENTO"] = df.loc[mask1, "FECHA_INICIO_TEMPRANA"] + pd.to_timedelta(
+                        (df.loc[mask1, "CANTIDAD EJECUTADA"] / rend[mask1]), unit="D"
+                    )
+                    df.loc[mask1, "%AVANCE"] = (df.loc[mask1, "CANTIDAD EJECUTADA"] / cant_rubro[mask1]).fillna(0)
+                
+                    # Caso 2: CANTIDAD EJECUTADA = 0 y %AVANCE ≠ 0
+                    mask2 = (df["CANTIDAD EJECUTADA"] == 0) & (df["%AVANCE"] != 0)
+                    df.loc[mask2, "FECHA_SEGUIMIENTO"] = df.loc[mask2, "FECHA_INICIO_TEMPRANA"] + pd.to_timedelta(
+                        (dur[mask2] * df.loc[mask2, "%AVANCE"]), unit="D"
+                    )
+                    df.loc[mask2, "CANTIDAD EJECUTADA"] = cant_rubro[mask2] * df.loc[mask2, "%AVANCE"]
+                
+                    # Caso 3: Ambos 0
+                    mask3 = (df["CANTIDAD EJECUTADA"] == 0) & (df["%AVANCE"] == 0)
+                    df.loc[mask3, "FECHA_SEGUIMIENTO"] = df.loc[mask3, "FECHA_INICIO_TEMPRANA"]
+                
+                    # --- Guardar copia final en session_state ---
+                    st.session_state.tareas_df_seguimiento = df
+                
+                    st.success("✅ Datos de seguimiento actualizados correctamente.")
+                    st.dataframe(df, use_container_width=True)
+
 
                 
 
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
