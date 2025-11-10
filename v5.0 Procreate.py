@@ -1355,8 +1355,301 @@ if archivo_excel:
                     st.success("✅ Datos de seguimiento actualizados correctamente.")
                     st.dataframe(df, use_container_width=True)
 
+                
+                st.session_state.tareas_df_seguimiento['y_num'] = range(len(st.session_state.tareas_df_seguimiento))
+                fig = go.Figure()
+                fecha_inicio_col = 'FECHAINICIO'
+                fecha_fin_col = 'FECHAFIN'
+                if fecha_inicio_col not in st.session_state.tareas_df_seguimiento.columns or fecha_fin_col not in st.session_state.tareas_df_seguimiento.columns:
+                        st.warning("❌ Error: No se encontraron columnas de fechas de inicio/fin necesarias para dibujar el Gantt.")
+         
+                inicio_rubro_calc = st.session_state.tareas_df_seguimiento.set_index('IDRUBRO')[fecha_inicio_col].to_dict()
+                fin_rubro_calc = st.session_state.tareas_df_seguimiento.set_index('IDRUBRO')[fecha_fin_col].to_dict()
+                is_critical_dict = st.session_state.tareas_df_seguimiento.set_index('IDRUBRO')['RUTA_CRITICA'].to_dict()
+                dependencias = defaultdict(list)
+                predecesoras_map_details = defaultdict(list)
+                
+                for _, row in st.session_state.tareas_df_seguimiento.iterrows():
+                        tarea_id = row['IDRUBRO']
+                        predecesoras_str = str(row['PREDECESORAS']).strip()
+                        if predecesoras_str not in ['nan', '']:
+                                pre_list = predecesoras_str.split(',')
+                                for pre_entry in pre_list:
+                                        pre_entry = pre_entry.strip()
+                                        match = re.match(r'(\d+)\s*([A-Za-z]{2})?(?:\s*([+-]?\d+)\s*días?)?', pre_entry)
+                                        if match:
+                                                pre_id = int(match.group(1))
+                                                tipo_relacion = match.group(2).upper() if match.group(2) else 'FC'
+                                                desfase = int(match.group(3)) if match.group(3) else 0
+                                                if pre_id in st.session_state.tareas_df_seguimiento['IDRUBRO'].values:
+                                                        dependencias[pre_id].append(tarea_id)
+                                                        predecesoras_map_details[tarea_id].append((pre_id, tipo_relacion, desfase))
+                                                else:
+                                                        st.warning(f"⚠️ Advertencia: Predecesor ID {pre_id} mencionado en '{pre_entry}' para tarea {tarea_id} no encontrado en la lista de tareas. Ignorando esta dependencia.")
+                                        else:
+                                                if pre_entry != '':
+                                                        st.warning(f"⚠️ Advertencia: Formato de predecesora '{pre_entry}' no reconocido para la tarea {tarea_id}. Ignorando.")
+                shapes = []
+                color_banda = 'rgba(240, 240, 240, 0.1)'
+                for y_pos in range(len(st.session_state.tareas_df_seguimiento)):
+                        if y_pos % 2 == 0:
+                                shapes.append(dict(type="rect", xref="paper", yref="y", x0=0, x1=1, y0=y_pos - 0.5, y1=y_pos + 0.5, fillcolor=color_banda, layer="below", line_width=0))
+                color_no_critica_barra = 'lightblue'
+                color_critica_barra = 'rgb(255, 133, 133)'
+                
+                for i, row in st.session_state.tareas_df_seguimiento.iterrows():
+                        line_color = color_critica_barra if row.get('RUTA_CRITICA', False) else color_no_critica_barra
+                        start_date = row[fecha_inicio_col]
+                        end_date = row[fecha_fin_col]
+                        if pd.isna(start_date) or pd.isna(end_date):
+                                st.warning(f"⚠️ Advertencia: Fechas inválidas para la tarea {row['RUBRO']} (ID {row['IDRUBRO']}). No se dibujará la barra.")
+                                continue
+                        try:
+                                valor_costo = float(row.get(cost_column_name, 0))
+                                costo_formateado = f"S/ {valor_costo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                        except Exception:
+                                costo_formateado = "S/ 0,00"
+                        hover_text = (f"📌 <b>Rubro:</b> {row['RUBRO']}<br>"
+                                  f"🗓️ <b>Capítulo:</b> {row['CAPÍTULO']}<br>"
+                                  f"📅 <b>Inicio:</b> {start_date.strftime('%d/%m/%Y')}<br>"
+                                  f"🏁 <b>Fin:</b> {end_date.strftime('%d/%m/%Y')}<br>"
+                                  f"⏱️ <b>Duración:</b> {(end_date - start_date).days} días<br>"
+                                  f"⏳ <b>Holgura Total:</b> {row.get('HOLGURA_TOTAL', 'N/A')} días<br>"
+                                  f"💰 <b>Costo:</b> {costo_formateado}")
+                        half_height = 0.35
+                        y_center = row['y_num']
+                        y0 = y_center - half_height
+                        y1 = y_center + half_height
+                        xs = [start_date, end_date, end_date, start_date, start_date]
+                        ys = [y0, y0, y1, y1, y0]
+                        fig.add_trace(go.Scatter(
+                                x=xs,
+                                y=ys,
+                                mode='lines',
+                                fill='toself',
+                                fillcolor=line_color,
+                                line=dict(color=line_color, width=1),
+                                hoverinfo='text',
+                                text=hover_text,
+                                showlegend=False
+                        ))
+                        inicio_temp = row["FECHA_INICIO_TEMPRANA"]
+                        fin_tarde = row["FECHA_FIN_TARDE"]
+
+                        if pd.notna(inicio_temp) and pd.notna(fin_tarde):
+                                y_center = row['y_num']
+                                half_height_flex = 0.35
+                                y0_flex = y_center - half_height_flex
+                                y1_flex = y_center + half_height_flex
+                                xs_flex = [inicio_temp, fin_tarde, fin_tarde, inicio_temp, inicio_temp]
+                                ys_flex = [y0_flex, y0_flex, y1_flex, y1_flex, y0_flex]
+
+                                fill_color_soft = line_color.replace("rgb(", "rgba(").replace(")", ", 0.3)") if "rgb(" in line_color else "rgba(173,216,230,0.3)"
+                        
+                                fig.add_trace(go.Scatter(
+                                        x=xs_flex,
+                                        y=ys_flex,
+                                        mode='lines',
+                                        fill='toself',
+                                        fillcolor=fill_color_soft,
+                                        line=dict(color=fill_color_soft, width=0.5),
+                                        hoverinfo='skip',
+                                        showlegend=False
+                                ))
+                offset_days_horizontal = 5
+                color_no_critica_flecha = 'blue'
+                color_critica_flecha = 'red'
+
+                # --- Añadir barra de avance real (desde FECHA_INICIO_TEMPRANA hasta FECHA_SEGUIMIENTO) ---
+                if "tareas_df_seguimiento" in st.session_state:
+                    df_seg = st.session_state.tareas_df_seguimiento.copy()
+                
+                    for _, seg_row in df_seg.iterrows():
+                        if pd.isna(seg_row.get("FECHA_INICIO_TEMPRANA")) or pd.isna(seg_row.get("FECHA_SEGUIMIENTO")):
+                            continue
+                
+                        id_rubro = seg_row["IDRUBRO"]
+                        y_center = st.session_state.tareas_df.loc[
+                            st.session_state.tareas_df["IDRUBRO"] == id_rubro, "y_num"
+                        ].iloc[0]
+                
+                        # Colores: un tono más oscuro del color de la barra principal
+                        color_avance = "rgba(0, 100, 200, 0.8)" if not seg_row.get("RUTA_CRITICA", False) else "rgba(200, 0, 0, 0.8)"
+                
+                        # Coordenadas de la barra
+                        start_date_real = seg_row["FECHA_INICIO_TEMPRANA"]
+                        end_date_real = seg_row["FECHA_SEGUIMIENTO"]
+                        half_height_real = 0.15  # más delgada
+                        y0_real = y_center - half_height_real
+                        y1_real = y_center + half_height_real
+                        xs_real = [start_date_real, end_date_real, end_date_real, start_date_real, start_date_real]
+                        ys_real = [y0_real, y0_real, y1_real, y1_real, y0_real]
+                
+                        avance_pct = seg_row.get("%AVANCE", 0) * 100
+                
+                        fig.add_trace(go.Scatter(
+                            x=xs_real,
+                            y=ys_real,
+                            mode='lines',
+                            fill='toself',
+                            fillcolor=color_avance,
+                            line=dict(color=color_avance, width=1),
+                            hoverinfo='text',
+                            text=f"🔹 <b>Avance:</b> {avance_pct:.1f}%",
+                            showlegend=False
+                        ))
+                
+                        # Etiqueta flotante con % de avance
+                        fig.add_trace(go.Scatter(
+                            x=[end_date_real],
+                            y=[y_center + 0.25],
+                            text=[f"{avance_pct:.1f}%"],
+                            mode="text",
+                            textfont=dict(color="black", size=10, family="Arial Black"),
+                            showlegend=False,
+                            hoverinfo='skip'
+                        ))
+
+                
+                for pre_id, sucesores in dependencias.items():
+                        pre_row_df = st.session_state.tareas_df_seguimiento[st.session_state.tareas_df_seguimiento['IDRUBRO'] == pre_id]
+                        if pre_row_df.empty: continue
+                        y_pre = pre_row_df.iloc[0]['y_num']
+                        pre_is_critical = is_critical_dict.get(pre_id, False)
+                        x_pre_inicio = inicio_rubro_calc.get(pre_id)
+                        x_pre_fin = fin_rubro_calc.get(pre_id)
+                        if pd.isna(x_pre_inicio) or pd.isna(x_pre_fin): continue
+                        for suc_id in sucesores:
+                                suc_row_df = st.session_state.tareas_df_seguimiento[st.session_state.tareas_df_seguimiento['IDRUBRO'] == suc_id]
+                                if suc_row_df.empty: continue
+                                y_suc = suc_row_df.iloc[0]['y_num']
+                                suc_is_critical = is_critical_dict.get(suc_id, False)
+                                arrow_color = color_critica_flecha if pre_is_critical and suc_is_critical else color_no_critica_flecha
+                                line_style = dict(color=arrow_color, width=0.5)
+                                x_suc_inicio = inicio_rubro_calc.get(suc_id)
+                                x_suc_fin = fin_rubro_calc.get(suc_id)
+                                if pd.isna(x_suc_inicio) or pd.isna(x_suc_fin): continue
+                                tipo_relacion = 'FC'
+                                for pre_id_suc, type_suc, desfase_suc in predecesoras_map_details.get(suc_id, []):
+                                        if pre_id_suc == pre_id:
+                                                tipo_relacion = type_suc.upper() if type_suc else 'FC'
+                                                break
+                                origin_x = x_pre_fin
+                                if tipo_relacion == 'CC': origin_x = x_pre_inicio
+                                elif tipo_relacion == 'CF': origin_x = x_pre_inicio
+                                elif tipo_relacion == 'FF': origin_x = x_pre_fin
+                                connection_x = x_suc_inicio
+                                arrow_symbol = 'triangle-right'
+                                if tipo_relacion == 'CC': connection_x = x_suc_inicio; arrow_symbol='triangle-right'
+                                elif tipo_relacion == 'CF': connection_x = x_suc_fin; arrow_symbol='triangle-left'
+                                elif tipo_relacion == 'FF': connection_x = x_suc_fin; arrow_symbol='triangle-left'
+                                ajuste_vertical = 0.2
+                                y_pre_ajustado = y_pre - ajuste_vertical 
+                                y_suc_ajustado = y_suc + ajuste_vertical 
+
+                                points_x = [origin_x]; points_y = [y_pre_ajustado]
+                                if tipo_relacion in ['CC','FC']:
+                                        if origin_x <= connection_x: 
+                                                elbow1_x = origin_x - timedelta(days=offset_days_horizontal) ; elbow1_y = y_pre_ajustado
+                                                elbow2_x = elbow1_x; elbow2_y = y_suc_ajustado
+                                                points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc_ajustado]
+                                        else:
+                                                elbow1_x = connection_x  - timedelta(days=offset_days_horizontal); elbow1_y = y_pre_ajustado
+                                                elbow2_x = elbow1_x; elbow2_y = y_suc_ajustado
+                                                points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc_ajustado]
+
+                                elif tipo_relacion in ['CF','FF']:
+                                        if origin_x <= connection_x:
+                                                elbow1_x = connection_x + timedelta(days=offset_days_horizontal) ; elbow1_y = y_pre_ajustado
+                                                elbow2_x = elbow1_x; elbow2_y = y_suc_ajustado
+                                                points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc_ajustado]
+                                        else:
+                                                elbow1_x =  origin_x + timedelta(days=offset_days_horizontal); elbow1_y = y_pre_ajustado
+                                                elbow2_x = elbow1_x; elbow2_y = y_suc_ajustado
+                                                points_x += [elbow1_x, elbow2_x, connection_x]; points_y += [elbow1_y, elbow2_y, y_suc_ajustado]
+                                else:
+                                        continue
+
+                                fig.add_trace(go.Scatter(
+                                        x=points_x,
+                                        y=points_y,
+                                        mode='lines',
+                                        line=dict(color=arrow_color, width=1),
+                                        hoverinfo='none',
+                                        showlegend=False
+                                ))
+                        
+                                circle_x = origin_x
+                                circle_y = y_pre_ajustado
+                                if not (pd.isna(circle_x) or pd.isna(circle_y)):
+                                        fig.add_trace(go.Scattergl(
+                                                x=[circle_x],
+                                                y=[circle_y],
+                                                mode='markers',
+                                                marker=dict(symbol='circle', size=6, color=arrow_color, line=dict(width=0)),
+                                                hoverinfo='none',
+                                                showlegend=False
+                                        ))
+                                triangle_x = connection_x
+                                triangle_y = y_suc_ajustado
+                                if not (pd.isna(triangle_x) or pd.isna(triangle_y)):
+                                        fig.add_trace(go.Scattergl(
+                                                x=[triangle_x],
+                                                y=[triangle_y],
+                                                mode='markers',
+                                                marker=dict(symbol=arrow_symbol, size=8, color=arrow_color, line=dict(width=0)),
+                                                hoverinfo='none',
+                                                showlegend=False
+                                    ))
+
+                y_ticktext_styled = []
+                for y_pos in range(len(st.session_state.tareas_df_seguimiento)):
+                        row_for_y_pos = st.session_state.tareas_df_seguimiento[st.session_state.tareas_df_seguimiento['y_num'] == y_pos]
+                        if not row_for_y_pos.empty:
+                                rubro_text = row_for_y_pos.iloc[0]['RUBRO']
+                                y_ticktext_styled.append(f"<b>{rubro_text}</b>" if y_pos % 2 == 0 else rubro_text)
+                        else: y_ticktext_styled.append("")   
+                fig.update_layout(
+                        xaxis=dict(
+                                title='Fechas',
+                                side='top',
+                                dtick='M1',
+                                tickangle=-90,
+                                showgrid=True,
+                                gridcolor='rgba(128,128,128,0.3)',
+                                gridwidth=0.5
+                        ),
+                        yaxis_title='Rubro',
+                        yaxis=dict(
+                                autorange='reversed',
+                                tickvals=st.session_state.tareas_df_seguimiento['y_num'],
+                                ticktext=y_ticktext_styled,
+                                tickfont=dict(size=10),
+                                showgrid=False
+                        ),
+                        shapes=shapes,
+                        height=max(600, len(st.session_state.tareas_df_seguimiento)*25),
+                        showlegend=False,
+                        plot_bgcolor='white',
+                        hovermode='closest'
+                )
+                for i, tarea in enumerate(st.session_state.tareas_df_seguimiento['RUBRO'].unique()):
+                        if i % 2 == 0:
+                                fig.add_shape(
+                                        type="rect",
+                                        x0=st.session_state.tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'].min(),
+                                        x1=st.session_state.tareas_df_seguimiento['FECHA_FIN_TEMPRANA'].max(),
+                                        y0=i - 0.5,
+                                        y1=i + 0.5,
+                                        fillcolor="rgba(240,240,240,0.01)",
+                                        line_width=0,
+                                        layer="below"
+                                )
+                st.plotly_chart(fig, use_container_width=True)
+
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
