@@ -1676,8 +1676,8 @@ if archivo_excel:
                 monthly_costs_df['Periodo_Mensual'] = monthly_costs_df['Periodo_Mensual'].astype(str)
                 
                 # --- Agrupar cantidades ejecutadas ---
-                monthly_quantities_df = df.groupby('Periodo_Mensual')['CANTIDAD_EJECUTADA'].sum().reset_index()
-                monthly_quantities_df['Cantidad_Acumulada'] = monthly_quantities_df['CANTIDAD_EJECUTADA'].cumsum()
+                monthly_quantities_df = df.groupby('Periodo_Mensual')['CANTIDAD EJECUTADA'].sum().reset_index()
+                monthly_quantities_df['Cantidad_Acumulada'] = monthly_quantities_df['CANTIDAD EJECUTADA'].cumsum()
                 monthly_quantities_df['Periodo_Mensual'] = monthly_quantities_df['Periodo_Mensual'].astype(str)
                 
                 # --- Formateo para hover ---
@@ -1723,7 +1723,7 @@ if archivo_excel:
                 # --- Cantidad Ejecutada Mensual ---
                 fig.add_bar(
                     x=monthly_quantities_df['Periodo_Mensual'],
-                    y=monthly_quantities_df['CANTIDAD_EJECUTADA'],
+                    y=monthly_quantities_df['CANTIDAD EJECUTADA'],
                     name='Cantidad Ejecutada Mensual',
                     text=monthly_quantities_df['Cantidad_Ejecutada_Formateada'],
                     hoverinfo='text',
@@ -1750,7 +1750,7 @@ if archivo_excel:
                     title_text="Costo / Cantidad Mensual",
                     secondary_y=False,
                     showgrid=False,
-                    range=[0, max(monthly_costs_df['Costo_Diario'].max(), monthly_quantities_df['CANTIDAD_EJECUTADA'].max())*1.1]
+                    range=[0, max(monthly_costs_df['Costo_Diario'].max(), monthly_quantities_df['CANTIDAD EJECUTADA'].max())*1.1]
                 )
                 fig.update_yaxes(
                     title_text="Costo / Cantidad Acumulado",
@@ -1776,6 +1776,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
