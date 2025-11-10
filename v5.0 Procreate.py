@@ -1498,8 +1498,8 @@ if archivo_excel:
                         ))
 
                         fig.add_trace(go.Scatter(
-                            x=[end_date_real + timedelta(days=20)],
-                            y=[y_center + 0.25],
+                            x=[end_date_real + timedelta(days=4)],
+                            y=[y_center],
                             text=[f"{avance_pct:.1f}%"],
                             mode="text",
                             textfont=dict(color="black", size=10, family="Arial Black"),
@@ -1645,6 +1645,7 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
