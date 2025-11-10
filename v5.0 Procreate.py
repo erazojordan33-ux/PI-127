@@ -1409,11 +1409,7 @@ if archivo_excel:
                                 costo_formateado = f"S/ {valor_costo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                         except Exception:
                                 costo_formateado = "S/ 0,00"
-                        hover_text = (f"📌 <b>Rubro:</b> {row['RUBRO']}<br>"
-                                  f"📅 <b>Inicio:</b> {start_date.strftime('%d/%m/%Y')}<br>"
-                                  f"🏁 <b>Fin:</b> {end_date.strftime('%d/%m/%Y')}<br>"
-                                  f"⏱️ <b>Duración:</b> {(end_date - start_date).days} días<br>"
-                                  f"💰 <b>Costo:</b> {costo_formateado}")
+                        hover_text = (f"📌 <b>Rubro:</b> {row['RUBRO']}<br>")
                         half_height = 0.35
                         y_center = row['y_num']
                         y0 = y_center - half_height
@@ -1647,6 +1643,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
