@@ -1275,7 +1275,7 @@ if archivo_excel:
                     columnas_mostrar = [
                         "IDRUBRO", "RUBRO", "FECHA_INICIO_TEMPRANA", "FECHA_FIN_TEMPRANA",
                         "DURACION_EFECTIVA", "RENDIMIENTO", "CANTIDAD_RUBRO", "UNIDAD_RUBRO",
-                        "%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO"
+                        "%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO", "RUTA_CRITICA", "PREDECESORAS"
                     ]
                 
                     columnas_validas = [c for c in columnas_mostrar if c in tareas_df_seguimiento.columns]
@@ -1358,8 +1358,8 @@ if archivo_excel:
                 
                 st.session_state.tareas_df_seguimiento['y_num'] = range(len(st.session_state.tareas_df_seguimiento))
                 fig = go.Figure()
-                fecha_inicio_col = 'FECHAINICIO'
-                fecha_fin_col = 'FECHAFIN'
+                fecha_inicio_col = 'FECHA_INICIO_TEMPRANA'
+                fecha_fin_col = 'FECHA_FIN_TEMPRANA'
                 if fecha_inicio_col not in st.session_state.tareas_df_seguimiento.columns or fecha_fin_col not in st.session_state.tareas_df_seguimiento.columns:
                         st.warning("❌ Error: No se encontraron columnas de fechas de inicio/fin necesarias para dibujar el Gantt.")
          
@@ -1414,7 +1414,6 @@ if archivo_excel:
                                   f"📅 <b>Inicio:</b> {start_date.strftime('%d/%m/%Y')}<br>"
                                   f"🏁 <b>Fin:</b> {end_date.strftime('%d/%m/%Y')}<br>"
                                   f"⏱️ <b>Duración:</b> {(end_date - start_date).days} días<br>"
-                                  f"⏳ <b>Holgura Total:</b> {row.get('HOLGURA_TOTAL', 'N/A')} días<br>"
                                   f"💰 <b>Costo:</b> {costo_formateado}")
                         half_height = 0.35
                         y_center = row['y_num']
@@ -1649,6 +1648,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
