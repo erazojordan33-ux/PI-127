@@ -1275,7 +1275,7 @@ if archivo_excel:
                     columnas_mostrar = [
                         "IDRUBRO", "RUBRO", "FECHA_INICIO_TEMPRANA", "FECHA_FIN_TEMPRANA",
                         "DURACION_EFECTIVA", "RENDIMIENTO", "CANTIDAD_RUBRO", "UNIDAD_RUBRO",
-                        "%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO", "RUTA_CRITICA", "PREDECESORAS","FECHA_FIN_TARDE"
+                        "%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO"
                     ]
                 
                     columnas_validas = [c for c in columnas_mostrar if c in tareas_df_seguimiento.columns]
@@ -1461,7 +1461,6 @@ if archivo_excel:
                 color_no_critica_flecha = 'blue'
                 color_critica_flecha = 'red'
 
-                # --- Añadir barra de avance real (desde FECHA_INICIO_TEMPRANA hasta FECHA_SEGUIMIENTO) ---
                 if "tareas_df_seguimiento" in st.session_state:
                     df_seg = st.session_state.tareas_df_seguimiento.copy()
                 
@@ -1473,11 +1472,9 @@ if archivo_excel:
                         y_center = st.session_state.tareas_df.loc[
                             st.session_state.tareas_df["IDRUBRO"] == id_rubro, "y_num"
                         ].iloc[0]
-                
-                        # Colores: un tono más oscuro del color de la barra principal
+
                         color_avance = "rgba(0, 100, 200, 0.8)" if not seg_row.get("RUTA_CRITICA", False) else "rgba(200, 0, 0, 0.8)"
-                
-                        # Coordenadas de la barra
+
                         start_date_real = seg_row["FECHA_INICIO_TEMPRANA"]
                         end_date_real = seg_row["FECHA_SEGUIMIENTO"]
                         half_height_real = 0.15  # más delgada
@@ -1499,10 +1496,9 @@ if archivo_excel:
                             text=f"🔹 <b>Avance:</b> {avance_pct:.1f}%",
                             showlegend=False
                         ))
-                
-                        # Etiqueta flotante con % de avance
+
                         fig.add_trace(go.Scatter(
-                            x=[end_date_real],
+                            x=[end_date_real+0.5],
                             y=[y_center + 0.25],
                             text=[f"{avance_pct:.1f}%"],
                             mode="text",
@@ -1649,6 +1645,7 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
