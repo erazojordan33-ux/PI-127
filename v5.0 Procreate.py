@@ -1182,7 +1182,7 @@ if archivo_excel:
                                 for issue in type_issues:
                                         st.warning(f"⚠️ Tipo de dato: {issue}")
                 else:
-                        st.warning(f"❌ Error: Missing required columns: {missing_columns}")
+                        st.warning(f" columns: {missing_columns}")
                 
                 df = resource_demand_with_details_df.copy()
                 df['Fecha'] = pd.to_datetime(df['Fecha'])
@@ -1659,7 +1659,7 @@ if archivo_excel:
                     'TYPE': 'object',
                     'TARIFA': 'float64', 
                     'Costo_Diario': 'float64',
-                    'CANTIDAD_EJECUTADA': 'float64'  # agregado para cantidades ejecutadas
+                    'CANTIDAD EJECUTADA': 'float64'  # agregado para cantidades ejecutadas
                 }
                 
                 missing_columns = [col for col in required_columns_and_types if col not in resource_demand_with_details_df.columns]
@@ -1776,6 +1776,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
