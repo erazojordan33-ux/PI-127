@@ -1644,8 +1644,139 @@ if archivo_excel:
                                         layer="below"
                                 )
                 st.plotly_chart(fig, use_container_width=True)
+
+                import pandas as pd
+                import plotly.graph_objects as go
+                from plotly.subplots import make_subplots
+                import streamlit as st
+                
+                # --- Validación básica de columnas ---
+                required_columns_and_types = {
+                    'Fecha': 'datetime64[ns]',
+                    'RECURSO': 'object', 
+                    'UNIDAD': 'object', 
+                    'Demanda_Diaria_Total': 'float64', 
+                    'TYPE': 'object',
+                    'TARIFA': 'float64', 
+                    'Costo_Diario': 'float64',
+                    'CANTIDAD_EJECUTADA': 'float64'  # agregado para cantidades ejecutadas
+                }
+                
+                missing_columns = [col for col in required_columns_and_types if col not in resource_demand_with_details_df.columns]
+                if missing_columns:
+                    st.warning(f"❌ Error: Missing required columns: {missing_columns}")
+                
+                df = resource_demand_with_details_df.copy()
+                df['Fecha'] = pd.to_datetime(df['Fecha'])
+                df['Periodo_Mensual'] = df['Fecha'].dt.to_period('M')
+                
+                # --- Agrupar costos ---
+                monthly_costs_df = df.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
+                monthly_costs_df['Costo_Acumulado'] = monthly_costs_df['Costo_Diario'].cumsum()
+                monthly_costs_df['Periodo_Mensual'] = monthly_costs_df['Periodo_Mensual'].astype(str)
+                
+                # --- Agrupar cantidades ejecutadas ---
+                monthly_quantities_df = df.groupby('Periodo_Mensual')['CANTIDAD_EJECUTADA'].sum().reset_index()
+                monthly_quantities_df['Cantidad_Acumulada'] = monthly_quantities_df['CANTIDAD_EJECUTADA'].cumsum()
+                monthly_quantities_df['Periodo_Mensual'] = monthly_quantities_df['Periodo_Mensual'].astype(str)
+                
+                # --- Formateo para hover ---
+                def format_currency(value):
+                    if pd.notna(value):
+                        return f"S/ {value:,.2f}"
+                    return "S/ 0.00"
+                
+                monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
+                monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
+                monthly_quantities_df['Cantidad_Ejecutada_Formateada'] = monthly_quantities_df['CANTIDAD_EJECUTADA'].map(lambda x: f"{x:,.2f}")
+                monthly_quantities_df['Cantidad_Acumulada_Formateada'] = monthly_quantities_df['Cantidad_Acumulada'].map(lambda x: f"{x:,.2f}")
+                
+                # --- Crear figura con ejes secundarios ---
+                st.subheader("📊 Cronograma Valorado")
+                fig = make_subplots(specs=[[{"secondary_y": True}]])
+                
+                # --- Costo Mensual ---
+                fig.add_bar(
+                    x=monthly_costs_df['Periodo_Mensual'],
+                    y=monthly_costs_df['Costo_Diario'],
+                    name='Costo Mensual',
+                    text=monthly_costs_df['Costo_Mensual_Formateado'],
+                    hoverinfo='text',
+                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+                    marker_color='rgba(0, 100, 200, 0.6)',
+                    secondary_y=False
+                )
+                
+                # --- Costo Acumulado ---
+                fig.add_scatter(
+                    x=monthly_costs_df['Periodo_Mensual'],
+                    y=monthly_costs_df['Costo_Acumulado'],
+                    mode='lines+markers',
+                    name='Costo Acumulado',
+                    text=monthly_costs_df['Costo_Acumulado_Formateado'],
+                    hoverinfo='text',
+                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+                    line=dict(color='red', width=2),
+                    secondary_y=True
+                )
+                
+                # --- Cantidad Ejecutada Mensual ---
+                fig.add_bar(
+                    x=monthly_quantities_df['Periodo_Mensual'],
+                    y=monthly_quantities_df['CANTIDAD_EJECUTADA'],
+                    name='Cantidad Ejecutada Mensual',
+                    text=monthly_quantities_df['Cantidad_Ejecutada_Formateada'],
+                    hoverinfo='text',
+                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+                    marker_color='rgba(0, 150, 0, 0.6)',
+                    secondary_y=False
+                )
+                
+                # --- Cantidad Ejecutada Acumulada ---
+                fig.add_scatter(
+                    x=monthly_quantities_df['Periodo_Mensual'],
+                    y=monthly_quantities_df['Cantidad_Acumulada'],
+                    mode='lines+markers',
+                    name='Cantidad Ejecutada Acumulada',
+                    text=monthly_quantities_df['Cantidad_Acumulada_Formateada'],
+                    hoverinfo='text',
+                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+                    line=dict(color='green', width=2),
+                    secondary_y=True
+                )
+                
+                # --- Ejes ---
+                fig.update_yaxes(
+                    title_text="Costo / Cantidad Mensual",
+                    secondary_y=False,
+                    showgrid=False,
+                    range=[0, max(monthly_costs_df['Costo_Diario'].max(), monthly_quantities_df['CANTIDAD_EJECUTADA'].max())*1.1]
+                )
+                fig.update_yaxes(
+                    title_text="Costo / Cantidad Acumulado",
+                    secondary_y=True,
+                    showgrid=True,
+                    gridcolor='lightgrey',
+                    range=[0, max(monthly_costs_df['Costo_Acumulado'].max(), monthly_quantities_df['Cantidad_Acumulada'].max())*1.1]
+                )
+                fig.update_xaxes(title_text="Período Mensual", tickangle=-45)
+                fig.update_layout(
+                    hovermode='x unified',
+                    height=600,
+                    legend=dict(
+                        x=1.05,
+                        y=1,
+                        bgcolor='rgba(255, 255, 255, 0.5)',
+                        bordercolor='rgba(0, 0, 0, 0.5)'
+                    ),
+                    plot_bgcolor='white'
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
