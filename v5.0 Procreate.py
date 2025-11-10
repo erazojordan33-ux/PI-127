@@ -1275,7 +1275,7 @@ if archivo_excel:
                     columnas_mostrar = [
                         "IDRUBRO", "RUBRO", "FECHA_INICIO_TEMPRANA", "FECHA_FIN_TEMPRANA",
                         "DURACION_EFECTIVA", "RENDIMIENTO", "CANTIDAD_RUBRO", "UNIDAD_RUBRO",
-                        "%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO", "RUTA_CRITICA", "PREDECESORAS"
+                        "%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO", "RUTA_CRITICA", "PREDECESORAS","FECHA_FIN_TARDE"
                     ]
                 
                     columnas_validas = [c for c in columnas_mostrar if c in tareas_df_seguimiento.columns]
@@ -1643,6 +1643,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
