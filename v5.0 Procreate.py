@@ -1289,7 +1289,6 @@ if archivo_excel:
                         disabled=[c for c in columnas_validas if c not in ["%AVANCE", "CANTIDAD EJECUTADA"]],
                         key="editor_seguimiento"
                     )
-                
                     df = edited_df.copy()
                 
                     for c in ["%AVANCE", "CANTIDAD EJECUTADA"]:
@@ -1301,16 +1300,14 @@ if archivo_excel:
                     dur = df.get("DURACION_EFECTIVA", 0)
                     rend = df.get("RENDIMIENTO", 1)
                     cant_rubro = df.get("CANTIDAD_RUBRO", 1)
-                
-                    # Verificar si existe el calendario
+
                     calendario = st.session_state.get("calendario", None)
                     if calendario is not None and "fecha" in calendario.columns and "no_laborable" in calendario.columns:
                         calendario["fecha"] = pd.to_datetime(calendario["fecha"], errors="coerce")
                         calendario = calendario.dropna(subset=["fecha"])
                     else:
                         calendario = pd.DataFrame(columns=["fecha", "no_laborable"])
-                
-                    # --- Función para sumar días efectivos ---
+
                     def sumar_dias_efectivos(fecha_inicio, dias):
                         if pd.isna(fecha_inicio):
                             return pd.NaT
@@ -1322,17 +1319,14 @@ if archivo_excel:
                             es_no_laborable = bool(fila["no_laborable"].iloc[0]) if not fila.empty else False
                             if not es_no_laborable:
                                 dias_agregados += 1
-                        # Si justo cae en día no laborable, se pasa al siguiente
-                        fila_final = calendario.loc[calendario["fecha"] == fecha_actual]
-                        if not fila_final.empty and bool(fila_final["no_laborable"].iloc[0]):
-                            while True:
-                                fecha_actual += pd.Timedelta(days=1)
+                        while True:
                                 fila_final = calendario.loc[calendario["fecha"] == fecha_actual]
                                 if fila_final.empty or not bool(fila_final["no_laborable"].iloc[0]):
                                     break
+                                fecha_actual += pd.Timedelta(days=1)
+                                
                         return fecha_actual
-                
-                    # ---- Cálculos ----
+
                     mask1 = df["CANTIDAD EJECUTADA"] != 0
                     df.loc[mask1, "FECHA_SEGUIMIENTO"] = [
                         sumar_dias_efectivos(fecha, dias)
@@ -1361,12 +1355,9 @@ if archivo_excel:
                     st.success("✅ Datos de seguimiento actualizados correctamente.")
                     st.dataframe(df, use_container_width=True)
 
-
-                
-
-
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
