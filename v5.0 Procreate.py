@@ -67,7 +67,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
         lf = {}
         tf = {}
         ff = {}
-
         for _, row in tareas_df.iterrows():
                 tarea_id = row['IDRUBRO']
                 predecesoras_str = str(row['PREDECESORAS']).strip()
@@ -86,7 +85,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                                                 st.warning(f"Predecesor {pre_id} de tarea {tarea_id} no encontrado. Ignorado.")
                                 elif pre_entry != '':
                                         st.warning(f"Formato de predecesora '{pre_entry}' no reconocido para tarea {tarea_id}.")
-        
         initial_tasks_ids = [tid for tid in all_task_ids if tid not in predecesoras_map]
         for tid in initial_tasks_ids:
                 task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
@@ -95,12 +93,10 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                         duration = 0
                 es[tid] = fecha_inicio_proyecto
                 ef[tid] = es[tid] + timedelta(days=duration)
-
         predecessor_process_count = defaultdict(int)
         in_degree = {tid: len(predecesoras_map.get(tid, [])) for tid in all_task_ids}
         queue = deque([tid for tid in all_task_ids if in_degree[tid] == 0])
         processed_forward = set(queue)
-
         for tid in list(queue):
                 task_row = tareas_df[tareas_df['IDRUBRO'] == tid]
                 if not task_row.empty and pd.notna(task_row.iloc[0]['FECHAINICIO']):
@@ -109,8 +105,7 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                         if not isinstance(duration, (int, float)): duration = 0
                         ef[tid] = es[tid] + timedelta(days=duration)
                 else:
-                        pass
-
+                        pass               
         while queue:
                 u = queue.popleft()
                 for v in dependencias.get(u, []):
@@ -134,19 +129,16 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
 
                                                 if v not in es or (potential_es_v is not None and potential_es_v > es[v]):
                                                         es[v] = potential_es_v
-
                                                 if v in es:
                                                         duration_v_calc = duracion_dict.get(v, 0)
                                                         if not isinstance(duration_v_calc, (int, float)): duration_v_calc = 0
                                                         ef[v] = es[v] + timedelta(days=duration_v_calc)
                                         else:
                                                 st.error(f"⚠️ Advertencia: ES/EF no calculados para predecesor ID {u} al procesar sucesor ID {v}. Saltando cálculo de ES/EF para v basado en u.")
-
                         in_degree[v] -= 1
                         if in_degree[v] == 0 and v not in processed_forward:
                                 queue.append(v)
                                 processed_forward.add(v)
-
         unprocessed_forward = all_task_ids - processed_forward
         if unprocessed_forward:
                 for tid in unprocessed_forward:
@@ -159,10 +151,8 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                                         ef[tid] = es[tid] + timedelta(days=duration)
                                 else:
                                         st.error(f"❌ Error: Tarea no procesada {tid} no encontrada o FECHAINICIO inválida. No se pudo inicializar ES/EF.")
-
         end_tasks_ids = [tid for tid in all_task_ids if tid not in dependencias]
         tasks_without_successors = [tid for tid in all_task_ids if tid not in dependencias]
-
         project_finish_date = max(ef.values())  
         end_tasks_ids = [tid for tid, fecha in ef.items() if fecha == project_finish_date]
 
@@ -185,15 +175,14 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                 duration = duracion_dict.get(tid, 0)
                 if not isinstance(duration, (int, float)): duration = 0
                 ls[tid] = lf[tid] - timedelta(days=duration)
-
+                
         queue_backward = deque(end_tasks_ids)
         processed_backward = set(end_tasks_ids)
-
         successor_map = defaultdict(list)
+        
         for tid, pre_list in predecesoras_map.items():
                 for pre_id, tipo, desfase in pre_list:
                         successor_map[pre_id].append((tid, tipo, desfase))
-
         while queue_backward:
                 v = queue_backward.popleft()
                 for u, tipo_relacion_uv, desfase_uv in predecesoras_map.get(v, []):
@@ -1271,6 +1260,7 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)   
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
