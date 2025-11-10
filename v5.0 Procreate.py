@@ -126,7 +126,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                                                 else:
                                                         st.error(f"⚠️ Tipo de relación '{tipo_v}' no reconocido para calcular ES de tarea {v} basada en {u}. Usando lógica FC por defecto.")
                                                         potential_es_v = ef[u] + timedelta(days=desfase_v)
-
                                                 if v not in es or (potential_es_v is not None and potential_es_v > es[v]):
                                                         es[v] = potential_es_v
                                                 if v in es:
@@ -162,24 +161,19 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                 ls[tid] = lf[tid] - timedelta(days=duration)
 
         successor_map = defaultdict(list)
-        
         for tid, pre_list in predecesoras_map.items():
                 for pre_id, tipo, desfase in pre_list:
                         successor_map[pre_id].append((tid, tipo, desfase))
-
         project_finish_date = max(ef.values())
         end_tasks_ids = [tid for tid, fecha in ef.items() if fecha == project_finish_date]
-
         lf.update({tid: project_finish_date for tid in end_tasks_ids})
         for tid in end_tasks_ids:
                 duration = duracion_dict.get(tid, 0)
                 if not isinstance(duration, (int, float)): duration = 0
-                ls[tid] = lf[tid] - timedelta(days=duration)
-                
+                ls[tid] = lf[tid] - timedelta(days=duration)              
         queue_backward = deque(end_tasks_ids)
         processed_backward = set(end_tasks_ids)
         successor_map = defaultdict(list)
-        
         for tid, pre_list in predecesoras_map.items():
                 for pre_id, tipo, desfase in pre_list:
                         successor_map[pre_id].append((tid, tipo, desfase))
@@ -214,7 +208,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                         if u not in processed_backward:
                                 queue_backward.append(u)
                                 processed_backward.add(u)
-
         queue_special_backward = deque(tasks_without_successors)
         processed_special_backward = set(tasks_without_successors)
         
@@ -1260,6 +1253,7 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)   
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
