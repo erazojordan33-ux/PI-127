@@ -17,7 +17,7 @@ st.set_page_config(page_title="Gestión de Proyectos - Cronograma Valorado", lay
 st.title("📊 Gestión de Proyectos - Seguimiento y Control")
 
 archivo_excel = st.file_uploader("Subir archivo Excel con hojas Tareas, Recursos y Dependencias", type=["xlsx"])
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Inicio","Calendario","Diagrama Gantt", "Recursos", "Presupuesto"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Inicio","Calendario","Diagrama Gantt", "Recursos", "Presupuesto","Seguimiento"])
 
 # 3. Definir funciones de calculo___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 ##1
@@ -1251,8 +1251,53 @@ if archivo_excel:
                         plot_bgcolor='white'
                 )
                 st.plotly_chart(fig, use_container_width=True)   
+
+# 10. Interfaz de la Pestaña 6___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
+        
+        with tab6:
+                import streamlit as st
+                import pandas as pd
+                
+                # Asegurar que existe el dataframe en session_state
+                if "tareas_df" not in st.session_state:
+                    st.error("No se encontró 'tareas_df' en session_state.")
+                else:
+                    df = st.session_state.tareas_df.copy()
+                
+                    # Crear las columnas si no existen
+                    for col in ["%AVANCE", "CANTIDAD EJECUTADA"]:
+                        if col not in df.columns:
+                            df[col] = 0.0  # valor inicial
+                
+                    # Seleccionar solo las columnas relevantes
+                    columnas_mostrar = [
+                        "IDRUBRO", "RUBRO", "FECHA_INICIO_TEMPRANA", "FECHA_FIN_TEMPRANA",
+                        "DURACION_EFECTIVA", "RENDIMIENTO", "UNIDAD_RUBRO", "%AVANCE", "CANTIDAD EJECUTADA"
+                    ]
+                
+                    # Filtrar (solo las que existan para evitar errores)
+                    columnas_validas = [c for c in columnas_mostrar if c in df.columns]
+                    df_mostrar = df[columnas_validas].copy()
+                
+                    # Mostrar editor interactivo
+                    st.subheader("Avance y cantidad ejecutada por rubro")
+                    edited_df = st.data_editor(
+                        df_mostrar,
+                        use_container_width=True,
+                        num_rows="fixed",  # evita agregar filas
+                        disabled=[c for c in columnas_validas if c not in ["%AVANCE", "CANTIDAD EJECUTADA"]],
+                        key="editor_tareas"
+                    )
+                
+                    # Guardar cambios en session_state
+                    st.session_state.tareas_df[columnas_validas] = edited_df[columnas_validas]
+
+                
+
+
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
