@@ -1255,17 +1255,11 @@ if archivo_excel:
 # 10. Interfaz de la Pestaña 6___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________            
         
         with tab6:
-                import streamlit as st
-                import pandas as pd
-                import numpy as np
-                
                 if "tareas_df" not in st.session_state:
                     st.error("No se encontró 'tareas_df' en session_state.")
                 else:
-                    # --- Crear copia base ---
                     tareas_df_seguimiento = st.session_state.tareas_df.copy()
                 
-                    # --- Crear columnas si no existen ---
                     for col in ["%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO"]:
                         if col not in tareas_df_seguimiento.columns:
                             if col == "FECHA_SEGUIMIENTO":
@@ -1273,24 +1267,21 @@ if archivo_excel:
                             else:
                                 tareas_df_seguimiento[col] = 0.0
                 
-                    # --- Redondear rendimiento ---
                     if "RENDIMIENTO" in tareas_df_seguimiento.columns:
-                            tareas_df_seguimiento["RENDIMIENTO"] = pd.to_numeric(
-                                tareas_df_seguimiento["RENDIMIENTO"], errors="coerce"
-                            ).fillna(0).round(4)
-
+                        tareas_df_seguimiento["RENDIMIENTO"] = pd.to_numeric(
+                            tareas_df_seguimiento["RENDIMIENTO"], errors="coerce"
+                        ).fillna(0).round(4)
                 
-                    # --- Mostrar editor solo con columnas seleccionadas ---
                     columnas_mostrar = [
                         "IDRUBRO", "RUBRO", "FECHA_INICIO_TEMPRANA", "FECHA_FIN_TEMPRANA",
-                        "DURACION_EFECTIVA", "RENDIMIENTO", "CANTIDAD_RUBRO","UNIDAD_RUBRO",
+                        "DURACION_EFECTIVA", "RENDIMIENTO", "CANTIDAD_RUBRO", "UNIDAD_RUBRO",
                         "%AVANCE", "CANTIDAD EJECUTADA", "FECHA_SEGUIMIENTO"
                     ]
                 
                     columnas_validas = [c for c in columnas_mostrar if c in tareas_df_seguimiento.columns]
                     df_mostrar = tareas_df_seguimiento[columnas_validas].copy()
                 
-                    st.subheader("Seguimiento de rubros")
+                    st.subheader("Seguimiento de proyecto")
                     edited_df = st.data_editor(
                         df_mostrar,
                         use_container_width=True,
@@ -1299,40 +1290,72 @@ if archivo_excel:
                         key="editor_seguimiento"
                     )
                 
-                    # --- Aplicar cálculos ---
                     df = edited_df.copy()
                 
-                    # Asegurar tipos
                     for c in ["%AVANCE", "CANTIDAD EJECUTADA"]:
                         df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
                 
                     for c in ["FECHA_INICIO_TEMPRANA"]:
                         df[c] = pd.to_datetime(df[c], errors="coerce")
                 
-                    # Variables necesarias
                     dur = df.get("DURACION_EFECTIVA", 0)
                     rend = df.get("RENDIMIENTO", 1)
                     cant_rubro = df.get("CANTIDAD_RUBRO", 1)
                 
-                    # Caso 1: CANTIDAD EJECUTADA ≠ 0
+                    # Verificar si existe el calendario
+                    calendario = st.session_state.get("calendario", None)
+                    if calendario is not None and "fecha" in calendario.columns and "no_laborable" in calendario.columns:
+                        calendario["fecha"] = pd.to_datetime(calendario["fecha"], errors="coerce")
+                        calendario = calendario.dropna(subset=["fecha"])
+                    else:
+                        calendario = pd.DataFrame(columns=["fecha", "no_laborable"])
+                
+                    # --- Función para sumar días efectivos ---
+                    def sumar_dias_efectivos(fecha_inicio, dias):
+                        if pd.isna(fecha_inicio):
+                            return pd.NaT
+                        fecha_actual = fecha_inicio
+                        dias_agregados = 0
+                        while dias_agregados < dias:
+                            fecha_actual += pd.Timedelta(days=1)
+                            fila = calendario.loc[calendario["fecha"] == fecha_actual]
+                            es_no_laborable = bool(fila["no_laborable"].iloc[0]) if not fila.empty else False
+                            if not es_no_laborable:
+                                dias_agregados += 1
+                        # Si justo cae en día no laborable, se pasa al siguiente
+                        fila_final = calendario.loc[calendario["fecha"] == fecha_actual]
+                        if not fila_final.empty and bool(fila_final["no_laborable"].iloc[0]):
+                            while True:
+                                fecha_actual += pd.Timedelta(days=1)
+                                fila_final = calendario.loc[calendario["fecha"] == fecha_actual]
+                                if fila_final.empty or not bool(fila_final["no_laborable"].iloc[0]):
+                                    break
+                        return fecha_actual
+                
+                    # ---- Cálculos ----
                     mask1 = df["CANTIDAD EJECUTADA"] != 0
-                    df.loc[mask1, "FECHA_SEGUIMIENTO"] = df.loc[mask1, "FECHA_INICIO_TEMPRANA"] + pd.to_timedelta(
-                        (df.loc[mask1, "CANTIDAD EJECUTADA"] / rend[mask1]), unit="D"
-                    )
+                    df.loc[mask1, "FECHA_SEGUIMIENTO"] = [
+                        sumar_dias_efectivos(fecha, dias)
+                        for fecha, dias in zip(
+                            df.loc[mask1, "FECHA_INICIO_TEMPRANA"],
+                            (df.loc[mask1, "CANTIDAD EJECUTADA"] / rend[mask1]).fillna(0)
+                        )
+                    ]
                     df.loc[mask1, "%AVANCE"] = (df.loc[mask1, "CANTIDAD EJECUTADA"] / cant_rubro[mask1]).fillna(0)
                 
-                    # Caso 2: CANTIDAD EJECUTADA = 0 y %AVANCE ≠ 0
                     mask2 = (df["CANTIDAD EJECUTADA"] == 0) & (df["%AVANCE"] != 0)
-                    df.loc[mask2, "FECHA_SEGUIMIENTO"] = df.loc[mask2, "FECHA_INICIO_TEMPRANA"] + pd.to_timedelta(
-                        (dur[mask2] * df.loc[mask2, "%AVANCE"]), unit="D"
-                    )
+                    df.loc[mask2, "FECHA_SEGUIMIENTO"] = [
+                        sumar_dias_efectivos(fecha, dias)
+                        for fecha, dias in zip(
+                            df.loc[mask2, "FECHA_INICIO_TEMPRANA"],
+                            (dur[mask2] * df.loc[mask2, "%AVANCE"]).fillna(0)
+                        )
+                    ]
                     df.loc[mask2, "CANTIDAD EJECUTADA"] = cant_rubro[mask2] * df.loc[mask2, "%AVANCE"]
                 
-                    # Caso 3: Ambos 0
                     mask3 = (df["CANTIDAD EJECUTADA"] == 0) & (df["%AVANCE"] == 0)
                     df.loc[mask3, "FECHA_SEGUIMIENTO"] = df.loc[mask3, "FECHA_INICIO_TEMPRANA"]
                 
-                    # --- Guardar copia final en session_state ---
                     st.session_state.tareas_df_seguimiento = df
                 
                     st.success("✅ Datos de seguimiento actualizados correctamente.")
@@ -1344,6 +1367,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
