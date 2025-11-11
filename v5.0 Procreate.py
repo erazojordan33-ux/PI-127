@@ -1822,6 +1822,19 @@ if archivo_excel:
                                 text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>Recurso:</b> {row['RECURSO']}<br><b>Inicio:</b> {row['FECHA_INICIO_TEMPRANA'].strftime('%Y-%m-%d')}<br><b>Fin:</b> {row['FECHA_FIN_TEMPRANA'].strftime('%Y-%m-%d')}",
                                 customdata=[row['RUBRO']]
                         ))
+
+                        if pd.notna(row['FECHA_SEGUIMIENTO']):
+                                fig_resource_timeline.add_trace(go.Scattergl(
+                                    x=[row['FECHA_INICIO_TEMPRANA'], row['FECHA_SEGUIMIENTO']],
+                                    y=[row['RECURSO'], row['RECURSO']],
+                                    mode='lines',
+                                    line=dict(color='rgb(70, 70, 90)', width=4),  # más oscura y delgada
+                                    name=f"{row['RECURSO']} (Parcial)",
+                                    showlegend=False,
+                                    hoverinfo='text',
+                                    text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>Recurso:</b> {row['RECURSO']}<br><b>Avance hasta:</b> {row['FECHA_SEGUIMIENTO'].strftime('%Y-%m-%d')}",
+                                    customdata=[row['RUBRO']]
+                                ))
                 dropdown_options = [{'label': 'All Tasks', 'method': 'update', 'args': [{'visible': [True]*len(fig_resource_timeline.data)}, {'title': 'Línea de Tiempo de Uso de Recursos'}]}]
                 
                 for rubro in unique_rubros:
@@ -1853,6 +1866,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
