@@ -1714,7 +1714,7 @@ if archivo_excel:
                         })
                         daily_resource_usage_list.append(temp_df)
 
-                         temp_df_partial = pd.DataFrame({
+                        temp_df_partial = pd.DataFrame({
                                 'Fecha': date_range_partial,
                                 'IDRUBRO': task_id,
                                 'RECURSO': resource_name,
@@ -1858,6 +1858,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
