@@ -43,10 +43,8 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                                 "HOLGURA_TOTAL": 0,
                                 "RUTA_CRITICA": ""
                         }])
-
                         tareas_df = pd.concat([fila_inicio, tareas_df], ignore_index=True)
                         tareas_df["IDRUBRO"] = tareas_df["IDRUBRO"].astype(int)
-        
                         tareas_df.loc[
                                 (tareas_df["IDRUBRO"] != 0) &
                                 ((tareas_df["PREDECESORAS"].isna()) | (tareas_df["PREDECESORAS"].astype(str).str.strip() == "")),
@@ -56,7 +54,6 @@ def calculo_ruta_critica(tareas_df=None, archivo=None):
                 st.error("❌ Error: No se ha definido la fecha de inicio del proyecto antes de calcular la ruta crítica.")
 
         tareas_df.columns = tareas_df.columns.str.strip()
-
         duracion_dict = tareas_df.set_index('IDRUBRO')['DURACION'].to_dict()
         dependencias = defaultdict(list)
         predecesoras_map = defaultdict(list)
@@ -1894,8 +1891,7 @@ if archivo_excel:
                 st.subheader("📊 Cronograma Valorado")
                 
                 fig = make_subplots(specs=[[{"secondary_y": True}]])
-                
-                # 🔵 Barras Planificadas (Azul oscuro)
+
                 fig.add_bar(
                     x=monthly_costs_df['Periodo_Mensual'],
                     y=monthly_costs_df['Costo_Diario'],
@@ -1907,8 +1903,7 @@ if archivo_excel:
                     opacity=0.85,
                     secondary_y=False
                 )
-                
-                # 🔴 Barras Ejecutadas (Rojo)
+
                 fig.add_bar(
                     x=monthly_costs_df_partial['Periodo_Mensual'],
                     y=monthly_costs_df_partial['Costo_Diario_Parcial'],
@@ -1920,8 +1915,7 @@ if archivo_excel:
                     opacity=0.85,
                     secondary_y=False
                 )
-                
-                # 🔵 Línea Acumulada Planificada
+
                 fig.add_scatter(
                     x=monthly_costs_df['Periodo_Mensual'],
                     y=monthly_costs_df['Costo_Acumulado'],
@@ -1933,8 +1927,7 @@ if archivo_excel:
                     line=dict(color='darkblue', width=3),
                     secondary_y=True
                 )
-                
-                # 🔴 Línea Acumulada Ejecutada
+
                 fig.add_scatter(
                     x=monthly_costs_df_partial['Periodo_Mensual'],
                     y=monthly_costs_df_partial['Costo_Acumulado'],
@@ -1990,9 +1983,109 @@ if archivo_excel:
                 
                 st.plotly_chart(fig, use_container_width=True)
 
+                import streamlit as st
+                import pandas as pd
+                from io import BytesIO
+                from openpyxl import Workbook
+                from openpyxl.drawing.image import Image
+                import plotly.io as pio
+                
+                # --- Función para generar Excel con tablas y gráficos ---
+                def export_gestion_proyectos_excel():
+                    output = BytesIO()
+                    
+                    wb = Workbook()
+                    wb.remove(wb.active)  # eliminar hoja default
+                    
+                    # 1️⃣ TAREAS ORIGINAL
+                    ws1 = wb.create_sheet("1. TAREAS ORIGINAL")
+                    for r_idx, row in enumerate(st.session_state.tareas_df_original.values, 2):
+                        for c_idx, value in enumerate(row, 1):
+                            ws1.cell(row=r_idx, column=c_idx, value=value)
+                    # Escribir headers
+                    for c_idx, col_name in enumerate(st.session_state.tareas_df_original.columns, 1):
+                        ws1.cell(row=1, column=c_idx, value=col_name)
+                    
+                    # 2️⃣ RECURSOS
+                    ws2 = wb.create_sheet("2. RECURSOS")
+                    df = st.session_state.recursos_df
+                    for r_idx, row in enumerate(df.values, 2):
+                        for c_idx, value in enumerate(row, 1):
+                            ws2.cell(row=r_idx, column=c_idx, value=value)
+                    for c_idx, col_name in enumerate(df.columns, 1):
+                        ws2.cell(row=1, column=c_idx, value=col_name)
+                    
+                    # 3️⃣ DEPENDENCIAS
+                    ws3 = wb.create_sheet("3. DEPENDENCIAS")
+                    df = st.session_state.dependencias_df
+                    for r_idx, row in enumerate(df.values, 2):
+                        for c_idx, value in enumerate(row, 1):
+                            ws3.cell(row=r_idx, column=c_idx, value=value)
+                    for c_idx, col_name in enumerate(df.columns, 1):
+                        ws3.cell(row=1, column=c_idx, value=col_name)
+                    
+                    # 4️⃣ CALENDARIO
+                    ws4 = wb.create_sheet("4. CALENDARIO")
+                    df = st.session_state.calendario
+                    for r_idx, row in enumerate(df.values, 2):
+                        for c_idx, value in enumerate(row, 1):
+                            ws4.cell(row=r_idx, column=c_idx, value=value)
+                    for c_idx, col_name in enumerate(df.columns, 1):
+                        ws4.cell(row=1, column=c_idx, value=col_name)
+                    
+                    # Función interna para agregar tabla + gráfico a hoja
+                    def add_table_with_fig(sheet_name, df, fig):
+                        ws = wb.create_sheet(sheet_name)
+                        # Tabla
+                        for r_idx, row in enumerate(df.values, 2):
+                            for c_idx, value in enumerate(row, 1):
+                                ws.cell(row=r_idx, column=c_idx, value=value)
+                        for c_idx, col_name in enumerate(df.columns, 1):
+                            ws.cell(row=1, column=c_idx, value=col_name)
+                        # Gráfico
+                        img_data = BytesIO()
+                        pio.write_image(fig, img_data, format='png', width=1200, height=600)
+                        img_data.seek(0)
+                        img = Image(img_data)
+                        ws.add_image(img, "A{}".format(len(df)+3))
+                    
+                    # 5️⃣ DIAGRAMA GANTT
+                    add_table_with_fig("5. DIAGRAMA GANTT", st.session_state.tareas_df, fig)
+                    
+                    # 6️⃣ RECURSOS
+                    add_table_with_fig("6. RECURSOS", recursos_tareas_df, fig_resource_timeline)
+                    
+                    # 7️⃣ CRONOGRAMA VALORADO
+                    add_table_with_fig("7. CRONOGRAMA VALORADO", monthly_costs_df, fig)
+                    
+                    # 8️⃣ GANTT DE SEGUIMIENTO
+                    add_table_with_fig("8. GANTT DE SEGUIMIENTO", st.session_state.tareas_df_seguimiento, fig)
+                    
+                    # 9️⃣ CRONOGRAMA DE SEGUIMIENTO
+                    add_table_with_fig("9. CRONOGRAMA DE SEGUIMIENTO", resource_demand_with_details_df_partial, fig)
+                    
+                    # Guardar Excel en memoria
+                    output.seek(0)
+                    wb.save(output)
+                    output.seek(0)
+                    
+                    return output
+                
+                # --- Botón de Streamlit ---
+                st.subheader("📥 Exportar Informe Completo")
+                if st.button("Exportar Gestion de Proyectos"):
+                    excel_file = export_gestion_proyectos_excel()
+                    st.download_button(
+                        label="Descargar Excel",
+                        data=excel_file,
+                        file_name="Gestion_de_Proyectos.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
