@@ -1666,6 +1666,7 @@ if archivo_excel:
                         how='left'
                 )
                 daily_resource_usage_list = []
+                daily_resource_usage_list_partial = []
                 
                 for index, row in recursos_tareas_df.iterrows():
                         
@@ -1856,6 +1857,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
