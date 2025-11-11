@@ -1693,7 +1693,7 @@ if archivo_excel:
                                 daily_quantity = total_quantity / (duration_days + 1)
                                 date_range = pd.date_range(start=start_date, end=end_date, freq='D')
 
-                        if pd.isna(start_date) or pd.isna(end_date_partial) or start_date > end_date_partial:
+                        if pd.isna(start_date) or pd.isna(end_date_partial):
                                 st.warning(f"⚠️ Advertencia: Fechas inválidas parciales para la tarea ID {task_id}, recurso '{resource_name}'. Saltando.")
                                 continue
                         if duration_partial_days <= 0:
@@ -1722,6 +1722,9 @@ if archivo_excel:
                                 'Cantidad_Parcial_Tarea': parcial_quantity
                         })
                         daily_resource_usage_list_partial.append(temp_df_partial)
+
+                st.write(daily_resource_usage_list.columns)
+                st.write(daily_resource_usage_list_partial.columns)
                 
                 if daily_resource_usage_list:
                         all_daily_resource_usage_df = pd.concat(daily_resource_usage_list, ignore_index=True)
@@ -1860,6 +1863,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
