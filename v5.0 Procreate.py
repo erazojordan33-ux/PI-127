@@ -1831,7 +1831,7 @@ if archivo_excel:
                                 'method': 'update',
                                 'args': [{'visible': visibility_list}, {'title': f'Línea de Tiempo de Uso de Recursos (Filtrado por: {rubro})'}]
                         })
-                fig_resource_timeline1.update_layout(
+                fig_resource_timeline.update_layout(
                         updatemenus=[go.layout.Updatemenu(
                                 buttons=dropdown_options,
                                 direction="down",
@@ -1849,10 +1849,11 @@ if archivo_excel:
                         plot_bgcolor='white',
                         hovermode='closest'
                 )
-                st.plotly_chart(fig_resource_timeline1, use_container_width=True)
+                st.plotly_chart(fig_resource_timeline, use_container_width=True, key="resource_timeline")
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
