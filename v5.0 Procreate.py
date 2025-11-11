@@ -1645,110 +1645,192 @@ if archivo_excel:
                                 )
                 st.plotly_chart(fig, use_container_width=True)
 
-                import plotly.graph_objects as go
-                import pandas as pd
+
+
                 
-                # --- Preparar datos ---
-                # Asegurarse que las fechas estén en datetime
-                st.session_state.tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'] = pd.to_datetime(st.session_state.tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'])
-                st.session_state.tareas_df_seguimiento['FECHA_SEGUIMIENTO'] = pd.to_datetime(st.session_state.tareas_df_seguimiento['FECHA_SEGUIMIENTO'])
-                st.session_state.tareas_df_seguimiento['RUBRO'] = st.session_state.tareas_df_seguimiento['RUBRO'].str.strip()
                 
-                # Crear y ordenar recursos
-                unique_rubros = sorted(st.session_state.tareas_df_seguimiento['RUBRO'].unique().tolist())
-                y_mapping = {rubro: i for i, rubro in enumerate(unique_rubros)}  # mapea cada rubro a un índice Y
+                tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'] = pd.to_datetime(tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'])
+                tareas_df_seguimiento['FECHA_FIN_TEMPRANA'] = pd.to_datetime(tareas_df_seguimiento['FECHA_FIN_TEMPRANA']) 
+
+                tareas_df_seguimiento['FECHA_SEGUIMIENTO'] = pd.to_datetime(tareas_df_seguimiento['FECHA_SEGUIMIENTO']) 
                 
-                # Colores
-                color_plan = "rgba(174, 198, 207, 0.6)"  # azul claro planificado
-                color_avance = "rgba(0, 100, 200, 0.8)"  # azul más fuerte avance
+                tareas_df_seguimiento['RUBRO'] = tareas_df_seguimiento['RUBRO'].str.strip()
+                st.session_state.dependencias_df['RUBRO'] = st.session_state.dependencias_df['RUBRO'].str.strip()
+
+                tareas_df_seguimiento['DURACION'] = (tareas_df_seguimiento['FECHA_FIN_TEMPRANA'] - tareas_df_seguimiento['FECHA_INICIO_TEMPRANA']).dt.days
+
+                tareas_df_seguimiento['DURACION_PARCIAL'] = (tareas_df_seguimiento['FECHA_SEGUIMIENTO'] - tareas_df_seguimiento['FECHA_INICIO_TEMPRANA']).dt.days
                 
-                # --- Crear figura ---
-                fig_resource_timeline = go.Figure()
+                recursos_tareas_df = st.session_state.dependencias_df.merge(
+                        tareas_df_seguimiento[['IDRUBRO', 'RUBRO', 'FECHA_INICIO_TEMPRANA', 'FECHA_FIN_TEMPRANA','FECHA_SEGUIMIENTO','DURACION','DURACION_EFECTIVA','DURACION_PARCIAL','%AVANCE']],
+                        left_on='RUBRO',
+                        right_on='RUBRO',
+                        how='left'
+                )
+                daily_resource_usage_list = []
                 
-                # Barras de planificación
-                for i, row in st.session_state.tareas_df_seguimiento.iterrows():
-                    y_pos = y_mapping[row['RUBRO']]
-                    x_start = row['FECHA_INICIO_TEMPRANA']
-                    x_end = row.get('FECHAFIN', row['FECHA_INICIO_TEMPRANA'])  # si FECHAFIN no existe, usar FECHAINICIO
-                    y0 = y_pos - 0.35
-                    y1 = y_pos + 0.35
+                for index, row in recursos_tareas_df.iterrows():
+                        
+                        task_id = row['IDRUBRO']
+                        resource_name = row['RECURSO']
+                        unit = row['UNIDAD']
+                        total_quantity = row['CANTIDAD']
+                        parcial_quantity = row['CANTIDAD']*row['%AVANCE']
+                        start_date = row['FECHA_INICIO_TEMPRANA']
+                        end_date = row['FECHA_FIN_TEMPRANA']
+                        end_date_partial = row['FECHA_SEGUIMIENTO']
+                        duration_days = row['DURACION']
+                        duration_partial_days = row['DURACION_PARCIAL']
+                        duration_efective_days = row['DURACION_EFECTIVA']
+                        avance = row['%AVANCE']
                 
-                    fig_resource_timeline.add_trace(go.Scatter(
-                        x=[x_start, x_end, x_end, x_start, x_start],
-                        y=[y0, y0, y1, y1, y0],
-                        fill='toself',
-                        fillcolor=color_plan,
-                        line=dict(color=color_plan, width=1),
-                        hoverinfo='text',
-                        text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>Plan:</b> {x_start.strftime('%Y-%m-%d')} → {x_end.strftime('%Y-%m-%d')}",
-                        showlegend=False
-                    ))
+                        if pd.isna(start_date) or pd.isna(end_date) or start_date > end_date:
+                                st.warning(f"⚠️ Advertencia: Fechas inválidas para la tarea ID {task_id}, recurso '{resource_name}'. Saltando.")
+                                continue
+                        if duration_days <= 0:
+                                daily_quantity = total_quantity
+                                date_range = [start_date]
+                        else:
+                                daily_quantity = total_quantity / (duration_days + 1)
+                                date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+
+                        if pd.isna(start_date) or pd.isna(end_date_partial) or start_date > end_date_partial:
+                                st.warning(f"⚠️ Advertencia: Fechas inválidas parciales para la tarea ID {task_id}, recurso '{resource_name}'. Saltando.")
+                                continue
+                        if duration_partial_days <= 0:
+                                daily_quantity_partial = parcial_quantity
+                                date_range_partial = [start_date]
+                        else:
+                                daily_quantity_partial = parcial_quantity / (duration_days + 1)
+                                date_range_partial = pd.date_range(start=start_date, end=end_date_partial, freq='D')
+
+                        temp_df = pd.DataFrame({
+                                'Fecha': date_range,
+                                'IDRUBRO': task_id,
+                                'RECURSO': resource_name,
+                                'UNIDAD': unit,
+                                'Cantidad_Diaria': daily_quantity,
+                                'Cantidad_Total_Tarea': total_quantity
+                                'Cantidad_Diaria_Ejecutada': daily_quantity_partial,
+                                'Cantidad_Parcial_Tarea': date_range_partial
+                        })
+                        daily_resource_usage_list.append(temp_df)
                 
-                # Barras de avance
-                for i, row in st.session_state.tareas_df_seguimiento.iterrows():
-                    y_pos = y_mapping[row['RUBRO']]
-                    x_start = row['FECHA_INICIO_TEMPRANA']
-                    x_end = row['FECHA_SEGUIMIENTO']
-                    y0 = y_pos - 0.35
-                    y1 = y_pos + 0.35
+                if daily_resource_usage_list:
+                        all_daily_resource_usage_df = pd.concat(daily_resource_usage_list, ignore_index=True)
+                else:
+                        st.warning("\nNo se generaron datos de uso diario de recursos.")
+                        all_daily_resource_usage_df = pd.DataFrame()
+                    
+                daily_resource_demand_df = all_daily_resource_usage_df.groupby(
+                        ['Fecha', 'RECURSO', 'UNIDAD'],
+                        as_index=False
+                )['Cantidad_Diaria'].sum()
                 
-                    fig_resource_timeline.add_trace(go.Scatter(
-                        x=[x_start, x_end, x_end, x_start, x_start],
-                        y=[y0, y0, y1, y1, y0],
-                        fill='toself',
-                        fillcolor=color_avance,
-                        line=dict(color=color_avance, width=1),
-                        hoverinfo='text',
-                        text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>%Avance:</b> {row['%AVANCE']:.1f}%",
-                        showlegend=False
-                    ))
+                daily_resource_demand_df.rename(columns={'Cantidad_Diaria': 'Demanda_Diaria_Total'}, inplace=True)
+                daily_resource_demand_df.rename(columns={'Cantidad_Diaria_Ejecutada': 'Demanda_Diaria_Ejecutada'}, inplace=True)
                 
-                    # Etiqueta de %Avance a la derecha
-                    fig_resource_timeline.add_trace(go.Scatter(
-                        x=[x_end + pd.Timedelta(days=1)],
-                        y=[y_pos],
-                        mode='text',
-                        text=[f"{row['%AVANCE']:.1f}%"],
-                        textposition='middle right',
-                        showlegend=False,
-                        hoverinfo='skip'
-                    ))
+                daily_resource_demand_df['RECURSO'] = daily_resource_demand_df['RECURSO'].str.strip()
+                st.session_state.recursos_df['RECURSO'] = st.session_state.recursos_df['RECURSO'].str.strip()
                 
-                # --- Configurar layout ---
-                y_ticktext_styled = [rubro for rubro in unique_rubros]
-                
-                fig_resource_timeline.update_layout(
-                    yaxis=dict(
-                        autorange="reversed",
-                        tickvals=list(range(len(unique_rubros))),
-                        ticktext=y_ticktext_styled,
-                        tickfont=dict(size=10),
-                        title="Rubro"
-                    ),
-                    xaxis=dict(
-                        title="Fechas",
-                        side='top',
-                        dtick='M1',
-                        tickangle=-90,
-                        showgrid=True,
-                        gridcolor='rgba(128,128,128,0.3)',
-                        gridwidth=0.5
-                    ),
-                    height=max(600, len(unique_rubros)*25),
-                    plot_bgcolor='white',
-                    hovermode='closest'
+                resource_demand_with_details_df = daily_resource_demand_df.merge(
+                        st.session_state.recursos_df[['RECURSO', 'TYPE', 'TARIFA']],
+                        on='RECURSO',
+                        how='left'
                 )
                 
-                # Mostrar gráfico
-                st.subheader("📊 Gantt de Recursos con Avance")
+                resource_demand_with_details_df['Costo_Diario'] = resource_demand_with_details_df['Demanda_Diaria_Total'] * resource_demand_with_details_df['TARIFA']
+                resource_demand_with_details_df['Costo_Diario_Parcial'] = resource_demand_with_details_df['Demanda_Diaria_Ejecutada'] * resource_demand_with_details_df['TARIFA']
+                
+                daily_cost_by_type_df = resource_demand_with_details_df.groupby(
+                        ['Fecha', 'TYPE'],
+                        as_index=False
+                )['Costo_Diario'].sum()
+                
+                daily_demand_by_resource_df = resource_demand_with_details_df.groupby(
+                        ['Fecha', 'RECURSO', 'UNIDAD'],
+                        as_index=False
+                )['Demanda_Diaria_Total'].sum()
+
+                daily_cost_by_type_df_partial = resource_demand_with_details_df.groupby(
+                        ['Fecha', 'TYPE'],
+                        as_index=False
+                )['Costo_Diario_Parcial'].sum()
+                
+                daily_demand_by_resource_df_partial = resource_demand_with_details_df.groupby(
+                        ['Fecha', 'RECURSO', 'UNIDAD'],
+                        as_index=False
+                )['Demanda_Diaria_Ejecutada'].sum()
+                
+                st.subheader("📊 Distribución de Recursos")
+                
+                if 'RUBRO' not in recursos_tareas_df.columns:
+                        if 'dependencias_df' in st.session_state:
+                                tareas_df_seguimiento['RUBRO'] = tareas_df_seguimiento['RUBRO'].astype(str).str.strip()
+                                recursos_tareas_df['RUBRO'] = recursos_tareas_df['RUBRO'].astype(str).str.strip()
+                                if 'IDRUBRO' in recursos_tareas_df.columns and 'IDRUBRO' in tareas_df_seguimientos:
+                                        recursos_tareas_df = recursos_tareas_df.merge(
+                                                tareas_df_seguimiento[['IDRUBRO', 'RUBRO']],
+                                                left_on='IDRUBRO',
+                                                right_on='IDRUBRO',
+                                                how='left'
+                                        )
+                                        st.warning("Re-merged to include 'RUBRO' column using IDRUBRO.")
+                                else:
+                                        st.warning("❌ Error: 'IDRUBRO' column not found in one of the dataframes. Cannot re-add 'RUBRO'.")
+                                        raise KeyError("'IDRUBRO' column not found for re-merging.")
+                        else:
+                                st.warning("❌ Error: 'tareas_df' or 'dependencias_df' not found. Cannot re-add 'RUBRO' column.")
+                                raise NameError("'tareas_df' or 'dependencias_df' not found.")
+                
+                unique_rubros = sorted(recursos_tareas_df['RUBRO'].dropna().unique().tolist())
+                fig_resource_timeline = go.Figure()
+                pastel_blue = 'rgb(174, 198, 207)'
+                
+                for i, row in recursos_tareas_df.iterrows():
+                        fig_resource_timeline.add_trace(go.Scattergl(
+                                x=[row['FECHA_INICIO_TEMPRANA'], row['FECHA_FIN_TEMPRANA']],
+                                y=[row['RECURSO'], row['RECURSO']],
+                                mode='lines',
+                                line=dict(color=pastel_blue, width=10),
+                                name=row['RECURSO'],
+                                showlegend=False,
+                                hoverinfo='text',
+                                text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>Recurso:</b> {row['RECURSO']}<br><b>Inicio:</b> {row['FECHA_INICIO_TEMPRANA'].strftime('%Y-%m-%d')}<br><b>Fin:</b> {row['FECHA_FIN_TEMPRANA'].strftime('%Y-%m-%d')}",
+                                customdata=[row['RUBRO']]
+                        ))
+                dropdown_options = [{'label': 'All Tasks', 'method': 'update', 'args': [{'visible': [True]*len(fig_resource_timeline.data)}, {'title': 'Línea de Tiempo de Uso de Recursos'}]}]
+                
+                for rubro in unique_rubros:
+                        visibility_list = [trace.customdata[0] == rubro if trace.customdata and len(trace.customdata) > 0 else False for trace in fig_resource_timeline.data]
+                        dropdown_options.append({
+                                'label': rubro,
+                                'method': 'update',
+                                'args': [{'visible': visibility_list}, {'title': f'Línea de Tiempo de Uso de Recursos (Filtrado por: {rubro})'}]
+                        })
+                fig_resource_timeline.update_layout(
+                        updatemenus=[go.layout.Updatemenu(
+                                buttons=dropdown_options,
+                                direction="down",
+                                pad={"r":10,"t":10},
+                                showactive=True,
+                                x=0.01,
+                                xanchor="left",
+                                y=1.1,
+                                yanchor="top"
+                        )],
+                        yaxis=dict(autorange="reversed", title="Recurso", tickfont=dict(size=10)),
+                        xaxis=dict(title='Fechas', side='top', dtick='M1', tickangle=-90, showgrid=True, gridcolor='rgba(128,128,128,0.3)', gridwidth=0.5),
+                        height=max(600, len(recursos_tareas_df['RECURSO'].unique())*20),
+                        showlegend=False,
+                        plot_bgcolor='white',
+                        hovermode='closest'
+                )
                 st.plotly_chart(fig_resource_timeline, use_container_width=True)
-
-
-
-              
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
