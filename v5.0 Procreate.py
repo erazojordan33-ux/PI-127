@@ -1784,8 +1784,6 @@ if archivo_excel:
                         as_index=False
                 )['Demanda_Diaria_Ejecutada'].sum()
                 
-                st.subheader("📊 Distribución de Recursos")
-                
                 if 'RUBRO' not in recursos_tareas_df.columns:
                         if 'dependencias_df' in st.session_state:
                                 st.session_state.tareas_df_seguimiento['RUBRO'] = st.session_state.tareas_df_seguimiento['RUBRO'].astype(str).str.strip()
@@ -1897,7 +1895,7 @@ if archivo_excel:
                 
                 fig = make_subplots(specs=[[{"secondary_y": True}]])
                 
-                # 🔵 Barras Planificadas
+                # 🔵 Barras Planificadas (Azul oscuro)
                 fig.add_bar(
                     x=monthly_costs_df['Periodo_Mensual'],
                     y=monthly_costs_df['Costo_Diario'],
@@ -1905,12 +1903,12 @@ if archivo_excel:
                     text=monthly_costs_df['Costo_Mensual_Formateado'],
                     hoverinfo='text',
                     hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
-                    marker_color='royalblue',
-                    opacity=0.7,
+                    marker_color='darkblue',
+                    opacity=0.85,
                     secondary_y=False
                 )
                 
-                # 🟢 Barras Ejecutadas
+                # 🔴 Barras Ejecutadas (Rojo)
                 fig.add_bar(
                     x=monthly_costs_df_partial['Periodo_Mensual'],
                     y=monthly_costs_df_partial['Costo_Diario_Parcial'],
@@ -1918,12 +1916,12 @@ if archivo_excel:
                     text=monthly_costs_df_partial['Costo_Mensual_Formateado'],
                     hoverinfo='text',
                     hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
-                    marker_color='seagreen',
-                    opacity=0.7,
+                    marker_color='crimson',
+                    opacity=0.85,
                     secondary_y=False
                 )
                 
-                # 🔴 Línea del Costo Acumulado Planificado
+                # 🔵 Línea Acumulada Planificada
                 fig.add_scatter(
                     x=monthly_costs_df['Periodo_Mensual'],
                     y=monthly_costs_df['Costo_Acumulado'],
@@ -1932,11 +1930,11 @@ if archivo_excel:
                     text=monthly_costs_df['Costo_Acumulado_Formateado'],
                     hoverinfo='text',
                     hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
-                    line=dict(color='red', width=3),
+                    line=dict(color='darkblue', width=3),
                     secondary_y=True
                 )
                 
-                # 🟠 Línea del Costo Acumulado Ejecutado
+                # 🔴 Línea Acumulada Ejecutada
                 fig.add_scatter(
                     x=monthly_costs_df_partial['Periodo_Mensual'],
                     y=monthly_costs_df_partial['Costo_Acumulado'],
@@ -1945,11 +1943,19 @@ if archivo_excel:
                     text=monthly_costs_df_partial['Costo_Acumulado_Formateado'],
                     hoverinfo='text',
                     hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
-                    line=dict(color='orange', width=3, dash='dot'),
+                    line=dict(color='crimson', width=3, dash='dot'),
                     secondary_y=True
                 )
                 
-                # Ejes y estilo
+                # 🧭 Ejes
+                fig.update_xaxes(
+                    title_text="Mes",
+                    tickangle=-45,
+                    tickmode='array',
+                    tickvals=monthly_costs_df['Periodo_Mensual'],
+                    ticktext=[pd.to_datetime(p).strftime('%b').capitalize() for p in monthly_costs_df['Periodo_Mensual']]
+                )
+                
                 fig.update_yaxes(
                     title_text="Costo Mensual (S/)",
                     secondary_y=False,
@@ -1965,14 +1971,12 @@ if archivo_excel:
                     range=[0, max(monthly_costs_df['Costo_Acumulado'].max(), monthly_costs_df_partial['Costo_Acumulado'].max()) * 1.1]
                 )
                 
-                fig.update_xaxes(title_text="Período Mensual", tickangle=-45)
-                
                 fig.update_layout(
                     hovermode='x unified',
                     height=600,
                     barmode='group',
                     legend=dict(
-                        x=1.1,
+                        x=1.05,
                         y=1,
                         bgcolor='rgba(255, 255, 255, 0.5)',
                         bordercolor='rgba(0, 0, 0, 0.5)'
@@ -1983,60 +1987,8 @@ if archivo_excel:
                 st.plotly_chart(fig, use_container_width=True)
 
 
-
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
