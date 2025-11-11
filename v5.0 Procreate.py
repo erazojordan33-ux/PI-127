@@ -1710,7 +1710,7 @@ if archivo_excel:
                                 'RECURSO': resource_name,
                                 'UNIDAD': unit,
                                 'Cantidad_Diaria': daily_quantity,
-                                'Cantidad_Total_Tarea': total_quantity
+                                'Cantidad_Total_Tarea': total_quantity,
                                 'Cantidad_Diaria_Ejecutada': daily_quantity_partial,
                                 'Cantidad_Parcial_Tarea': date_range_partial
                         })
@@ -1830,6 +1830,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
