@@ -1946,14 +1946,18 @@ if archivo_excel:
                     line=dict(color='crimson', width=3, dash='dot'),
                     secondary_y=True
                 )
+
+                ticklabels = [
+                    pd.to_datetime(p).strftime('%b-%Y').capitalize()
+                    for p in monthly_costs_df['Periodo_Mensual']
+                ]
                 
-                # 🧭 Ejes
                 fig.update_xaxes(
-                    title_text="Mes",
+                    title_text="Mes - Año",
                     tickangle=-45,
                     tickmode='array',
                     tickvals=monthly_costs_df['Periodo_Mensual'],
-                    ticktext=[pd.to_datetime(p).strftime('%b').capitalize() for p in monthly_costs_df['Periodo_Mensual']]
+                    ticktext=ticklabels
                 )
                 
                 fig.update_yaxes(
@@ -1989,6 +1993,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
