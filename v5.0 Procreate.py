@@ -1651,14 +1651,12 @@ if archivo_excel:
                 
                 tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'] = pd.to_datetime(tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'])
                 tareas_df_seguimiento['FECHA_FIN_TEMPRANA'] = pd.to_datetime(tareas_df_seguimiento['FECHA_FIN_TEMPRANA']) 
-
                 tareas_df_seguimiento['FECHA_SEGUIMIENTO'] = pd.to_datetime(tareas_df_seguimiento['FECHA_SEGUIMIENTO']) 
                 
                 tareas_df_seguimiento['RUBRO'] = tareas_df_seguimiento['RUBRO'].str.strip()
                 st.session_state.dependencias_df['RUBRO'] = st.session_state.dependencias_df['RUBRO'].str.strip()
 
                 tareas_df_seguimiento['DURACION'] = (tareas_df_seguimiento['FECHA_FIN_TEMPRANA'] - tareas_df_seguimiento['FECHA_INICIO_TEMPRANA']).dt.days
-
                 tareas_df_seguimiento['DURACION_PARCIAL'] = (tareas_df_seguimiento['FECHA_SEGUIMIENTO'] - tareas_df_seguimiento['FECHA_INICIO_TEMPRANA']).dt.days
                 
                 recursos_tareas_df = st.session_state.dependencias_df.merge(
@@ -1701,7 +1699,7 @@ if archivo_excel:
                                 daily_quantity_partial = parcial_quantity
                                 date_range_partial = [start_date]
                         else:
-                                daily_quantity_partial = parcial_quantity / (duration_days + 1)
+                                daily_quantity_partial = parcial_quantity / (duration_partial_days + 1)
                                 date_range_partial = pd.date_range(start=start_date, end=end_date_partial, freq='D')
 
                         temp_df = pd.DataFrame({
@@ -1720,7 +1718,7 @@ if archivo_excel:
                                 'RECURSO': resource_name,
                                 'UNIDAD': unit,
                                 'Cantidad_Diaria_Ejecutada': daily_quantity_partial,
-                                'Cantidad_Parcial_Tarea': date_range_partial
+                                'Cantidad_Parcial_Tarea': parcial_quantity
                         })
                         daily_resource_usage_list_partial.append(temp_df_partial)
                 
@@ -1733,7 +1731,7 @@ if archivo_excel:
                 if daily_resource_usage_list_partial:
                         all_daily_resource_usage_df_partial = pd.concat(daily_resource_usage_list_partial, ignore_index=True)
                 else:
-                        st.warning("\nNo se generaron datos de uso diario de recursos.")
+                        st.warning("\nNo se generaron datos de uso diario de recursos parciales.")
                         all_daily_resource_usage_df_partial = pd.DataFrame()
                     
                 daily_resource_demand_df = all_daily_resource_usage_df.groupby(
@@ -1858,6 +1856,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
