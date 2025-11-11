@@ -1728,6 +1728,9 @@ if archivo_excel:
                 else:
                         st.warning("\nNo se generaron datos de uso diario de recursos.")
                         all_daily_resource_usage_df = pd.DataFrame()
+                
+                st.write(all_daily_resource_usage_df.columns)
+
 
                 if daily_resource_usage_list_partial:
                         all_daily_resource_usage_df_partial = pd.concat(daily_resource_usage_list_partial, ignore_index=True)
@@ -1857,6 +1860,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
