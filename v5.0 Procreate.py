@@ -1864,8 +1864,6 @@ if archivo_excel:
                 else:
                         st.warning(f" columns: {missing_columns2}")                
                 
-                df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
-                df1['Fecha'] = pd.to_datetime(df1['Fecha'], errors='coerce')
 
                 df = resource_demand_with_details_df.copy()
                 df['Fecha'] = pd.to_datetime(df['Fecha'])
@@ -1988,6 +1986,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
