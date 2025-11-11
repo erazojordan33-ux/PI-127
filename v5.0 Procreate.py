@@ -1644,9 +1644,6 @@ if archivo_excel:
                                         layer="below"
                                 )
                 st.plotly_chart(fig, use_container_width=True)
-
-
-                st.write(st.session_state.tareas_df_seguimiento)
                 
                 st.session_state.tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'] = pd.to_datetime(st.session_state.tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'])
                 st.session_state.tareas_df_seguimiento['FECHA_FIN_TEMPRANA'] = pd.to_datetime(st.session_state.tareas_df_seguimiento['FECHA_FIN_TEMPRANA']) 
@@ -1658,10 +1655,8 @@ if archivo_excel:
                 st.session_state.tareas_df_seguimiento['DURACION'] = (st.session_state.tareas_df_seguimiento['FECHA_FIN_TEMPRANA'] - st.session_state.tareas_df_seguimiento['FECHA_INICIO_TEMPRANA']).dt.days
                 st.session_state.tareas_df_seguimiento['DURACION_PARCIAL'] = (st.session_state.tareas_df_seguimiento['FECHA_SEGUIMIENTO'] - st.session_state.tareas_df_seguimiento['FECHA_INICIO_TEMPRANA']).dt.days
 
-                st.write(st.session_state.tareas_df_seguimiento)
-                
                 recursos_tareas_df = st.session_state.dependencias_df.merge(
-                        tareas_df_seguimiento[['IDRUBRO', 'RUBRO', 'FECHA_INICIO_TEMPRANA', 'FECHA_FIN_TEMPRANA','FECHA_SEGUIMIENTO','DURACION','DURACION_EFECTIVA','DURACION_PARCIAL','%AVANCE']],
+                        st.session_state.tareas_df_seguimiento[['IDRUBRO', 'RUBRO', 'FECHA_INICIO_TEMPRANA', 'FECHA_FIN_TEMPRANA','FECHA_SEGUIMIENTO','DURACION','DURACION_EFECTIVA','DURACION_PARCIAL','%AVANCE']],
                         left_on='RUBRO',
                         right_on='RUBRO',
                         how='left'
@@ -1864,6 +1859,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
