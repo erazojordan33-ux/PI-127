@@ -2023,38 +2023,11 @@ if archivo_excel:
                         file_name="Gestion_de_Proyectos.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
-                
-                # --- Botones para descargar gráficos como PNG ---
-                st.subheader("📊 Descargar Gráficos")
-                graficos = {
-                    "5. DIAGRAMA GANTT": fig,
-                    "6. RECURSOS": fig_resource_timeline,
-                    "7. CRONOGRAMA VALORADO": fig,
-                    "8. GANTT DE SEGUIMIENTO": fig,
-                    "9. CRONOGRAMA DE SEGUIMIENTO": fig
-                }
-                
-                for nombre, fig_obj in graficos.items():
-                    img_bytes = fig_obj.to_image(format="png", width=1200, height=600)
-                    st.download_button(
-                        label=f"Descargar {nombre} PNG",
-                        data=img_bytes,
-                        file_name=f"{nombre.replace(' ', '_')}.png",
-                        mime="image/png"
-                    )
-                    # Opcional: también puedes ofrecer HTML interactivo
-                    html_bytes = fig_obj.to_html().encode('utf-8')
-                    st.download_button(
-                        label=f"Descargar {nombre} HTML",
-                        data=html_bytes,
-                        file_name=f"{nombre.replace(' ', '_')}.html",
-                        mime="text/html"
-                    )
-
 
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
