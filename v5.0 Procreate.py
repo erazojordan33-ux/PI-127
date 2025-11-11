@@ -1986,8 +1986,6 @@ if archivo_excel:
                 import streamlit as st
                 import pandas as pd
                 from io import BytesIO
-                from openpyxl import Workbook
-                from openpyxl.drawing.image import Image
                 import plotly.io as pio
                 
                 # --- Función para sanitizar DataFrames ---
@@ -1999,69 +1997,65 @@ if archivo_excel:
                         )
                     return df_sanitized
                 
-                # --- Función para generar Excel completo ---
-                def export_gestion_proyectos_excel():
+                # --- Función para exportar solo tablas a Excel ---
+                def export_gestion_proyectos_excel_only_tables():
                     output = BytesIO()
-                    wb = Workbook()
-                    wb.remove(wb.active)  # eliminar hoja default
-                    
-                    # --- Función interna para agregar tabla y opcionalmente gráfico ---
-                    def add_table_with_fig(sheet_name, df, fig=None):
-                        ws = wb.create_sheet(sheet_name)
-                        df_clean = sanitize_df_for_excel(df)
-                        # Tabla
-                        for r_idx, row in enumerate(df_clean.values, 2):
-                            for c_idx, value in enumerate(row, 1):
-                                ws.cell(row=r_idx, column=c_idx, value=value)
-                        for c_idx, col_name in enumerate(df_clean.columns, 1):
-                            ws.cell(row=1, column=c_idx, value=col_name)
-                        # Gráfico
-                        if fig:
-                            img_data = BytesIO()
-                            pio.write_image(fig, img_data, format='png', width=1200, height=600)
-                            img_data.seek(0)
-                            img = Image(img_data)
-                            ws.add_image(img, "A{}".format(len(df_clean)+3))
-                    
-                    # 1️⃣ TAREAS ORIGINAL
-                    add_table_with_fig("1. TAREAS ORIGINAL", st.session_state.tareas_df_original)
-                    # 2️⃣ RECURSOS
-                    add_table_with_fig("2. RECURSOS", st.session_state.recursos_df)
-                    # 3️⃣ DEPENDENCIAS
-                    add_table_with_fig("3. DEPENDENCIAS", st.session_state.dependencias_df)
-                    # 4️⃣ CALENDARIO
-                    add_table_with_fig("4. CALENDARIO", st.session_state.calendario)
-                    # 5️⃣ DIAGRAMA GANTT
-                    add_table_with_fig("5. DIAGRAMA GANTT", st.session_state.tareas_df, fig)
-                    # 6️⃣ RECURSOS
-                    add_table_with_fig("6. RECURSOS", recursos_tareas_df, fig_resource_timeline)
-                    # 7️⃣ CRONOGRAMA VALORADO
-                    add_table_with_fig("7. CRONOGRAMA VALORADO", monthly_costs_df, fig)
-                    # 8️⃣ GANTT DE SEGUIMIENTO
-                    add_table_with_fig("8. GANTT DE SEGUIMIENTO", st.session_state.tareas_df_seguimiento, fig)
-                    # 9️⃣ CRONOGRAMA DE SEGUIMIENTO
-                    add_table_with_fig("9. CRONOGRAMA DE SEGUIMIENTO", resource_demand_with_details_df_partial, fig)
-                    
-                    # Guardar Excel en memoria
-                    output.seek(0)
-                    wb.save(output)
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        sanitize_df_for_excel(st.session_state.tareas_df_original).to_excel(writer, sheet_name="1. TAREAS ORIGINAL", index=False)
+                        sanitize_df_for_excel(st.session_state.recursos_df).to_excel(writer, sheet_name="2. RECURSOS", index=False)
+                        sanitize_df_for_excel(st.session_state.dependencias_df).to_excel(writer, sheet_name="3. DEPENDENCIAS", index=False)
+                        sanitize_df_for_excel(st.session_state.calendario).to_excel(writer, sheet_name="4. CALENDARIO", index=False)
+                        sanitize_df_for_excel(st.session_state.tareas_df).to_excel(writer, sheet_name="5. DIAGRAMA GANTT", index=False)
+                        sanitize_df_for_excel(recursos_tareas_df).to_excel(writer, sheet_name="6. RECURSOS", index=False)
+                        sanitize_df_for_excel(monthly_costs_df).to_excel(writer, sheet_name="7. CRONOGRAMA VALORADO", index=False)
+                        sanitize_df_for_excel(st.session_state.tareas_df_seguimiento).to_excel(writer, sheet_name="8. GANTT DE SEGUIMIENTO", index=False)
+                        sanitize_df_for_excel(resource_demand_with_details_df_partial).to_excel(writer, sheet_name="9. CRONOGRAMA DE SEGUIMIENTO", index=False)
                     output.seek(0)
                     return output
                 
-                # --- Botón en Streamlit ---
-                st.subheader("📥 Exportar Informe Completo")
-                if st.button("Exportar Gestion de Proyectos"):
-                    excel_file = export_gestion_proyectos_excel()
+                # --- Botón para descargar Excel ---
+                st.subheader("📥 Exportar Informe Completo (Solo Tablas)")
+                if st.button("Exportar Excel"):
+                    excel_file = export_gestion_proyectos_excel_only_tables()
                     st.download_button(
                         label="Descargar Excel",
                         data=excel_file,
                         file_name="Gestion_de_Proyectos.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
+                
+                # --- Botones para descargar gráficos como PNG ---
+                st.subheader("📊 Descargar Gráficos")
+                graficos = {
+                    "5. DIAGRAMA GANTT": fig,
+                    "6. RECURSOS": fig_resource_timeline,
+                    "7. CRONOGRAMA VALORADO": fig,
+                    "8. GANTT DE SEGUIMIENTO": fig,
+                    "9. CRONOGRAMA DE SEGUIMIENTO": fig
+                }
+                
+                for nombre, fig_obj in graficos.items():
+                    img_bytes = fig_obj.to_image(format="png", width=1200, height=600)
+                    st.download_button(
+                        label=f"Descargar {nombre} PNG",
+                        data=img_bytes,
+                        file_name=f"{nombre.replace(' ', '_')}.png",
+                        mime="image/png"
+                    )
+                    # Opcional: también puedes ofrecer HTML interactivo
+                    html_bytes = fig_obj.to_html().encode('utf-8')
+                    st.download_button(
+                        label=f"Descargar {nombre} HTML",
+                        data=html_bytes,
+                        file_name=f"{nombre.replace(' ', '_')}.html",
+                        mime="text/html"
+                    )
+
 
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
