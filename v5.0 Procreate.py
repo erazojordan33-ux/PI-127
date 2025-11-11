@@ -1789,9 +1789,9 @@ if archivo_excel:
                 
                 if 'RUBRO' not in recursos_tareas_df.columns:
                         if 'dependencias_df' in st.session_state:
-                                tareas_df_seguimiento['RUBRO'] = tareas_df_seguimiento['RUBRO'].astype(str).str.strip()
+                                st.session_state.tareas_df_seguimiento['RUBRO'] = st.session_state.tareas_df_seguimiento['RUBRO'].astype(str).str.strip()
                                 recursos_tareas_df['RUBRO'] = recursos_tareas_df['RUBRO'].astype(str).str.strip()
-                                if 'IDRUBRO' in recursos_tareas_df.columns and 'IDRUBRO' in tareas_df_seguimientos:
+                                if 'IDRUBRO' in recursos_tareas_df.columns and 'IDRUBRO' in st.session_state.tareas_df_seguimiento:
                                         recursos_tareas_df = recursos_tareas_df.merge(
                                                 tareas_df_seguimiento[['IDRUBRO', 'RUBRO']],
                                                 left_on='IDRUBRO',
@@ -1853,6 +1853,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
