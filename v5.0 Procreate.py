@@ -1990,77 +1990,55 @@ if archivo_excel:
                 from openpyxl.drawing.image import Image
                 import plotly.io as pio
                 
-                # --- Función para generar Excel con tablas y gráficos ---
+                # --- Función para sanitizar DataFrames ---
+                def sanitize_df_for_excel(df):
+                    df_sanitized = df.copy()
+                    for col in df_sanitized.columns:
+                        df_sanitized[col] = df_sanitized[col].apply(
+                            lambda x: str(x) if not pd.isna(x) and not isinstance(x, (int, float, str, pd.Timestamp)) else x
+                        )
+                    return df_sanitized
+                
+                # --- Función para generar Excel completo ---
                 def export_gestion_proyectos_excel():
                     output = BytesIO()
-                    
                     wb = Workbook()
                     wb.remove(wb.active)  # eliminar hoja default
                     
-                    # 1️⃣ TAREAS ORIGINAL
-                    ws1 = wb.create_sheet("1. TAREAS ORIGINAL")
-                    for r_idx, row in enumerate(st.session_state.tareas_df_original.values, 2):
-                        for c_idx, value in enumerate(row, 1):
-                            ws1.cell(row=r_idx, column=c_idx, value=value)
-                    # Escribir headers
-                    for c_idx, col_name in enumerate(st.session_state.tareas_df_original.columns, 1):
-                        ws1.cell(row=1, column=c_idx, value=col_name)
-                    
-                    # 2️⃣ RECURSOS
-                    ws2 = wb.create_sheet("2. RECURSOS")
-                    df = st.session_state.recursos_df
-                    for r_idx, row in enumerate(df.values, 2):
-                        for c_idx, value in enumerate(row, 1):
-                            ws2.cell(row=r_idx, column=c_idx, value=value)
-                    for c_idx, col_name in enumerate(df.columns, 1):
-                        ws2.cell(row=1, column=c_idx, value=col_name)
-                    
-                    # 3️⃣ DEPENDENCIAS
-                    ws3 = wb.create_sheet("3. DEPENDENCIAS")
-                    df = st.session_state.dependencias_df
-                    for r_idx, row in enumerate(df.values, 2):
-                        for c_idx, value in enumerate(row, 1):
-                            ws3.cell(row=r_idx, column=c_idx, value=value)
-                    for c_idx, col_name in enumerate(df.columns, 1):
-                        ws3.cell(row=1, column=c_idx, value=col_name)
-                    
-                    # 4️⃣ CALENDARIO
-                    ws4 = wb.create_sheet("4. CALENDARIO")
-                    df = st.session_state.calendario
-                    for r_idx, row in enumerate(df.values, 2):
-                        for c_idx, value in enumerate(row, 1):
-                            ws4.cell(row=r_idx, column=c_idx, value=value)
-                    for c_idx, col_name in enumerate(df.columns, 1):
-                        ws4.cell(row=1, column=c_idx, value=col_name)
-                    
-                    # Función interna para agregar tabla + gráfico a hoja
-                    def add_table_with_fig(sheet_name, df, fig):
+                    # --- Función interna para agregar tabla y opcionalmente gráfico ---
+                    def add_table_with_fig(sheet_name, df, fig=None):
                         ws = wb.create_sheet(sheet_name)
+                        df_clean = sanitize_df_for_excel(df)
                         # Tabla
-                        for r_idx, row in enumerate(df.values, 2):
+                        for r_idx, row in enumerate(df_clean.values, 2):
                             for c_idx, value in enumerate(row, 1):
                                 ws.cell(row=r_idx, column=c_idx, value=value)
-                        for c_idx, col_name in enumerate(df.columns, 1):
+                        for c_idx, col_name in enumerate(df_clean.columns, 1):
                             ws.cell(row=1, column=c_idx, value=col_name)
                         # Gráfico
-                        img_data = BytesIO()
-                        pio.write_image(fig, img_data, format='png', width=1200, height=600)
-                        img_data.seek(0)
-                        img = Image(img_data)
-                        ws.add_image(img, "A{}".format(len(df)+3))
+                        if fig:
+                            img_data = BytesIO()
+                            pio.write_image(fig, img_data, format='png', width=1200, height=600)
+                            img_data.seek(0)
+                            img = Image(img_data)
+                            ws.add_image(img, "A{}".format(len(df_clean)+3))
                     
+                    # 1️⃣ TAREAS ORIGINAL
+                    add_table_with_fig("1. TAREAS ORIGINAL", st.session_state.tareas_df_original)
+                    # 2️⃣ RECURSOS
+                    add_table_with_fig("2. RECURSOS", st.session_state.recursos_df)
+                    # 3️⃣ DEPENDENCIAS
+                    add_table_with_fig("3. DEPENDENCIAS", st.session_state.dependencias_df)
+                    # 4️⃣ CALENDARIO
+                    add_table_with_fig("4. CALENDARIO", st.session_state.calendario)
                     # 5️⃣ DIAGRAMA GANTT
                     add_table_with_fig("5. DIAGRAMA GANTT", st.session_state.tareas_df, fig)
-                    
                     # 6️⃣ RECURSOS
                     add_table_with_fig("6. RECURSOS", recursos_tareas_df, fig_resource_timeline)
-                    
                     # 7️⃣ CRONOGRAMA VALORADO
                     add_table_with_fig("7. CRONOGRAMA VALORADO", monthly_costs_df, fig)
-                    
                     # 8️⃣ GANTT DE SEGUIMIENTO
                     add_table_with_fig("8. GANTT DE SEGUIMIENTO", st.session_state.tareas_df_seguimiento, fig)
-                    
                     # 9️⃣ CRONOGRAMA DE SEGUIMIENTO
                     add_table_with_fig("9. CRONOGRAMA DE SEGUIMIENTO", resource_demand_with_details_df_partial, fig)
                     
@@ -2068,10 +2046,9 @@ if archivo_excel:
                     output.seek(0)
                     wb.save(output)
                     output.seek(0)
-                    
                     return output
                 
-                # --- Botón de Streamlit ---
+                # --- Botón en Streamlit ---
                 st.subheader("📥 Exportar Informe Completo")
                 if st.button("Exportar Gestion de Proyectos"):
                     excel_file = export_gestion_proyectos_excel()
@@ -2085,6 +2062,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
