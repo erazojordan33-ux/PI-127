@@ -1658,6 +1658,8 @@ if archivo_excel:
 
                 tareas_df_seguimiento['DURACION'] = (tareas_df_seguimiento['FECHA_FIN_TEMPRANA'] - tareas_df_seguimiento['FECHA_INICIO_TEMPRANA']).dt.days
                 tareas_df_seguimiento['DURACION_PARCIAL'] = (tareas_df_seguimiento['FECHA_SEGUIMIENTO'] - tareas_df_seguimiento['FECHA_INICIO_TEMPRANA']).dt.days
+
+                st.write(tareas_df_seguimiento.columns)
                 
                 recursos_tareas_df = st.session_state.dependencias_df.merge(
                         tareas_df_seguimiento[['IDRUBRO', 'RUBRO', 'FECHA_INICIO_TEMPRANA', 'FECHA_FIN_TEMPRANA','FECHA_SEGUIMIENTO','DURACION','DURACION_EFECTIVA','DURACION_PARCIAL','%AVANCE']],
@@ -1863,6 +1865,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
