@@ -1647,7 +1647,7 @@ if archivo_excel:
 
 
 
-                
+                tareas_df_seguimiento=st.session_state.tareas_df_seguimiento.copy
                 
                 tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'] = pd.to_datetime(tareas_df_seguimiento['FECHA_INICIO_TEMPRANA'])
                 tareas_df_seguimiento['FECHA_FIN_TEMPRANA'] = pd.to_datetime(tareas_df_seguimiento['FECHA_FIN_TEMPRANA']) 
@@ -1865,6 +1865,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
