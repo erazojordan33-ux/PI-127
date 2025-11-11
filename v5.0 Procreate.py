@@ -1784,7 +1784,6 @@ if archivo_excel:
                         as_index=False
                 )['Demanda_Diaria_Ejecutada'].sum()
                 
-                
                 st.subheader("📊 Distribución de Recursos")
                 
                 if 'RUBRO' not in recursos_tareas_df.columns:
@@ -1807,65 +1806,189 @@ if archivo_excel:
                                 raise NameError("'tareas_df' or 'dependencias_df' not found.")
                 
                 unique_rubros = sorted(recursos_tareas_df['RUBRO'].dropna().unique().tolist())
-                fig_resource_timeline = go.Figure()
-                pastel_blue = 'rgb(174, 198, 207)'
-                
-                for i, row in recursos_tareas_df.iterrows():
-                        fig_resource_timeline.add_trace(go.Scattergl(
-                                x=[row['FECHA_INICIO_TEMPRANA'], row['FECHA_FIN_TEMPRANA']],
-                                y=[row['RECURSO'], row['RECURSO']],
-                                mode='lines',
-                                line=dict(color=pastel_blue, width=10),
-                                name=row['RECURSO'],
-                                showlegend=False,
-                                hoverinfo='text',
-                                text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>Recurso:</b> {row['RECURSO']}<br><b>Inicio:</b> {row['FECHA_INICIO_TEMPRANA'].strftime('%Y-%m-%d')}<br><b>Fin:</b> {row['FECHA_FIN_TEMPRANA'].strftime('%Y-%m-%d')}",
-                                customdata=[row['RUBRO']]
-                        ))
 
-                        if pd.notna(row['FECHA_SEGUIMIENTO']):
-                                fig_resource_timeline.add_trace(go.Scattergl(
-                                    x=[row['FECHA_INICIO_TEMPRANA'], row['FECHA_SEGUIMIENTO']],
-                                    y=[row['RECURSO'], row['RECURSO']],
-                                    mode='lines',
-                                    line=dict(color='rgb(70, 70, 90)', width=4),  # más oscura y delgada
-                                    name=f"{row['RECURSO']} (Parcial)",
-                                    showlegend=False,
-                                    hoverinfo='text',
-                                    text=f"<b>Rubro:</b> {row['RUBRO']}<br><b>Recurso:</b> {row['RECURSO']}<br><b>Avance hasta:</b> {row['FECHA_SEGUIMIENTO'].strftime('%Y-%m-%d')}",
-                                    customdata=[row['RUBRO']]
-                                ))
-                dropdown_options = [{'label': 'All Tasks', 'method': 'update', 'args': [{'visible': [True]*len(fig_resource_timeline.data)}, {'title': 'Línea de Tiempo de Uso de Recursos'}]}]
+                required_columns_and_types1 = {
+                        'Fecha': 'datetime64[ns]',
+                        'RECURSO': 'object', 
+                        'UNIDAD': 'object', 
+                        'Demanda_Diaria_Total': 'float64', 
+                        'TYPE': 'object',
+                        'TARIFA': 'float64', 
+                        'Costo_Diario': 'float64' 
+                }
+
+                required_columns_and_types2 = {
+                        'Fecha': 'datetime64[ns]',
+                        'RECURSO': 'object', 
+                        'UNIDAD': 'object', 
+                        'Demanda_Diaria_Ejecutada': 'float64', 
+                        'TYPE': 'object',
+                        'TARIFA': 'float64', 
+                        'Costo_Diario_Parcial': 'float64' 
+                }
                 
-                for rubro in unique_rubros:
-                        visibility_list = [trace.customdata[0] == rubro if trace.customdata and len(trace.customdata) > 0 else False for trace in fig_resource_timeline.data]
-                        dropdown_options.append({
-                                'label': rubro,
-                                'method': 'update',
-                                'args': [{'visible': visibility_list}, {'title': f'Línea de Tiempo de Uso de Recursos (Filtrado por: {rubro})'}]
-                        })
-                fig_resource_timeline.update_layout(
-                        updatemenus=[go.layout.Updatemenu(
-                                buttons=dropdown_options,
-                                direction="down",
-                                pad={"r":10,"t":10},
-                                showactive=True,
-                                x=0.01,
-                                xanchor="left",
-                                y=1.1,
-                                yanchor="top"
-                        )],
-                        yaxis=dict(autorange="reversed", title="Recurso", tickfont=dict(size=10)),
-                        xaxis=dict(title='Fechas', side='top', dtick='M1', tickangle=-90, showgrid=True, gridcolor='rgba(128,128,128,0.3)', gridwidth=0.5),
-                        height=max(600, len(recursos_tareas_df['RECURSO'].unique())*20),
-                        showlegend=False,
-                        plot_bgcolor='white',
-                        hovermode='closest'
+                missing_columns1 = [col for col in required_columns_and_types1 if col not in resource_demand_with_details_df.columns]
+                missing_columns2 = [col for col in required_columns_and_types2 if col not in resource_demand_with_details_df_partial.columns]
+                
+                if not missing_columns1:
+                        type_issues1 = []
+                        for col, expected_type in required_columns_and_types1.items():
+                                if expected_type == 'object':
+                                        if pd.api.types.is_numeric_dtype(resource_demand_with_details_df[col]):
+                                                type_issues1.append(f"Column '{col}' is numeric but expected object (string).")
+                                elif not pd.api.types.is_dtype_equal(resource_demand_with_details_df[col].dtype, expected_type):
+                                        if expected_type == 'float64' and pd.api.types.is_integer_dtype(resource_demand_with_details_df[col]):
+                                                pass 
+                                        else:
+                                                type_issues1.append(f"Column '{col}' has type {resource_demand_with_details_df[col].dtype} but expected {expected_type}.")
+                        if type_issues1:
+                                for issue in type_issues1:
+                                        st.warning(f"⚠️ Tipo de dato: {issue}")
+                else:
+                        st.warning(f" columns: {missing_columns1}")
+                
+                if not missing_columns2:
+                        type_issues2 = []
+                        for col, expected_type in required_columns_and_types2.items():
+                                if expected_type == 'object':
+                                        if pd.api.types.is_numeric_dtype(resource_demand_with_details_df_partial[col]):
+                                                type_issues2.append(f"Column '{col}' is numeric but expected object (string).")
+                                elif not pd.api.types.is_dtype_equal(resource_demand_with_details_df_partial[col].dtype, expected_type):
+                                        if expected_type == 'float64' and pd.api.types.is_integer_dtype(resource_demand_with_details_df_partial[col]):
+                                                pass 
+                                        else:
+                                                type_issues2.append(f"Column '{col}' has type {resource_demand_with_details_df_partial[col].dtype} but expected {expected_type}.")
+                        if type_issues2:
+                                for issue in type_issues2:
+                                        st.warning(f"⚠️ Tipo de dato: {issue}")
+                else:
+                        st.warning(f" columns: {missing_columns2}")                
+                
+                df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
+                df1['Fecha'] = pd.to_datetime(df1['Fecha'], errors='coerce')
+
+                df = resource_demand_with_details_df.copy()
+                df['Fecha'] = pd.to_datetime(df['Fecha'])
+                df['Periodo_Mensual'] = df['Fecha'].dt.to_period('M')
+                monthly_costs_df = df.groupby('Periodo_Mensual')['Costo_Diario'].sum().reset_index()
+                monthly_costs_df['Periodo_Mensual'] = monthly_costs_df['Periodo_Mensual'].astype(str)
+                monthly_costs_df['Costo_Acumulado'] = monthly_costs_df['Costo_Diario'].cumsum()
+
+                df1 = resource_demand_with_details_df_partial.copy()
+                df1['Fecha'] = pd.to_datetime(df1['Fecha'])
+                df1['Periodo_Mensual'] = df1['Fecha'].dt.to_period('M')
+                monthly_costs_df_partial = df1.groupby('Periodo_Mensual')['Costo_Diario_Parcial'].sum().reset_index()
+                monthly_costs_df_partial['Periodo_Mensual'] = monthly_costs_df_partial['Periodo_Mensual'].astype(str)
+                monthly_costs_df_partial['Costo_Acumulado'] = monthly_costs_df_partial['Costo_Diario_Parcial'].cumsum()
+                
+                def format_currency(value):
+                        if pd.notna(value):
+                                return f"S/ {value:,.2f}"
+                        return "S/ 0.00"
+                
+                monthly_costs_df['Costo_Mensual_Formateado'] = monthly_costs_df['Costo_Diario'].apply(format_currency)
+                monthly_costs_df['Costo_Acumulado_Formateado'] = monthly_costs_df['Costo_Acumulado'].apply(format_currency)
+
+                monthly_costs_df_partial['Costo_Mensual_Formateado'] = monthly_costs_df_partial['Costo_Diario_Parcial'].apply(format_currency)
+                monthly_costs_df_partial['Costo_Acumulado_Formateado'] = monthly_costs_df_partial['Costo_Acumulado'].apply(format_currency)
+                
+                from plotly.subplots import make_subplots
+                import plotly.graph_objects as go
+                
+                st.subheader("📊 Cronograma Valorado")
+                
+                fig = make_subplots(specs=[[{"secondary_y": True}]])
+                
+                # 🔵 Barras Planificadas
+                fig.add_bar(
+                    x=monthly_costs_df['Periodo_Mensual'],
+                    y=monthly_costs_df['Costo_Diario'],
+                    name='Costo Mensual Planificado',
+                    text=monthly_costs_df['Costo_Mensual_Formateado'],
+                    hoverinfo='text',
+                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+                    marker_color='royalblue',
+                    opacity=0.7,
+                    secondary_y=False
                 )
-                st.plotly_chart(fig_resource_timeline, use_container_width=True, key="resource_timeline")
+                
+                # 🟢 Barras Ejecutadas
+                fig.add_bar(
+                    x=monthly_costs_df_partial['Periodo_Mensual'],
+                    y=monthly_costs_df_partial['Costo_Diario_Parcial'],
+                    name='Costo Mensual Ejecutado',
+                    text=monthly_costs_df_partial['Costo_Mensual_Formateado'],
+                    hoverinfo='text',
+                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+                    marker_color='seagreen',
+                    opacity=0.7,
+                    secondary_y=False
+                )
+                
+                # 🔴 Línea del Costo Acumulado Planificado
+                fig.add_scatter(
+                    x=monthly_costs_df['Periodo_Mensual'],
+                    y=monthly_costs_df['Costo_Acumulado'],
+                    mode='lines+markers',
+                    name='Costo Acumulado Planificado',
+                    text=monthly_costs_df['Costo_Acumulado_Formateado'],
+                    hoverinfo='text',
+                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+                    line=dict(color='red', width=3),
+                    secondary_y=True
+                )
+                
+                # 🟠 Línea del Costo Acumulado Ejecutado
+                fig.add_scatter(
+                    x=monthly_costs_df_partial['Periodo_Mensual'],
+                    y=monthly_costs_df_partial['Costo_Acumulado'],
+                    mode='lines+markers',
+                    name='Costo Acumulado Ejecutado',
+                    text=monthly_costs_df_partial['Costo_Acumulado_Formateado'],
+                    hoverinfo='text',
+                    hovertemplate='<b>%{x}</b><br>%{text}<extra></extra>',
+                    line=dict(color='orange', width=3, dash='dot'),
+                    secondary_y=True
+                )
+                
+                # Ejes y estilo
+                fig.update_yaxes(
+                    title_text="Costo Mensual (S/)",
+                    secondary_y=False,
+                    showgrid=False,
+                    range=[0, max(monthly_costs_df['Costo_Diario'].max(), monthly_costs_df_partial['Costo_Diario_Parcial'].max()) * 1.1]
+                )
+                
+                fig.update_yaxes(
+                    title_text="Costo Acumulado (S/)",
+                    secondary_y=True,
+                    showgrid=True,
+                    gridcolor='lightgrey',
+                    range=[0, max(monthly_costs_df['Costo_Acumulado'].max(), monthly_costs_df_partial['Costo_Acumulado'].max()) * 1.1]
+                )
+                
+                fig.update_xaxes(title_text="Período Mensual", tickangle=-45)
+                
+                fig.update_layout(
+                    hovermode='x unified',
+                    height=600,
+                    barmode='group',
+                    legend=dict(
+                        x=1.1,
+                        y=1,
+                        bgcolor='rgba(255, 255, 255, 0.5)',
+                        bordercolor='rgba(0, 0, 0, 0.5)'
+                    ),
+                    plot_bgcolor='white'
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+
+
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
