@@ -1349,14 +1349,20 @@ if archivo_excel:
 
 
                     mask1 = df["CANTIDAD EJECUTADA"] != 0
-                    df.loc[mask1, "FECHA_SEGUIMIENTO"] = [
-                        sumar_dias_efectivos(fecha, dias)
-                        for fecha, dias in zip(
-                                df.loc[mask1, "FECHA_INICIO_TEMPRANA"],
-                                (df.loc[mask1, "CANTIDAD EJECUTADA"] / rend[mask1]).fillna(0)
-                        )
-                    ]
-                    df.loc[mask1, "%AVANCE"] = (df.loc[mask1, "CANTIDAD EJECUTADA"] / cant_rubro[mask1]).fillna(0)
+                    rend_cero_mask = mask1 & (rend == 0)
+                    if rend_cero_mask.any():
+                            st.warning("⚠️ Se omitieron algunas tareas con RENDIMIENTO = 0 en el cálculo de fechas de seguimiento.")
+                    mask_validos = mask1 & (rend != 0)       
+                    df.loc[mask_validos, "FECHA_SEGUIMIENTO"] = [
+                            sumar_dias_efectivos(fecha, dias)
+                            for fecha, dias in zip(
+                                df.loc[mask_validos, "FECHA_INICIO_TEMPRANA"],
+                                (df.loc[mask_validos, "CANTIDAD EJECUTADA"] / rend[mask_validos]).fillna(0).astype(int)
+                            )
+                        ]
+                    df.loc[mask_validos, "%AVANCE"] = (
+                            df.loc[mask_validos, "CANTIDAD EJECUTADA"] / cant_rubro[mask_validos]
+                        ).fillna(0)
                 
                     mask2 = (df["CANTIDAD EJECUTADA"] == 0) & (df["%AVANCE"] != 0)
                     df.loc[mask2, "FECHA_SEGUIMIENTO"] = [
@@ -2051,6 +2057,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
