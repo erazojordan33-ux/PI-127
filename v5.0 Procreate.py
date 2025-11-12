@@ -1306,30 +1306,54 @@ if archivo_excel:
                         calendario = pd.DataFrame(columns=["fecha", "no_laborable"])
 
                     def sumar_dias_efectivos(fecha_inicio, dias):
-                        if pd.isna(fecha_inicio):
-                            return pd.NaT
-                        fecha_actual = fecha_inicio
-                        dias_agregados = 0
-                        while dias_agregados < dias:
-                            fecha_actual += pd.Timedelta(days=1)
-                            fila = calendario.loc[calendario["fecha"] == fecha_actual]
-                            es_no_laborable = bool(fila["no_laborable"].iloc[0]) if not fila.empty else False
-                            if not es_no_laborable:
-                                dias_agregados += 1
-                        while True:
-                                fila_final = calendario.loc[calendario["fecha"] == fecha_actual]
-                                if fila_final.empty or not bool(fila_final["no_laborable"].iloc[0]):
-                                    break
-                                fecha_actual += pd.Timedelta(days=1)
-                                
-                        return fecha_actual
+                            # Validar tipo y rango de fecha
+                            fecha_inicio = pd.to_datetime(fecha_inicio, errors="coerce")
+                            if pd.isna(fecha_inicio) or dias <= 0:
+                                return fecha_inicio
+                        
+                            # Límites seguros del rango de pandas
+                            LIMITE_INFERIOR = pd.Timestamp("1677-09-21")
+                            LIMITE_SUPERIOR = pd.Timestamp("2262-04-11")
+                        
+                            fecha_actual = fecha_inicio
+                            dias_agregados = 0
+                        
+                            try:
+                                while dias_agregados < dias:
+                                    fecha_actual += pd.Timedelta(days=1)
+                                    
+                                    # Verificar límites antes de seguir sumando
+                                    if fecha_actual < LIMITE_INFERIOR or fecha_actual > LIMITE_SUPERIOR:
+                                        return pd.NaT  # Evita error OutOfBoundsDatetime
+                        
+                                    fila = calendario.loc[calendario["fecha"] == fecha_actual]
+                                    es_no_laborable = bool(fila["no_laborable"].iloc[0]) if not fila.empty else False
+                                    
+                                    if not es_no_laborable:
+                                        dias_agregados += 1
+                        
+                                # Saltar días no laborables al final
+                                while True:
+                                    fila_final = calendario.loc[calendario["fecha"] == fecha_actual]
+                                    if fila_final.empty or not bool(fila_final["no_laborable"].iloc[0]):
+                                        break
+                                    fecha_actual += pd.Timedelta(days=1)
+                        
+                                    if fecha_actual > LIMITE_SUPERIOR:
+                                        return pd.NaT  # Seguridad extra
+                        
+                                return fecha_actual
+                        
+                            except (OverflowError, pd._libs.tslibs.np_datetime.OutOfBoundsDatetime):
+                                return pd.NaT
+
 
                     mask1 = df["CANTIDAD EJECUTADA"] != 0
                     df.loc[mask1, "FECHA_SEGUIMIENTO"] = [
                         sumar_dias_efectivos(fecha, dias)
                         for fecha, dias in zip(
-                            df.loc[mask1, "FECHA_INICIO_TEMPRANA"],
-                            (df.loc[mask1, "CANTIDAD EJECUTADA"] / rend[mask1]).fillna(0)
+                                df.loc[mask1, "FECHA_INICIO_TEMPRANA"],
+                                (df.loc[mask1, "CANTIDAD EJECUTADA"] / rend[mask1]).fillna(0)
                         )
                     ]
                     df.loc[mask1, "%AVANCE"] = (df.loc[mask1, "CANTIDAD EJECUTADA"] / cant_rubro[mask1]).fillna(0)
@@ -2027,6 +2051,7 @@ if archivo_excel:
 
 else:
         st.warning("Sube el archivo Excel con las hojas Tareas, Recursos y Dependencias.")
+
 
 
 
